@@ -6,7 +6,8 @@ export {
   type Chat,
   type ToolUse,
 } from "../features/Chat/Thread/types";
-export { newChatAction } from "../features/Chat/Thread/actions";
+// TODO: this may need to be re-created
+// export { newChatAction } from "../features/Chat/Thread/actions";
 import { type Chat } from "../features/Chat/Thread/types";
 import type { Snippet } from "../features/Chat/selectedSnippet";
 import type { Config } from "../features/Config/configSlice";
@@ -33,6 +34,7 @@ export {
 } from "../features/Chat/currentProject";
 export type { TextDocToolCall } from "../components/Tools/types";
 
+// here
 export type {
   UserMessage,
   ChatMessage,
@@ -40,6 +42,16 @@ export type {
   DiffChunk,
   ToolEditResult,
 } from "../services/refact";
+
+import { MessagesSubscriptionSubscription } from "../../generated/documents";
+
+export type ThreadMessage =
+  MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"];
+
+export type {
+  FThreadMultipleMessagesInput,
+  FThreadMessageInput,
+} from "../../generated/documents";
 
 // TODO: re-exporting from redux seems to break things :/
 export type InitialState = {
@@ -80,7 +92,7 @@ export {
   ideClearActiveTeamsWorkspace,
 } from "../hooks/useEventBusForIDE";
 
-export { ideAttachFileToChat } from "../hooks/useEventBusForApp";
+export { ideAttachFileToChat, newChatAction } from "../hooks/useEventBusForApp";
 export { toPascalCase } from "../utils/toPascalCase";
 export const fim = {
   request,

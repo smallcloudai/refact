@@ -1,12 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Flex } from "@radix-ui/themes";
-import {
-  Chat,
-  newChatAction,
-  selectChatId,
-  // selectIsStreaming
-} from "./Chat";
-import { selectIsStreaming } from "./ThreadMessages";
+import { Chat } from "./Chat";
+import { selectIsStreaming, selectThreadId } from "./ThreadMessages";
 import { Sidebar } from "../components/Sidebar/Sidebar";
 import {
   useAppSelector,
@@ -33,7 +28,6 @@ import { TourProvider } from "./Tour";
 import { Tour } from "../components/Tour";
 import { TourEnd } from "../components/Tour/TourEnd";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
-import { AbortControllerProvider } from "../contexts/AbortControllers";
 import { Toolbar } from "../components/Toolbar";
 import { Tab } from "../components/Toolbar/Toolbar";
 import { PageWrapper } from "../components/PageWrapper";
@@ -71,7 +65,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
   const maybeCurrentActiveGroup = useAppSelector(selectActiveGroup);
-  const chatId = useAppSelector(selectChatId);
+  const chatId = useAppSelector(selectThreadId);
   useEventBusForWeb();
   useEventBusForApp();
   usePatchesAndDiffsEventsForIDE();
@@ -98,7 +92,6 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         maybeCurrentActiveGroup
       ) {
         dispatch(push({ name: "history" }));
-        dispatch(newChatAction());
         dispatch(push({ name: "chat" }));
       } else {
         dispatch(push({ name: "history" }));
@@ -150,7 +143,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     if (page.name === "chat") {
       return {
         type: "chat",
-        id: chatId,
+        id: chatId ?? "",
       };
     }
     if (page.name === "history") {
@@ -247,9 +240,7 @@ export const App = () => {
         <PersistGate persistor={persistor}>
           <Theme>
             <TourProvider>
-              <AbortControllerProvider>
-                <InnerApp />
-              </AbortControllerProvider>
+              <InnerApp />
             </TourProvider>
           </Theme>
         </PersistGate>

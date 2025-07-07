@@ -142,24 +142,67 @@ export type PromptTokenDetails = {
 };
 
 export type Usage = {
-  completion_tokens: number;
-  prompt_tokens: number;
-  total_tokens: number;
-  completion_tokens_details?: CompletionTokenDetails | null;
-  prompt_tokens_details?: PromptTokenDetails | null;
-  cache_creation_input_tokens?: number;
-  cache_read_input_tokens?: number;
+  // completion_tokens: number;
+  // prompt_tokens: number;
+  // total_tokens: number;
+  // completion_tokens_details?: CompletionTokenDetails | null;
+  // prompt_tokens_details?: PromptTokenDetails | null;
+  // cache_creation_input_tokens?: number;
+  // cache_read_input_tokens?: number;
+  coins: number;
+  tokens_prompt: number;
+  pp1000t_prompt: number;
+  tokens_cache_read: number;
+  tokens_completion: number;
+  pp1000t_cache_read: number;
+  pp1000t_completion: number;
+  tokens_prompt_text: number;
+  tokens_prompt_audio: number;
+  tokens_prompt_image: number;
+  tokens_prompt_cached: number;
+  tokens_cache_creation: number;
+  pp1000t_cache_creation: number;
+  tokens_completion_text: number;
+  tokens_completion_audio: number;
+  tokens_completion_reasoning: number;
+  pp1000t_completion_reasoning: number;
 };
 
 export function isUsage(usage: unknown): usage is Usage {
-  if (!usage) return false;
-  if (typeof usage !== "object") return false;
-  if (!("completion_tokens" in usage)) return false;
-  if (typeof usage.completion_tokens !== "number") return false;
-  if (!("prompt_tokens" in usage)) return false;
-  if (typeof usage.prompt_tokens !== "number") return false;
-  if (!("total_tokens" in usage)) return false;
-  if (typeof usage.total_tokens !== "number") return false;
+  if (!usage || typeof usage !== "object") return false;
+
+  // if (!("completion_tokens" in usage)) return false;
+  // if (typeof usage.completion_tokens !== "number") return false;
+  // if (!("prompt_tokens" in usage)) return false;
+  // if (typeof usage.prompt_tokens !== "number") return false;
+  // if (!("total_tokens" in usage)) return false;
+  // if (typeof usage.total_tokens !== "number") return false;
+
+  const requiredFields: (keyof Usage)[] = [
+    "coins",
+    "tokens_prompt",
+    "pp1000t_prompt",
+    "tokens_cache_read",
+    "tokens_completion",
+    "pp1000t_cache_read",
+    "pp1000t_completion",
+    "tokens_prompt_text",
+    "tokens_prompt_audio",
+    "tokens_prompt_image",
+    "tokens_prompt_cached",
+    "tokens_cache_creation",
+    "pp1000t_cache_creation",
+    "tokens_completion_text",
+    "tokens_completion_audio",
+    "tokens_completion_reasoning",
+    "pp1000t_completion_reasoning",
+  ];
+
+  for (const field of requiredFields) {
+    if (!(field in usage)) return false;
+    if (typeof (usage as Usage)[field] !== "number") return false;
+  }
+
   return true;
 }
 

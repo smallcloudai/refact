@@ -26,14 +26,8 @@ import { Chevron } from "../Collapsible";
 import { Reveal } from "../Reveal";
 import { useAppSelector, useHideScroll } from "../../hooks";
 import {
-  // selectIsStreaming,
-  // selectIsWaiting,
-  // TODO: this
-  selectManyDiffMessageByIds,
-  // selectManyToolResultsByIds,
-} from "../../features/Chat/Thread/selectors";
-import {
   selectManyToolMessagesByIds,
+  selectManyDiffMessageByIds,
   selectToolMessageById,
 } from "../../features/ThreadMessages";
 import {
@@ -159,7 +153,10 @@ export const SingleModelToolContent: React.FC<{
   const results = useAppSelector((state) =>
     selectManyToolMessagesByIds(state, toolCallsId),
   );
-  const diffs = useAppSelector(selectManyDiffMessageByIds(toolCallsId));
+
+  const diffs = useAppSelector((state) =>
+    selectManyDiffMessageByIds(state, toolCallsId),
+  );
   const allResolved = useMemo(() => {
     return results.length + diffs.length === toolCallsId.length;
   }, [diffs.length, results.length, toolCallsId.length]);
@@ -235,7 +232,6 @@ export const SingleModelToolContent: React.FC<{
               console.error("toolCall is null");
               return;
             }
-            if (toolCall.id === undefined) return;
             const key = `${toolCall.id}-${toolCall.index}`;
             return (
               <Box key={key} py="2">
@@ -256,7 +252,7 @@ export type ToolContentProps = {
 export const ToolContent: React.FC<ToolContentProps> = ({ toolCalls }) => {
   const features = useAppSelector(selectFeatures);
   const ids = toolCalls.reduce<string[]>((acc, cur) => {
-    if (cur.id !== undefined) return [...acc, cur.id];
+    if (cur.id) return [...acc, cur.id];
     return acc;
   }, []);
   // Chate this selector to use thread message list
@@ -365,7 +361,9 @@ const MultiModalToolContent: React.FC<{
     }, []);
   }, [toolCalls]);
 
-  const diffs = useAppSelector(selectManyDiffMessageByIds(ids));
+  const diffs = useAppSelector((state) =>
+    selectManyDiffMessageByIds(state, ids),
+  );
 
   const handleClose = useCallback(() => {
     handleHide();
@@ -404,7 +402,7 @@ const MultiModalToolContent: React.FC<{
 
   const hasResults = useMemo(() => {
     // TODO: diffs
-    const diffIds = diffs.map((diff) => diff.tool_call_id);
+    const diffIds = diffs.map((diff) => diff.ftm_call_id);
     const toolIds = toolResults.map((d) => d.ftm_call_id);
     const resultIds = [...diffIds, ...toolIds];
     return toolCalls.every(

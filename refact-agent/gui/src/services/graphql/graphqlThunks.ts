@@ -32,15 +32,22 @@ import {
   ToolsForGroupQueryVariables,
   ToolsForGroupDocument,
   FCloudTool,
+  ThreadConfirmationResponseMutation,
+  ThreadConfirmationResponseMutationVariables,
+  ThreadConfirmationResponseDocument,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
 import { AppDispatch, RootState } from "../../app/store";
 import {
+  receiveDeltaStream,
+  receiveThread,
   receiveThreadMessages,
+  removeMessage,
   setThreadFtId,
 } from "../../features/ThreadMessages";
 import { Tool } from "../refact/tools";
+import { IntegrationMeta } from "../../features/Chat";
 
 export const threadsPageSub = createAsyncThunk<
   unknown,
@@ -129,8 +136,49 @@ export const messagesSub = createAsyncThunk<
         // TBD: do we hang up on errors?
         thunkApi.dispatch(setError(result.error.message));
       }
-      if (result.data) {
-        thunkApi.dispatch(receiveThreadMessages(result.data));
+
+      if (result.data?.comprehensive_thread_subs.news_payload_thread) {
+        thunkApi.dispatch(
+          receiveThread({
+            news_action: result.data.comprehensive_thread_subs.news_action,
+            news_payload_id:
+              result.data.comprehensive_thread_subs.news_payload_id,
+            news_payload_thread:
+              result.data.comprehensive_thread_subs.news_payload_thread,
+          }),
+        );
+      }
+      if (result.data?.comprehensive_thread_subs.stream_delta) {
+        thunkApi.dispatch(
+          receiveDeltaStream({
+            news_action: result.data.comprehensive_thread_subs.news_action,
+            news_payload_id:
+              result.data.comprehensive_thread_subs.news_payload_id,
+            stream_delta: result.data.comprehensive_thread_subs.stream_delta,
+          }),
+        );
+      }
+
+      if (result.data?.comprehensive_thread_subs.news_action === "DELETE") {
+        thunkApi.dispatch(
+          removeMessage({
+            news_action: result.data.comprehensive_thread_subs.news_action,
+            news_payload_id:
+              result.data.comprehensive_thread_subs.news_payload_id,
+          }),
+        );
+      }
+
+      if (result.data?.comprehensive_thread_subs.news_payload_thread_message) {
+        thunkApi.dispatch(
+          receiveThreadMessages({
+            news_action: result.data.comprehensive_thread_subs.news_action,
+            news_payload_id:
+              result.data.comprehensive_thread_subs.news_payload_id,
+            news_payload_thread_message:
+              result.data.comprehensive_thread_subs.news_payload_thread_message,
+          }),
+        );
       }
     },
   );
@@ -333,6 +381,104 @@ export const createThreadWithMessage = createAsyncThunk<
   return thunkAPI.fulfillWithValue({ ...result.data, ...threadQuery.data });
 });
 
+export const createThreadWitMultipleMessages = createAsyncThunk<
+  MessageCreateMultipleMutation & CreateThreadMutation,
+  {
+    messages: { ftm_role: string; ftm_content: unknown }[];
+    expertId: string;
+    model: string;
+    tools: (Tool["spec"] | FCloudTool)[];
+    integration?: IntegrationMeta;
+  },
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: { message: string };
+  }
+>("flexus/createThreadWithMultipleMessages", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+  const port = state.config.lspPort;
+  // TODO: where is current workspace set?
+  const workspace =
+    state.teams.workspace?.ws_root_group_id ??
+    state.config.currentWorkspaceName ??
+    "";
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+  const appIdQuery = await fetchAppSearchableId(apiKey, port);
+
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
+
+  const threadQueryArgs: FThreadInput = {
+    ft_fexp_id: args.expertId, // TODO: user selected
+    ft_title: "", // TODO: generate the title
+    located_fgroup_id: workspace,
+    owner_shared: false,
+    ft_app_searchable: appIdQuery.data?.app_searchable_id,
+  };
+  const threadQuery = await client.mutation<
+    CreateThreadMutation,
+    CreateThreadMutationVariables
+  >(CreateThreadDocument, { input: threadQueryArgs });
+
+  if (threadQuery.error) {
+    return thunkAPI.rejectWithValue({ message: threadQuery.error.message });
+  }
+
+  if (!threadQuery.data) {
+    return thunkAPI.rejectWithValue({
+      message: "couldn't create flexus thread id",
+    });
+  }
+
+  if (state.threadMessages.ft_id === null) {
+    thunkAPI.dispatch(setThreadFtId(threadQuery.data.thread_create.ft_id));
+  }
+
+  const createMessageArgs: FThreadMessageInput[] = args.messages.map(
+    (message, index) => {
+      return {
+        ftm_app_specific: JSON.stringify(
+          appIdQuery.data?.app_searchable_id ?? "",
+        ),
+        ftm_belongs_to_ft_id: threadQuery.data?.thread_create.ft_id ?? "",
+        ftm_alt: 100,
+        ftm_num: index + 1,
+        ftm_call_id: "",
+        ftm_prev_alt: 100,
+        ftm_role: message.ftm_role,
+        ftm_content: JSON.stringify(message.ftm_content),
+        ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
+        ftm_tool_calls: "null", // optional
+        ftm_usage: "null", // optional
+        ftm_user_preferences: JSON.stringify({
+          model: args.model,
+          tools: args.tools,
+          ...(args.integration ? { integration: args.integration } : {}),
+        }),
+      };
+    },
+  );
+
+  const result = await client.mutation<
+    MessageCreateMultipleMutation,
+    MessageCreateMultipleMutationVariables
+  >(MessageCreateMultipleDocument, {
+    input: {
+      ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
+      messages: createMessageArgs,
+    },
+  });
+
+  if (result.error) {
+    return thunkAPI.rejectWithValue({ message: result.error.message });
+  }
+  if (!result.data) {
+    return thunkAPI.rejectWithValue({ message: "failed to create message" });
+  }
+  return thunkAPI.fulfillWithValue({ ...result.data, ...threadQuery.data });
+});
+
 // TODO: stop is ft_error, set this and it'll stop
 
 type GetAppSearchableIdResponse = {
@@ -460,7 +606,7 @@ export const getToolsForGroupThunk = createAsyncThunk<
 >("flexus/tools", async (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
-  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+  const addressUrl = state.config.addressURL ?? "https://app.refact.ai";
 
   const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
 
@@ -474,6 +620,43 @@ export const getToolsForGroupThunk = createAsyncThunk<
   }
   if (!result.data) {
     return thunkAPI.rejectWithValue({ message: "erro fetching tools", args });
+  }
+
+  return thunkAPI.fulfillWithValue(result.data);
+});
+
+// TODO: patch thread tools
+
+export const toolConfirmationThunk = createAsyncThunk<
+  ThreadConfirmationResponseMutation,
+  ThreadConfirmationResponseMutationVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: {
+      message: string;
+      args: ThreadConfirmationResponseMutationVariables;
+    };
+  }
+>("flexus/tools/confirmation/response", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
+  const result = await client.mutation<
+    ThreadConfirmationResponseMutation,
+    ThreadConfirmationResponseMutationVariables
+  >(ThreadConfirmationResponseDocument, args);
+
+  if (result.error) {
+    return thunkAPI.rejectWithValue({ message: result.error.message, args });
+  } else if (!result.data) {
+    return thunkAPI.rejectWithValue({
+      message: "failed to confirm tools",
+      args,
+    });
   }
 
   return thunkAPI.fulfillWithValue(result.data);

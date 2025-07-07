@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { createAction } from "@reduxjs/toolkit";
 import { usePostMessage } from "./usePostMessage";
+// TODO: remove this
 import type { ChatThread } from "../features/Chat/Thread/types";
 import {
   EVENT_NAMES_FROM_SETUP,

@@ -1,1 +1,0 @@
-export { SuggestNewChat } from "./SuggestNewChat";

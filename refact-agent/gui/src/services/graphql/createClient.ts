@@ -22,12 +22,16 @@ export const createGraphqlClient = (
   apiKey: string,
   signal: AbortSignal,
 ) => {
-  const httpUrl = new URL(addressUrl);
+  const addr =
+    !addressUrl || addressUrl === "Refact"
+      ? `https://app.refact.ai`
+      : addressUrl;
+  const httpUrl = new URL(addr);
   httpUrl.pathname = "/v1/graphql";
 
-  const wsUrl = new URL(addressUrl);
+  const wsUrl = new URL(addr);
   wsUrl.pathname = "/v1/graphql";
-  wsUrl.protocol = addressUrl.startsWith("http://") ? "ws" : "wss";
+  wsUrl.protocol = addr.startsWith("http://") ? "ws" : "wss";
 
   const wsClient = createWSClient({
     url: wsUrl.toString(),

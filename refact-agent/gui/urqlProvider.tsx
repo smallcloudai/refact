@@ -16,9 +16,9 @@ export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const apiKey = useAppSelector(selectConfig).apiKey;
+  const configUrl = useAppSelector(selectConfig).addressURL;
   const addressUrl =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    useAppSelector(selectConfig).addressURL || `https://app.refact.ai`;
+    !configUrl || configUrl === "Refact" ? `https://app.refact.ai` : configUrl;
 
   const httpUrl = new URL(addressUrl);
   httpUrl.pathname = "/v1/graphql";

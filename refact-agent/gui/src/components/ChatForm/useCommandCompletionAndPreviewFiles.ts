@@ -1,27 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { Checkboxes } from "./useCheckBoxes";
-import {
-  useAppSelector,
-  // useHasCaps,
-  useSendChatRequest,
-} from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
 import {
   type CommandCompletionResponse,
   commandsApi,
 } from "../../services/refact/commands";
-import { ChatContextFile, ChatMeta } from "../../services/refact/types";
-import type { LspChatMessage } from "../../services/refact";
-import {
-  getSelectedChatModel,
-  selectChatId,
-  // selectIsStreaming,
-  selectMessages,
-  selectThreadMode,
-} from "../../features/Chat";
-import { selectIsStreaming } from "../../features/ThreadMessages";
-import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
+import { ChatContextFile } from "../../services/refact/types";
 
 function useGetCommandCompletionQuery(
   query: string,
@@ -77,39 +62,11 @@ function useCommandCompletion() {
   };
 }
 
+// TODO: this needs migrated
 function useGetCommandPreviewQuery(
-  query: string,
+  _query: string,
 ): (ChatContextFile | string)[] {
-  // const hasCaps = useHasCaps();
-  const { maybeAddImagesToQuestion } = useSendChatRequest();
-
-  const messages = useAppSelector(selectMessages);
-  const chatId = useAppSelector(selectChatId);
-  const isStreaming = useAppSelector(selectIsStreaming);
-  const currentThreadMode = useAppSelector(selectThreadMode);
-  const currentModel = useAppSelector(getSelectedChatModel);
-
-  const userMessage = maybeAddImagesToQuestion(query);
-
-  const messagesToSend: LspChatMessage[] = formatMessagesForLsp([
-    ...messages,
-    userMessage,
-  ]);
-
-  const metaToSend: ChatMeta = {
-    chat_id: chatId,
-    chat_mode: currentThreadMode ?? "AGENT",
-  };
-
-  const { data } = commandsApi.useGetCommandPreviewQuery(
-    { messages: messagesToSend, meta: metaToSend, model: currentModel },
-    {
-      skip: isStreaming,
-    },
-  );
-
-  if (!data) return [];
-  return data.files;
+  return [];
 }
 
 function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {

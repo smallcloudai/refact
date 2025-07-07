@@ -12,7 +12,3 @@ export const useGetToolGroupsQuery = () => {
 export const useGetToolsLazyQuery = () => {
   return toolsApi.useLazyGetToolGroupsQuery();
 };
-
-export const useCheckForConfirmationMutation = () => {
-  return toolsApi.useCheckForConfirmationMutation();
-};

@@ -1,18 +1,7 @@
 import { RootState } from "../../app/store";
-import {
-  TOOLS_CHECK_CONFIRMATION,
-  EDIT_TOOL_DRY_RUN_URL,
-  TOOLS,
-} from "./consts";
+import { EDIT_TOOL_DRY_RUN_URL, TOOLS } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import {
-  ChatMessage,
-  DiffChunk,
-  isDiffChunk,
-  isSuccess,
-  ToolCall,
-} from "./types";
-import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
+import { DiffChunk, isDiffChunk, isSuccess } from "./types";
 
 // Add cloud tools here ?
 export const toolsApi = createApi({
@@ -87,43 +76,7 @@ export const toolsApi = createApi({
         return { data: result.data };
       },
     }),
-    checkForConfirmation: builder.mutation<
-      ToolConfirmationResponse,
-      ToolConfirmationRequest
-    >({
-      queryFn: async (args, api, _extraOptions, baseQuery) => {
-        const getState = api.getState as () => RootState;
-        const state = getState();
-        const port = state.config.lspPort;
 
-        const { messages, tool_calls } = args;
-        const messagesForLsp = formatMessagesForLsp(messages);
-
-        const url = `http://127.0.0.1:${port}${TOOLS_CHECK_CONFIRMATION}`;
-        const result = await baseQuery({
-          url,
-          method: "POST",
-          body: {
-            tool_calls: tool_calls,
-            messages: messagesForLsp,
-          },
-          credentials: "same-origin",
-          redirect: "follow",
-        });
-        if (result.error) return result;
-        if (!isToolConfirmationResponse(result.data)) {
-          return {
-            error: {
-              error: "Invalid response from tools",
-              data: result.data,
-              status: "CUSTOM_ERROR",
-            },
-          };
-        }
-
-        return { data: result.data };
-      },
-    }),
     dryRunForEditTool: builder.mutation<
       ToolEditResult,
       { toolName: string; toolArgs: Record<string, unknown> }
@@ -205,23 +158,13 @@ export type Tool = {
   spec: ToolSpec;
   enabled: boolean;
 };
-
+// here
 export type ToolConfirmationPauseReason = {
   type: "confirmation" | "denial";
   command: string;
   rule: string;
   tool_call_id: string;
   integr_config_path: string | null;
-};
-
-export type ToolConfirmationResponse = {
-  pause: boolean;
-  pause_reasons: ToolConfirmationPauseReason[];
-};
-
-export type ToolConfirmationRequest = {
-  tool_calls: ToolCall[];
-  messages: ChatMessage[];
 };
 
 export function isToolGroup(tool: unknown): tool is ToolGroup {
@@ -232,23 +175,6 @@ export function isToolGroup(tool: unknown): tool is ToolGroup {
   if (typeof group.description !== "string") return false;
   if (!Array.isArray(group.tools)) return false;
   // Optionally, check that every element in tools is a Tool (if you have isTool)
-  return true;
-}
-
-export function isToolConfirmationResponse(
-  data: unknown,
-): data is ToolConfirmationResponse {
-  if (!data) return false;
-  if (typeof data !== "object") return false;
-  const response = data as ToolConfirmationResponse;
-  if (typeof response.pause !== "boolean") return false;
-  if (!Array.isArray(response.pause_reasons)) return false;
-  for (const reason of response.pause_reasons) {
-    if (typeof reason.type !== "string") return false;
-    if (typeof reason.command !== "string") return false;
-    if (typeof reason.rule !== "string") return false;
-    if (typeof reason.tool_call_id !== "string") return false;
-  }
   return true;
 }
 

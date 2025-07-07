@@ -12,7 +12,6 @@ import {
 } from "../../features/ThreadMessages/makeMessageTrie";
 import { Provider } from "react-redux";
 import { Theme } from "../Theme";
-import { AbortControllerProvider } from "../../contexts/AbortControllers";
 import { setUpStore } from "../../app/store";
 import type { ChatMessage } from "../../services/refact/types";
 import { FTMMessageNode as FTMessageNode } from "../../features/ThreadMessages/makeMessageTrie";
@@ -57,13 +56,11 @@ const Template: React.FC<{ node: FTMessageNode | EmptyNode }> = ({ node }) => {
   return (
     <Provider store={store}>
       <Theme>
-        <AbortControllerProvider>
-          {node.value ? (
-            <MessageNode>{node}</MessageNode>
-          ) : (
-            <div>Could not make tree</div>
-          )}
-        </AbortControllerProvider>
+        {node.value ? (
+          <MessageNode>{node}</MessageNode>
+        ) : (
+          <div>Could not make tree</div>
+        )}
       </Theme>
     </Provider>
   );
@@ -87,9 +84,7 @@ export const Textdoc: StoryObj<typeof Template> = {
 
 export const Knowledge: StoryObj<typeof Template> = {
   args: {
-    node: makeMessageTrie(
-      chatMessagesToCMessages(CHAT_WITH_KNOWLEDGE_TOOL.messages),
-    ),
+    node: makeMessageTrie(CHAT_WITH_KNOWLEDGE_TOOL),
   },
 };
 

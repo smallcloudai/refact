@@ -11,58 +11,41 @@ import {
   Text,
 } from "@radix-ui/themes";
 import {
-  AgentRollbackSwitch,
+  // AgentRollbackSwitch,
   ApplyPatchSwitch,
-  FollowUpsSwitch,
-  TitleGenerationSwitch,
 } from "../ChatControls";
 import { useAppSelector } from "../../../hooks";
-import {
-  selectAreFollowUpsEnabled,
-  selectAutomaticPatch,
-  selectCheckpointsEnabled,
-  selectIsTitleGenerationEnabled,
-} from "../../../features/Chat";
 import { Fragment, useMemo } from "react";
 import { ToolGroups } from "./ToolGroups";
+import { selectPatchIsAutomatic } from "../../../features/ThreadMessages";
 
 export const AgentCapabilities = () => {
-  const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
-  const isAgentRollbackEnabled = useAppSelector(selectCheckpointsEnabled);
-  const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
-  const isTitleGenerationEnabled = useAppSelector(
-    selectIsTitleGenerationEnabled,
-  );
+  const isPatchAutomatic = useAppSelector(selectPatchIsAutomatic);
+  // TODO: enabling check points
+  // const isAgentRollbackEnabled = useAppSelector(selectCheckpointsEnabled);
+  // const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
 
   const agenticFeatures = useMemo(() => {
     return [
       {
         name: "Auto-patch",
         enabled: isPatchAutomatic,
+        // TODO: this should set tool_response to : ["*"]
         switcher: <ApplyPatchSwitch />,
       },
-      {
-        name: "Files rollback",
-        enabled: isAgentRollbackEnabled,
-        switcher: <AgentRollbackSwitch />,
-      },
-      {
-        name: "Follow-Ups",
-        enabled: areFollowUpsEnabled,
-        switcher: <FollowUpsSwitch />,
-      },
-      {
-        name: "Chat Titles",
-        enabled: isTitleGenerationEnabled,
-        switcher: <TitleGenerationSwitch />,
-      },
+      // {
+      //   // TODO: enable this
+      //   name: "Files rollback",
+      //   enabled: true,
+      //   switcher: <AgentRollbackSwitch />,
+      // },
+      // {
+      //   name: "Follow-Ups",
+      //   enabled: areFollowUpsEnabled,
+      //   switcher: <FollowUpsSwitch />,
+      // },
     ];
-  }, [
-    isPatchAutomatic,
-    isAgentRollbackEnabled,
-    areFollowUpsEnabled,
-    isTitleGenerationEnabled,
-  ]);
+  }, [isPatchAutomatic]);
 
   const enabledAgenticFeatures = useMemo(
     () =>

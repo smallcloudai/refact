@@ -52,7 +52,7 @@ function useThreadPageSub() {
     const thunk = dispatch(
       threadsPageSub({
         located_fgroup_id: activeProject.id,
-        limit: 10,
+        limit: 100,
       }),
     );
 
