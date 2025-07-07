@@ -34,7 +34,6 @@ import {
   useEventsBusForIDE,
 } from "../../hooks";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
-import { telemetryApi } from "../../services/refact/telemetry";
 
 // import styles from "./Toolbar.module.css";
 import { resetThread } from "../../features/ThreadMessages";
@@ -71,8 +70,6 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const [focus, _setFocus] = useState<HTMLElement | null>(null);
 
   const refs = useTourRefs();
-  const [sendTelemetryEvent] =
-    telemetryApi.useLazySendTelemetryChatEventQuery();
 
   // const history = useAppSelector(getHistory, {
   //   devModeChecks: { stabilityCheck: "never" },
@@ -96,61 +93,26 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     (to: DropdownNavigationOptions | "chat") => {
       if (to === "settings") {
         openSettings();
-        void sendTelemetryEvent({
-          scope: `openSettings`,
-          success: true,
-          error_message: "",
-        });
       } else if (to === "hot keys") {
         openHotKeys();
-        void sendTelemetryEvent({
-          scope: `openHotkeys`,
-          success: true,
-          error_message: "",
-        });
       } else if (to === "fim") {
         dispatch(push({ name: "fill in the middle debug page" }));
-        void sendTelemetryEvent({
-          scope: `openDebugFim`,
-          success: true,
-          error_message: "",
-        });
       } else if (to === "stats") {
         dispatch(push({ name: "statistics page" }));
-        void sendTelemetryEvent({
-          scope: `openStats`,
-          success: true,
-          error_message: "",
-        });
       } else if (to === "restart tour") {
         dispatch(popBackTo({ name: "login page" }));
         dispatch(push({ name: "welcome" }));
         dispatch(restart());
-        void sendTelemetryEvent({
-          scope: `restartTour`,
-          success: true,
-          error_message: "",
-        });
       } else if (to === "integrations") {
         dispatch(push({ name: "integrations page" }));
-        void sendTelemetryEvent({
-          scope: `openIntegrations`,
-          success: true,
-          error_message: "",
-        });
       } else if (to === "providers") {
         dispatch(push({ name: "providers page" }));
-        void sendTelemetryEvent({
-          scope: `openProviders`,
-          success: true,
-          error_message: "",
-        });
       } else if (to === "chat") {
         dispatch(popBackTo({ name: "history" }));
         dispatch(push({ name: "chat" }));
       }
     },
-    [dispatch, sendTelemetryEvent, openSettings, openHotKeys],
+    [dispatch, openSettings, openHotKeys],
   );
 
   const onCreateNewChat = useCallback(() => {
@@ -160,12 +122,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     dispatch(resetThread());
     // clear out old chat
     handleNavigation("chat");
-    void sendTelemetryEvent({
-      scope: `openNewChat`,
-      success: true,
-      error_message: "",
-    });
-  }, [dispatch, sendTelemetryEvent, handleNavigation]);
+  }, [dispatch, handleNavigation]);
 
   const goToTab = useCallback(
     (tab: Tab) => {
@@ -183,13 +140,8 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         dispatch(popBackTo({ name: "history" }));
         dispatch(push({ name: "chat" }));
       }
-      void sendTelemetryEvent({
-        scope: `goToTab/${tab.type}`,
-        success: true,
-        error_message: "",
-      });
     },
-    [dispatch, shouldChatTabLinkBeNotClickable, sendTelemetryEvent],
+    [dispatch, shouldChatTabLinkBeNotClickable],
   );
 
   useEffect(() => {

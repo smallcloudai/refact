@@ -10,7 +10,6 @@ import {
 } from "../events/setup";
 import { pathApi } from "../services/refact/path";
 
-import { telemetryApi } from "../services/refact/telemetry";
 import { ToolEditResult } from "../services/refact";
 import { TextDocToolCall } from "../components/Tools/types";
 import type { TeamsGroup, TeamsWorkspace } from "../services/smallcloud/types";
@@ -91,8 +90,6 @@ export const ideClearActiveTeamsWorkspace = createAction<undefined>(
 );
 
 export const useEventsBusForIDE = () => {
-  const [sendTelemetryEvent] =
-    telemetryApi.useLazySendTelemetryChatEventQuery();
   const postMessage = usePostMessage();
   // const canPaste = useAppSelector((state) => state.active_file.can_paste);
 
@@ -130,13 +127,8 @@ export const useEventsBusForIDE = () => {
     (content: string, chatId?: string, toolCallId?: string) => {
       const action = ideDiffPasteBackAction({ content, chatId, toolCallId });
       postMessage(action);
-      void sendTelemetryEvent({
-        scope: `replaceSelection`,
-        success: true,
-        error_message: "",
-      });
     },
-    [postMessage, sendTelemetryEvent],
+    [postMessage],
   );
 
   const openSettings = useCallback(() => {
@@ -257,21 +249,9 @@ export const useEventsBusForIDE = () => {
       if (res) {
         const action = ideOpenFile({ file_path: res });
         postMessage(action);
-        const res_split = res.split("/");
-        void sendTelemetryEvent({
-          scope: `ideOpenFile/${res_split[res_split.length - 1]}`,
-          success: true,
-          error_message: "",
-        });
-      } else {
-        void sendTelemetryEvent({
-          scope: `ideOpenFile`,
-          success: false,
-          error_message: res?.toString() ?? "path is not found",
-        });
       }
     },
-    [postMessage, sendTelemetryEvent],
+    [postMessage],
   );
 
   const openCustomizationFile = () =>

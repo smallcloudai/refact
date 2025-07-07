@@ -20,8 +20,7 @@ import {
 import { setThemeMode, updateConfig } from "../features/Config/configSlice";
 import { resetAttachedImagesSlice } from "../features/AttachedImages";
 import { nextTip } from "../features/TipOfTheDay";
-import { telemetryApi } from "../services/refact/telemetry";
-import { CONFIG_PATH_URL, FULL_PATH_URL } from "../services/refact/consts";
+
 import {
   ideToolCallResponse,
   ideForceReloadProjectTreeFiles,
@@ -345,73 +344,6 @@ startListening({
       listenerApi.dispatch(
         push({ name: "chat", ft_id: action.payload.thread_create.ft_id }),
       );
-    }
-  },
-});
-
-// Telemetry
-startListening({
-  matcher: isAnyOf(
-    pathApi.endpoints.getFullPath.matchFulfilled,
-    pathApi.endpoints.getFullPath.matchRejected,
-    pathApi.endpoints.customizationPath.matchFulfilled,
-    pathApi.endpoints.customizationPath.matchRejected,
-    pathApi.endpoints.privacyPath.matchFulfilled,
-    pathApi.endpoints.privacyPath.matchRejected,
-    pathApi.endpoints.integrationsPath.matchFulfilled,
-    pathApi.endpoints.integrationsPath.matchRejected,
-  ),
-  effect: (action, listenerApi) => {
-    if (pathApi.endpoints.getFullPath.matchFulfilled(action)) {
-      const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
-        url: FULL_PATH_URL,
-        scope: "getFullPath",
-        success: true,
-        error_message: "",
-      });
-      void listenerApi.dispatch(thunk);
-    }
-
-    if (
-      pathApi.endpoints.getFullPath.matchRejected(action) &&
-      !action.meta.condition
-    ) {
-      const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
-        url: FULL_PATH_URL,
-        scope: "getFullPath",
-        success: false,
-        error_message: action.error.message ?? JSON.stringify(action.error),
-      });
-      void listenerApi.dispatch(thunk);
-    }
-
-    if (
-      pathApi.endpoints.customizationPath.matchFulfilled(action) ||
-      pathApi.endpoints.privacyPath.matchFulfilled(action) ||
-      pathApi.endpoints.integrationsPath.matchFulfilled(action)
-    ) {
-      const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
-        url: CONFIG_PATH_URL,
-        scope: action.meta.arg.endpointName,
-        success: true,
-        error_message: "",
-      });
-      void listenerApi.dispatch(thunk);
-    }
-
-    if (
-      (pathApi.endpoints.customizationPath.matchRejected(action) ||
-        pathApi.endpoints.privacyPath.matchRejected(action) ||
-        pathApi.endpoints.integrationsPath.matchRejected(action)) &&
-      !action.meta.condition
-    ) {
-      const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
-        url: CONFIG_PATH_URL,
-        scope: action.meta.arg.endpointName,
-        success: false,
-        error_message: action.error.message ?? JSON.stringify(action.error),
-      });
-      void listenerApi.dispatch(thunk);
     }
   },
 });
