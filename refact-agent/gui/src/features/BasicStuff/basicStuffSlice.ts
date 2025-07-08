@@ -47,7 +47,8 @@ export const basicStuffSlice = createAppSlice({
           BasicStuffQuery,
           BasicStuffQueryVariables
         >(BasicStuffDocument, {});
-        return result;
+        const { operation: _, ...rest } = result;
+        return rest;
       },
       {
         pending: (state) => {

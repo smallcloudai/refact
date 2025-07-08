@@ -1,5 +1,10 @@
 import { createGraphqlClient, createSubscription } from "./createClient";
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import {
+  createApi,
+  fetchBaseQuery,
+  FetchBaseQueryError,
+} from "@reduxjs/toolkit/query/react";
 
 import {
   ThreadsPageSubsDocument,
@@ -38,6 +43,9 @@ import {
   BasicStuffQuery,
   BasicStuffQueryVariables,
   BasicStuffDocument,
+  CreateWorkSpaceGroupMutation,
+  CreateWorkSpaceGroupMutationVariables,
+  CreateWorkSpaceGroupDocument,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
@@ -699,4 +707,79 @@ export const queryBasicStuffThunk = createAsyncThunk<
   }
 
   return thunkAPI.fulfillWithValue(result.data);
+});
+
+// TODO: make an api slice for queries and mutations
+export const createWorkspaceThunk = createAsyncThunk<
+  CreateWorkSpaceGroupMutation,
+  CreateWorkSpaceGroupMutationVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: {
+      message: string;
+      args: CreateWorkSpaceGroupMutationVariables;
+    };
+  }
+>("flexus/createWorkspace", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
+
+  const result = await client.mutation<
+    CreateWorkSpaceGroupMutation,
+    CreateWorkSpaceGroupMutationVariables
+  >(CreateWorkSpaceGroupDocument, args);
+
+  if (result.error) {
+    thunkAPI.rejectWithValue({ message: result.error.message, args });
+  }
+
+  if (!result.data) {
+    thunkAPI.rejectWithValue({
+      message: "no response from server when creating workspace",
+      args,
+    });
+  }
+  if (result.data) {
+    thunkAPI.fulfillWithValue(result.data);
+  }
+});
+
+// TODO: add more queries and mutations
+export const graphqlQueriesAndMutations = createApi({
+  reducerPath: "graphqlQueriesAndMutations",
+  baseQuery: fetchBaseQuery(),
+  endpoints: (builder) => ({
+    createGroup: builder.mutation<
+      CreateWorkSpaceGroupMutation,
+      CreateWorkSpaceGroupMutationVariables
+    >({
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        const state = api.getState() as RootState;
+        const apiKey = state.config.apiKey ?? "";
+
+        const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+        const client = createGraphqlClient(addressUrl, apiKey, api.signal);
+        const result = await client.mutation<
+          CreateWorkSpaceGroupMutation,
+          CreateWorkSpaceGroupMutationVariables
+        >(CreateWorkSpaceGroupDocument, args);
+
+        if (result.error ?? !result.data) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: result.error?.message ?? "no response when creating group",
+              data: result.data,
+            },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+  }),
 });

@@ -54,6 +54,7 @@ import {
 } from "../features/ExpertsAndModels";
 import { toolsSlice } from "../features/Tools";
 import { basicStuffSlice } from "../features/BasicStuff";
+import { graphqlQueriesAndMutations } from "../services/graphql/graphqlThunks";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -90,6 +91,8 @@ const rootReducer = combineSlices(
     [teamsApi.reducerPath]: teamsApi.reducer,
     [providersApi.reducerPath]: providersApi.reducer,
     [modelsApi.reducerPath]: modelsApi.reducer,
+    [graphqlQueriesAndMutations.reducerPath]:
+      graphqlQueriesAndMutations.reducer,
   },
   errorSlice,
   informationSlice,
@@ -177,6 +180,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
             providersApi.middleware,
             modelsApi.middleware,
             teamsApi.middleware,
+            graphqlQueriesAndMutations.middleware,
           )
           // .prepend(errorMiddleware.middleware)
           .prepend(listenerMiddleware.middleware)
