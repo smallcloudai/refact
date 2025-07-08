@@ -126,6 +126,14 @@ For GPU with CUDA capability >= 8.0 and flash-attention v2 support:
 FLASH_ATTENTION_FORCE_BUILD=TRUE MAX_JOBS=4 INSTALL_OPTIONAL=TRUE pip install .
 ```
 
+### Additional Dependencies
+
+Some features, such as tests and documentation, require optional packages. Install them with:
+```bash
+pip install requests
+npm install -C docs
+```
+
 
 
 ## 🐳 Running Refact Self-Hosted in a Docker Container
