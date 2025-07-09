@@ -16,17 +16,6 @@ import { ScrollArea } from "../../ScrollArea";
 import { useGroupTree } from "./useGroupTree";
 import styles from "./GroupTree.module.css";
 
-export interface FlexusTreeNode {
-  treenodePath: string;
-  treenodeId: string;
-  treenodeTitle: string;
-  treenodeType: string;
-  treenode__DeleteMe: boolean;
-  treenode__InsertedLater: boolean;
-  treenodeChildren: FlexusTreeNode[];
-  treenodeExpanded: boolean;
-}
-
 export const GroupTree: React.FC = () => {
   const {
     treeParentRef,
@@ -35,7 +24,7 @@ export const GroupTree: React.FC = () => {
     filteredGroupTreeData,
     onGroupSelect,
     handleSkipWorkspaceSelection,
-    setGroupTreeData,
+    // setGroupTreeData,
     onWorkspaceSelectChange,
     handleConfirmSelectionClick,
     handleCreateWorkspaceClick,
@@ -136,7 +125,7 @@ export const GroupTree: React.FC = () => {
               >
                 {(nodeProps) => (
                   <CustomTreeNode
-                    updateTree={setGroupTreeData}
+                    // updateTree={setGroupTreeData}
                     createFolderChecked={createFolderChecked}
                     setCreateFolderChecked={setCreateFolderChecked}
                     {...nodeProps}

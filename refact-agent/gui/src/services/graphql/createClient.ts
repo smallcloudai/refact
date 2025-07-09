@@ -4,16 +4,13 @@ import {
   // cacheExchange,
   fetchExchange,
   subscriptionExchange,
+  type AnyVariables,
+  type DocumentInput,
+  type OperationContext,
+  type OperationResult,
 } from "@urql/core";
 import { createClient as createWSClient } from "graphql-ws";
 import { WebSocket } from "ws";
-export { type Client } from "@urql/core";
-import {
-  AnyVariables,
-  DocumentInput,
-  OperationContext,
-  OperationResult,
-} from "urql";
 
 const THREE_MINUTES = 3 * 60 * 1000;
 

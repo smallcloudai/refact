@@ -1,5 +1,6 @@
 import { createGraphqlClient, createSubscription } from "./createClient";
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 import {
   ThreadsPageSubsDocument,
@@ -35,6 +36,15 @@ import {
   ThreadConfirmationResponseMutation,
   ThreadConfirmationResponseMutationVariables,
   ThreadConfirmationResponseDocument,
+  BasicStuffQuery,
+  BasicStuffQueryVariables,
+  BasicStuffDocument,
+  CreateWorkSpaceGroupMutation,
+  CreateWorkSpaceGroupMutationVariables,
+  CreateWorkSpaceGroupDocument,
+  WorkspaceTreeSubscription,
+  WorkspaceTreeSubscriptionVariables,
+  WorkspaceTreeDocument,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
@@ -48,6 +58,7 @@ import {
 } from "../../features/ThreadMessages";
 import { Tool } from "../refact/tools";
 import { IntegrationMeta } from "../../features/Chat";
+import { receiveWorkspace, receiveWorkspaceError } from "../../features/Groups";
 
 export const threadsPageSub = createAsyncThunk<
   unknown,
@@ -80,6 +91,7 @@ export const threadsPageSub = createAsyncThunk<
   );
 });
 
+// TODO: move to queries and mutations api
 export const deleteThreadThunk = createAsyncThunk<
   { id: string },
   DeleteThreadMutationVariables,
@@ -192,6 +204,7 @@ export const messagesSub = createAsyncThunk<
   // return thunkApi.fulfillWithValue({});
 });
 
+// TODO: move to queries and mutations api
 export const createMessage = createAsyncThunk<
   MessageCreateMultipleMutation,
   MessageCreateMultipleMutationVariables,
@@ -284,6 +297,7 @@ async function fetchAppSearchableId(apiKey: string, port: number) {
   return appIdQuery;
 }
 
+// TODO: move to queries and mutations api
 export const createThreadWithMessage = createAsyncThunk<
   MessageCreateMultipleMutation & CreateThreadMutation,
   {
@@ -303,9 +317,7 @@ export const createThreadWithMessage = createAsyncThunk<
   const port = state.config.lspPort;
   // TODO: where is current workspace set?
   const workspace =
-    state.teams.workspace?.ws_root_group_id ??
-    state.config.currentWorkspaceName ??
-    "";
+    state.teams.group?.id ?? state.config.currentWorkspaceName ?? "";
 
   const appIdQuery = await fetchAppSearchableId(apiKey, port);
 
@@ -381,6 +393,7 @@ export const createThreadWithMessage = createAsyncThunk<
   return thunkAPI.fulfillWithValue({ ...result.data, ...threadQuery.data });
 });
 
+// TODO: move to queries and mutations api
 export const createThreadWitMultipleMessages = createAsyncThunk<
   MessageCreateMultipleMutation & CreateThreadMutation,
   {
@@ -401,9 +414,8 @@ export const createThreadWitMultipleMessages = createAsyncThunk<
   const port = state.config.lspPort;
   // TODO: where is current workspace set?
   const workspace =
-    state.teams.workspace?.ws_root_group_id ??
-    state.config.currentWorkspaceName ??
-    "";
+    state.teams.group?.id ?? state.config.currentWorkspaceName ?? "";
+
   const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
   const appIdQuery = await fetchAppSearchableId(apiKey, port);
 
@@ -494,6 +506,7 @@ function isGetAppSearchableResponse(
   return typeof response.app_searchable_id === "string";
 }
 
+// TODO: move to queries and mutations api
 export const pauseThreadThunk = createAsyncThunk<
   ThreadPatchMutation,
   { id: string },
@@ -525,6 +538,7 @@ export const pauseThreadThunk = createAsyncThunk<
   return thunkAPI.fulfillWithValue(result.data);
 });
 
+// TODO: move to queries and mutations api
 export const getExpertsThunk = createAsyncThunk<
   ExpertsForGroupQuery,
   ExpertsForGroupQueryVariables,
@@ -559,6 +573,7 @@ export const getExpertsThunk = createAsyncThunk<
   return thunkAPI.fulfillWithValue(result.data);
 });
 
+// TODO: move to queries and mutations api
 export const getModelsForExpertThunk = createAsyncThunk<
   ModelsForExpertQuery,
   ModelsForExpertQueryVariables,
@@ -595,6 +610,7 @@ export const getModelsForExpertThunk = createAsyncThunk<
 });
 
 // Note: these could be moved into the slice https://redux-toolkit.js.org/api/createslice#createasyncthunk
+// TODO: move to queries and mutations api
 export const getToolsForGroupThunk = createAsyncThunk<
   ToolsForGroupQuery,
   ToolsForGroupQueryVariables,
@@ -625,8 +641,7 @@ export const getToolsForGroupThunk = createAsyncThunk<
   return thunkAPI.fulfillWithValue(result.data);
 });
 
-// TODO: patch thread tools
-
+// TODO: move to queries and mutations api
 export const toolConfirmationThunk = createAsyncThunk<
   ThreadConfirmationResponseMutation,
   ThreadConfirmationResponseMutationVariables,
@@ -660,4 +675,110 @@ export const toolConfirmationThunk = createAsyncThunk<
   }
 
   return thunkAPI.fulfillWithValue(result.data);
+});
+
+export const workspaceTreeSubscriptionThunk = createAsyncThunk<
+  unknown,
+  WorkspaceTreeSubscriptionVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: {
+      message: string;
+      args: WorkspaceTreeSubscriptionVariables;
+    };
+  }
+>("flexus/treeSubscription", (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+  createSubscription<
+    WorkspaceTreeSubscription,
+    WorkspaceTreeSubscriptionVariables
+  >(
+    addressUrl,
+    apiKey,
+    WorkspaceTreeDocument,
+    args,
+    thunkAPI.signal,
+    (result) => {
+      if (result.error) {
+        thunkAPI.dispatch(receiveWorkspaceError(result.error.message));
+      }
+      if (result.data) {
+        thunkAPI.dispatch(receiveWorkspace(result.data.tree_subscription));
+      }
+    },
+  );
+});
+
+// TODO: add more queries and mutations and make a new file
+export const graphqlQueriesAndMutations = createApi({
+  reducerPath: "graphqlQueriesAndMutations",
+  baseQuery: fetchBaseQuery(),
+  endpoints: (builder) => ({
+    createGroup: builder.mutation<
+      CreateWorkSpaceGroupMutation,
+      CreateWorkSpaceGroupMutationVariables
+    >({
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        const state = api.getState() as RootState;
+        const apiKey = state.config.apiKey ?? "";
+
+        const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+        const client = createGraphqlClient(addressUrl, apiKey, api.signal);
+        const result = await client.mutation<
+          CreateWorkSpaceGroupMutation,
+          CreateWorkSpaceGroupMutationVariables
+        >(CreateWorkSpaceGroupDocument, args);
+
+        if (result.error ?? !result.data) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: result.error?.message ?? "no response when creating group",
+              data: result.data,
+            },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+
+    getBasicStuff: builder.query<
+      BasicStuffQuery,
+      { apiKey: string; addressUrl: string }
+    >({
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        const client = createGraphqlClient(
+          args.addressUrl,
+          args.apiKey,
+          api.signal,
+        );
+
+        const result = await client.query<
+          BasicStuffQuery,
+          BasicStuffQueryVariables
+        >(BasicStuffDocument, {});
+        // const { operation: _, ...rest } = result;
+        // return rest;
+
+        if (result.error ?? !result.data) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error:
+                result.error?.message ??
+                "no response when fetching for basic_stuff.",
+              data: result.data,
+            },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+  }),
 });

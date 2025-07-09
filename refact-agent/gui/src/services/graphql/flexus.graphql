@@ -119,3 +119,44 @@ mutation ThreadConfirmationResponse(
     confirmation_response: $confirmation_response
   )
 }
+
+query BasicStuff {
+  query_basic_stuff {
+    fuser_id
+    my_own_ws_id
+    workspaces {
+      ws_id
+      ws_owner_fuser_id
+      ws_root_group_id
+      root_group_name
+      have_coins_exactly
+      have_coins_enough
+      have_admin
+    }
+  }
+}
+
+mutation CreateWorkSpaceGroup(
+  $fgroup_name: String!
+  $fgroup_parent_id: String!
+) {
+  group_create(
+    input: { fgroup_name: $fgroup_name, fgroup_parent_id: $fgroup_parent_id }
+  ) {
+    fgroup_id
+    fgroup_name
+    ws_id
+    fgroup_parent_id
+    fgroup_created_ts
+  }
+}
+
+subscription WorkspaceTree($ws_id: String!) {
+  tree_subscription(ws_id: $ws_id) {
+    treeupd_action
+    treeupd_id
+    treeupd_path
+    treeupd_type
+    treeupd_title
+  }
+}

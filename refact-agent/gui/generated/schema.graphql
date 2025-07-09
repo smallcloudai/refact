@@ -52,9 +52,11 @@ type FCloudTool {
 type FEphemeralDocumentOutput {
   edoc_icon: String!
   edoc_id: String!
-  edoc_indexing_status: String!
   edoc_mtime: Int!
   edoc_size_bytes: Int!
+  edoc_status_download: String!
+  edoc_status_graphdb: String!
+  edoc_status_vectordb: String!
   edoc_title: String!
   eds_id: String!
   eds_type: String!
@@ -465,6 +467,7 @@ type Mutation {
   knowledge_item_delete(id: String!): Boolean!
   knowledge_item_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
   knowledge_item_patch(id: String!, patch: FKnowledgeItemPatch!): FKnowledgeItemOutput!
+  make_sure_have_expert(fexp_name_without_version: String!, fgroup_id: String, owner_fuser_id: String, system_prompt: String!): String!
   password_change(new_password: String!, old_password: String!): Boolean!
   permission_delete(fgroup_id: String!, fuser_id: String!): Boolean!
   permission_patch(fgroup_id: String!, fuser_id: String!, patch: FPermissionPatch!): FPermissionOutput!
@@ -535,6 +538,7 @@ type Query {
   threads_app_captured(ft_app_capture: String!, ft_app_searchable: String!, located_fgroup_id: String!): [FThreadOutput!]!
   user_profile_get: FUserProfileOutput!
   workspace_permission_list(ws_id: String!): [FPermissionOutput!]!
+  worldmap_everything(fgroup_id: String!): JSON!
 }
 
 input RegisterInput {

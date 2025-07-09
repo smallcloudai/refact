@@ -1,4 +1,13 @@
-import { FlexusTreeNode } from "./GroupTree";
+export interface FlexusTreeNode {
+  treenodePath: string;
+  treenodeId: string;
+  treenodeTitle: string;
+  treenodeType: string;
+  treenode__DeleteMe: boolean;
+  treenode__InsertedLater: boolean;
+  treenodeChildren: FlexusTreeNode[];
+  treenodeExpanded: boolean;
+}
 
 export const markForDelete = (nodes: FlexusTreeNode[]) => {
   const newNodes = [...nodes];

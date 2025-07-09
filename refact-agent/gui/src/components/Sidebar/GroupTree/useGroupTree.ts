@@ -5,28 +5,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { FlexusTreeNode } from "./GroupTree";
-import {
-  CreateGroupDocument,
-  CreateGroupMutation,
-  CreateGroupMutationVariables,
-  NavTreeSubsDocument,
-  NavTreeSubsSubscription,
-  NavTreeWantWorkspacesDocument,
-  NavTreeWantWorkspacesQuery,
-  NavTreeWantWorkspacesQueryVariables,
-} from "../../../../generated/documents";
-import { useMutation, useQuery } from "urql";
-import {
-  cleanupInsertedLater,
-  markForDelete,
-  pruneNodes,
-  updateTree,
-} from "./utils";
-import { useSmartSubscription } from "../../../hooks/useSmartSubscription";
+import { FlexusTreeNode } from "../../../features/Groups";
+
 import {
   useAppDispatch,
   useAppSelector,
+  useBasicStuffQuery,
   useEventsBusForIDE,
   useOpenUrl,
   useResizeObserver,
@@ -44,24 +28,42 @@ import {
 import { setError } from "../../../features/Errors/errorsSlice";
 import { selectConfig } from "../../../features/Config/configSlice";
 
+import {
+  graphqlQueriesAndMutations,
+  workspaceTreeSubscriptionThunk,
+} from "../../../services/graphql/graphqlThunks";
+import {
+  cleanupWorkspaceInsertedLater,
+  pruneWorkspaceNodes,
+  selectWorkspaceState,
+} from "../../../features/Groups";
+
 export function useGroupTree() {
-  const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);
+  const dispatch = useAppDispatch();
+  // const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);
   const [createFolderChecked, setCreateFolderChecked] = useState(false);
 
   const currentTeamsWorkspace = useAppSelector(selectActiveWorkspace);
+  const workspaceState = useAppSelector(selectWorkspaceState);
+  const groupTreeData = useMemo(() => {
+    return workspaceState.data;
+  }, [workspaceState.data]);
   const openUrl = useOpenUrl();
 
-  const [_, createGroup] = useMutation<
-    CreateGroupMutation,
-    CreateGroupMutationVariables
-  >(CreateGroupDocument);
+  useEffect(() => {
+    if (!currentTeamsWorkspace?.ws_id) return;
 
-  const [teamsWorkspaces] = useQuery<
-    NavTreeWantWorkspacesQuery,
-    NavTreeWantWorkspacesQueryVariables
-  >({
-    query: NavTreeWantWorkspacesDocument,
-  });
+    const action = workspaceTreeSubscriptionThunk({
+      ws_id: currentTeamsWorkspace.ws_id,
+    });
+    const thunk = dispatch(action);
+
+    return () => thunk.abort();
+  }, [currentTeamsWorkspace?.ws_id, dispatch]);
+
+  const [createGroup] = graphqlQueriesAndMutations.useCreateGroupMutation();
+
+  const teamsWorkspaces = useBasicStuffQuery();
 
   const filterNodesByNodeType = useCallback(
     (nodes: FlexusTreeNode[], type: string): FlexusTreeNode[] => {
@@ -85,59 +87,17 @@ export function useGroupTree() {
     return filterNodesByNodeType(groupTreeData, "group");
   }, [groupTreeData, filterNodesByNodeType]);
 
-  const touchNode = useCallback(
-    (path: string, title: string, type: string, id: string) => {
-      if (!path) return;
-      setGroupTreeData((prevTree) => {
-        const parts = path.split("/");
-        return updateTree(prevTree, parts, "", id, path, title, type);
-      });
-    },
-    [setGroupTreeData],
-  );
+  useEffect(() => {
+    if (workspaceState.finished) {
+      setTimeout(() => {
+        dispatch(pruneWorkspaceNodes());
+      }, 500);
+      setTimeout(() => {
+        dispatch(cleanupWorkspaceInsertedLater());
+      }, 3000);
+    }
+  }, [dispatch, workspaceState.finished]);
 
-  const handleEveryTreeUpdate = useCallback(
-    (data: NavTreeSubsSubscription | undefined) => {
-      const u = data?.tree_subscription;
-      if (!u) return;
-      switch (u.treeupd_action) {
-        case "TREE_REBUILD_START":
-          setGroupTreeData((prev) => markForDelete(prev));
-          break;
-        case "TREE_UPDATE":
-          touchNode(
-            u.treeupd_path,
-            u.treeupd_title,
-            u.treeupd_type,
-            u.treeupd_id,
-          );
-          break;
-        case "TREE_REBUILD_FINISHED":
-          setTimeout(() => {
-            setGroupTreeData((prev) => pruneNodes(prev));
-          }, 500);
-          setTimeout(() => {
-            setGroupTreeData((prev) => cleanupInsertedLater(prev));
-          }, 3000);
-          break;
-        default:
-          // eslint-disable-next-line no-console
-          console.warn("TREE SUBS:", u.treeupd_action);
-      }
-    },
-    [touchNode],
-  );
-
-  useSmartSubscription<NavTreeSubsSubscription, { ws_id: string }>({
-    query: NavTreeSubsDocument,
-    variables: {
-      ws_id: currentTeamsWorkspace?.ws_id ?? "",
-    },
-    skip: currentTeamsWorkspace === null,
-    onUpdate: handleEveryTreeUpdate,
-  });
-
-  const dispatch = useAppDispatch();
   const { setActiveTeamsGroupInIDE, setActiveTeamsWorkspaceInIDE } =
     useEventsBusForIDE();
 
@@ -183,6 +143,7 @@ export function useGroupTree() {
         const result = await setActiveGroupIdTrigger({
           group_id: group.treenodeId,
         });
+
         if (result.data) {
           dispatch(setActiveGroup(newGroup));
           return;
@@ -197,7 +158,7 @@ export function useGroupTree() {
           }
           dispatch(setError(errorMessage));
         }
-      } catch {
+      } catch (e) {
         dispatch(resetActiveGroup());
       }
     },
@@ -250,25 +211,24 @@ export function useGroupTree() {
       });
 
       if (result.error) {
-        dispatch(setError(result.error.message));
+        dispatch(setError(JSON.stringify(result.error)));
         return;
       }
 
-      const newGroup = result.data?.group_create;
-      if (newGroup) {
-        const newNode: FlexusTreeNode = {
-          treenodeId: newGroup.fgroup_id,
-          treenodeTitle: newGroup.fgroup_name,
-          treenodeType: "group",
-          treenodePath: `${currentSelectedTeamsGroupNode.treenodePath}/group:${newGroup.fgroup_id}`,
-          treenode__DeleteMe: false,
-          treenode__InsertedLater: false,
-          treenodeChildren: [],
-          treenodeExpanded: false,
-        };
-        setCurrentSelectedTeamsGroupNode(newNode);
-        void onGroupSelectionConfirm(newNode);
-      }
+      const newGroup = result.data.group_create;
+
+      const newNode: FlexusTreeNode = {
+        treenodeId: newGroup.fgroup_id,
+        treenodeTitle: newGroup.fgroup_name,
+        treenodeType: "group",
+        treenodePath: `${currentSelectedTeamsGroupNode.treenodePath}/group:${newGroup.fgroup_id}`,
+        treenode__DeleteMe: false,
+        treenode__InsertedLater: false,
+        treenodeChildren: [],
+        treenodeExpanded: false,
+      };
+      setCurrentSelectedTeamsGroupNode(newNode);
+      void onGroupSelectionConfirm(newNode);
     } else {
       void onGroupSelectionConfirm(currentSelectedTeamsGroupNode);
       setCurrentSelectedTeamsGroupNode(null);
@@ -321,12 +281,12 @@ export function useGroupTree() {
     onGroupSelect,
     onGroupSelectionConfirm,
     onWorkspaceSelectChange,
-    touchNode,
+    // touchNode,
     handleSkipWorkspaceSelection,
     handleConfirmSelectionClick,
     handleCreateWorkspaceClick,
     // Setters
-    setGroupTreeData,
+    // setGroupTreeData,
     setCurrentSelectedTeamsGroupNode,
     setCreateFolderChecked,
   };

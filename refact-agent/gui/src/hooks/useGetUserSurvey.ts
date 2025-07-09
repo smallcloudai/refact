@@ -4,12 +4,13 @@ import {
   userSurveyWasAskedMoreThanADayAgo,
   setLastAsked,
 } from "../features/UserSurvey/userSurveySlice";
-import { useGetUser } from "./useGetUser";
+
 import { useAppSelector } from "./useAppSelector";
 import { useAppDispatch } from "./useAppDispatch";
+import { useBasicStuffQuery } from "./useBasicStuffQuery";
 
 export function useGetUserSurvey() {
-  const userData = useGetUser();
+  const userData = useBasicStuffQuery();
   const askedMoreThanADayAgo = useAppSelector(
     userSurveyWasAskedMoreThanADayAgo,
   );
@@ -20,7 +21,7 @@ export function useGetUserSurvey() {
 
   const shouldSkip = useMemo(() => {
     return (
-      userData.data === null ||
+      !userData.data ||
       // userData.data.retcode !== "OK" ||
       // userData.data.questionnaire !== false ||
       !askedMoreThanADayAgo
