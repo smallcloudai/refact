@@ -10,7 +10,7 @@ export function useStartPollingForUser() {
 
     if (pollingForUser && !user.loading) {
       const refetchUser = () => {
-        user.refetch();
+        void user.refetch();
       };
       timer = setTimeout(refetchUser, 5000);
     }

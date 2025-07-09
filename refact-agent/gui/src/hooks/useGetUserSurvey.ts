@@ -21,7 +21,7 @@ export function useGetUserSurvey() {
 
   const shouldSkip = useMemo(() => {
     return (
-      userData.data === null ||
+      !userData.data ||
       // userData.data.retcode !== "OK" ||
       // userData.data.questionnaire !== false ||
       !askedMoreThanADayAgo
