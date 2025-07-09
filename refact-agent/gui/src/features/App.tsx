@@ -41,7 +41,7 @@ import { LoginPage } from "./Login";
 import styles from "./App.module.css";
 import classNames from "classnames";
 import { usePatchesAndDiffsEventsForIDE } from "../hooks/usePatchesAndDiffEventsForIDE";
-import { UrqlProvider } from "../../urqlProvider";
+
 import { selectActiveGroup } from "./Teams";
 
 export interface AppProps {
@@ -236,15 +236,13 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 export const App = () => {
   return (
     <Provider store={store}>
-      <UrqlProvider>
-        <PersistGate persistor={persistor}>
-          <Theme>
-            <TourProvider>
-              <InnerApp />
-            </TourProvider>
-          </Theme>
-        </PersistGate>
-      </UrqlProvider>
+      <PersistGate persistor={persistor}>
+        <Theme>
+          <TourProvider>
+            <InnerApp />
+          </TourProvider>
+        </Theme>
+      </PersistGate>
     </Provider>
   );
 };

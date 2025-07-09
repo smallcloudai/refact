@@ -98,9 +98,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const activeGroup = useAppSelector(selectActiveGroup);
 
   const coinBalance = useMemo(() => {
-    const maybeWorkspaceWithCoins = user.data?.workspaces.find(
-      (w) => w.ws_id === activeWorkspace?.ws_id,
-    );
+    const maybeWorkspaceWithCoins =
+      user.data?.query_basic_stuff.workspaces.find(
+        (w) => w.ws_id === activeWorkspace?.ws_id,
+      );
     if (!maybeWorkspaceWithCoins) return null;
     if (!maybeWorkspaceWithCoins.have_admin) return null;
     if (maybeWorkspaceWithCoins.have_coins_exactly === 0) return null;
@@ -132,7 +133,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
   useEffect(() => {
     if (
       user.data &&
-      !user.data.workspaces.some((w) => w.ws_id === activeWorkspace?.ws_id)
+      !user.data.query_basic_stuff.workspaces.some(
+        (w) => w.ws_id === activeWorkspace?.ws_id,
+      )
     ) {
       // current workspace is no longer in list of cloud ones, resetting state
       clearActiveTeamsGroupInIDE();
@@ -190,7 +193,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
               openUrl(accountLink);
             }}
           >
-            {user.data.fuser_id}
+            {user.data.query_basic_stuff.fuser_id}
           </DropdownMenu.Item>
         )}
 

@@ -53,8 +53,8 @@ import {
   expertsAndModelsMiddleWare,
 } from "../features/ExpertsAndModels";
 import { toolsSlice } from "../features/Tools";
-import { basicStuffSlice } from "../features/BasicStuff";
 import { graphqlQueriesAndMutations } from "../services/graphql/graphqlThunks";
+import { groupsSlice } from "../features/Groups";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -110,7 +110,7 @@ const rootReducer = combineSlices(
   threadMessagesSlice,
   expertsSlice,
   toolsSlice,
-  basicStuffSlice,
+  groupsSlice,
 );
 
 const rootPersistConfig = {

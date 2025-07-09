@@ -1,39 +1,21 @@
-import { useCallback, useEffect } from "react";
-import { useAppSelector, useAppDispatch } from ".";
+import { useMemo } from "react";
+import { useAppSelector } from ".";
 import { selectAddressURL, selectApiKey } from "../features/Config/configSlice";
-import {
-  selectBasicStuffSlice,
-  getBasicStuff,
-  resetBasicStuff,
-} from "../features/BasicStuff/basicStuffSlice";
+import { graphqlQueriesAndMutations } from "../services/graphql/graphqlThunks";
 
 export function useBasicStuffQuery() {
-  const dispatch = useAppDispatch();
   const maybeApiKey = useAppSelector(selectApiKey);
   const maybeAddressUrl = useAppSelector(selectAddressURL) ?? "Refact";
 
-  const { loading, error, data } = useAppSelector(selectBasicStuffSlice);
+  const { isFetching, isLoading, error, data, refetch } =
+    graphqlQueriesAndMutations.useGetBasicStuffQuery(
+      { apiKey: maybeApiKey ?? "", addressUrl: maybeAddressUrl },
+      { skip: !maybeApiKey },
+    );
 
-  const fetchUser = useCallback(
-    (apiKey: string, addressUrl: string) => {
-      const action = getBasicStuff({ apiKey, addressUrl });
-      return dispatch(action);
-    },
-    [dispatch],
-  );
-  const refetch = useCallback(() => {
-    const action = resetBasicStuff();
-    dispatch(action);
-    if (maybeApiKey && maybeAddressUrl && !loading) {
-      void fetchUser(maybeApiKey, maybeAddressUrl);
-    }
-  }, [dispatch, fetchUser, loading, maybeAddressUrl, maybeApiKey]);
-
-  useEffect(() => {
-    if (maybeApiKey && maybeAddressUrl && !loading && !data) {
-      void fetchUser(maybeApiKey, maybeAddressUrl);
-    }
-  }, [maybeApiKey, maybeAddressUrl, dispatch, loading, fetchUser, data]);
+  const loading = useMemo(() => {
+    return isFetching || isLoading;
+  }, [isFetching, isLoading]);
 
   return { loading, error, data, refetch };
 }

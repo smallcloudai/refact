@@ -6,7 +6,7 @@ import { FolderIcon } from "./FolderIcon";
 
 import styles from "./CustomTreeNode.module.css";
 import { TeamsGroup } from "../../../services/smallcloud/types";
-import { FlexusTreeNode } from "./GroupTree";
+import { FlexusTreeNode } from "../../../features/Groups";
 import { useAppSelector } from "../../../hooks";
 import { selectConfig } from "../../../features/Config/configSlice";
 
@@ -21,7 +21,7 @@ export const CustomTreeNode = <T extends FlexusTreeNode>({
   setCreateFolderChecked,
   dragHandle,
 }: NodeRendererProps<T> & {
-  updateTree: (newTree: T[]) => void;
+  // updateTree: (newTree: T[]) => void;
   createFolderChecked: boolean;
   setCreateFolderChecked: (state: boolean) => void;
 }) => {

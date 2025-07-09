@@ -137,7 +137,6 @@
     "textarea-caret": "^3.1.0",
     "typescript": "^5.8.3",
     "typescript-plugin-css-modules": "^5.0.2",
-    "urql": "^4.2.2",
     "usehooks-ts": "^2.14.0",
     "uuid": "^9.0.1",
     "vite": "^5.0.8",
