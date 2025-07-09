@@ -317,9 +317,7 @@ export const createThreadWithMessage = createAsyncThunk<
   const port = state.config.lspPort;
   // TODO: where is current workspace set?
   const workspace =
-    state.teams.workspace?.ws_root_group_id ??
-    state.config.currentWorkspaceName ??
-    "";
+    state.teams.group?.id ?? state.config.currentWorkspaceName ?? "";
 
   const appIdQuery = await fetchAppSearchableId(apiKey, port);
 
@@ -416,9 +414,8 @@ export const createThreadWitMultipleMessages = createAsyncThunk<
   const port = state.config.lspPort;
   // TODO: where is current workspace set?
   const workspace =
-    state.teams.workspace?.ws_root_group_id ??
-    state.config.currentWorkspaceName ??
-    "";
+    state.teams.group?.id ?? state.config.currentWorkspaceName ?? "";
+
   const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
   const appIdQuery = await fetchAppSearchableId(apiKey, port);
 

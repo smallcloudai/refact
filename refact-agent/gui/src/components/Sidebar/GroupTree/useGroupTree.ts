@@ -87,17 +87,6 @@ export function useGroupTree() {
     return filterNodesByNodeType(groupTreeData, "group");
   }, [groupTreeData, filterNodesByNodeType]);
 
-  // const touchNode = useCallback(
-  //   (path: string, title: string, type: string, id: string) => {
-  //     if (!path) return;
-  //     setGroupTreeData((prevTree) => {
-  //       const parts = path.split("/");
-  //       return updateTree(prevTree, parts, "", id, path, title, type);
-  //     });
-  //   },
-  //   [setGroupTreeData],
-  // );
-
   useEffect(() => {
     if (workspaceState.finished) {
       setTimeout(() => {
@@ -108,48 +97,6 @@ export function useGroupTree() {
       }, 3000);
     }
   }, [dispatch, workspaceState.finished]);
-
-  // const handleEveryTreeUpdate = useCallback(
-  //   (data: NavTreeSubsSubscription | undefined) => {
-  //     const u = data?.tree_subscription;
-  //     if (!u) return;
-  //     // here
-  //     switch (u.treeupd_action) {
-  //       case "TREE_REBUILD_START":
-  //         setGroupTreeData((prev) => markForDelete(prev));
-  //         break;
-  //       case "TREE_UPDATE":
-  //         touchNode(
-  //           u.treeupd_path,
-  //           u.treeupd_title,
-  //           u.treeupd_type,
-  //           u.treeupd_id,
-  //         );
-  //         break;
-  //       case "TREE_REBUILD_FINISHED":
-  //         setTimeout(() => {
-  //           setGroupTreeData((prev) => pruneNodes(prev));
-  //         }, 500);
-  //         setTimeout(() => {
-  //           setGroupTreeData((prev) => cleanupInsertedLater(prev));
-  //         }, 3000);
-  //         break;
-  //       default:
-  //         // eslint-disable-next-line no-console
-  //         console.warn("TREE SUBS:", u.treeupd_action);
-  //     }
-  //   },
-  //   [touchNode],
-  // );
-
-  // useSmartSubscription<NavTreeSubsSubscription, { ws_id: string }>({
-  //   query: NavTreeSubsDocument,
-  //   variables: {
-  //     ws_id: currentTeamsWorkspace?.ws_id ?? "",
-  //   },
-  //   skip: currentTeamsWorkspace === null,
-  //   onUpdate: handleEveryTreeUpdate, // here
-  // });
 
   const { setActiveTeamsGroupInIDE, setActiveTeamsWorkspaceInIDE } =
     useEventsBusForIDE();
@@ -196,6 +143,7 @@ export function useGroupTree() {
         const result = await setActiveGroupIdTrigger({
           group_id: group.treenodeId,
         });
+
         if (result.data) {
           dispatch(setActiveGroup(newGroup));
           return;
@@ -210,7 +158,7 @@ export function useGroupTree() {
           }
           dispatch(setError(errorMessage));
         }
-      } catch {
+      } catch (e) {
         dispatch(resetActiveGroup());
       }
     },
