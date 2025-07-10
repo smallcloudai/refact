@@ -11,8 +11,8 @@ import {
 } from "./makeMessageTrie";
 import { pagesSlice } from "../Pages/pagesSlice";
 import {
-  createMessage,
   createThreadWithMessage,
+  graphqlQueriesAndMutations,
   pauseThreadThunk,
 } from "../../services/graphql/graphqlThunks";
 import { isToolMessage } from "../../events";
@@ -482,24 +482,31 @@ export const threadMessagesSlice = createSlice({
       state.waitingBranches = state.waitingBranches.filter((n) => n !== 100);
     });
 
-    builder.addCase(createMessage.pending, (state, action) => {
-      const { input } = action.meta.arg;
-      if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
-      state.waitingBranches.push(input.messages[0].ftm_alt);
-    });
-    builder.addCase(createMessage.rejected, (state, action) => {
-      const { input } = action.meta.arg;
-      if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
-      state.waitingBranches = state.waitingBranches.filter(
-        (n) => n !== input.messages[0].ftm_alt,
-      );
-    });
-
     builder.addCase(pauseThreadThunk.fulfilled, (state, action) => {
       if (action.payload.thread_patch.ft_id !== state.ft_id) return state;
       state.waitingBranches = [];
       state.streamingBranches = [];
     });
+
+    builder.addMatcher(
+      graphqlQueriesAndMutations.endpoints.sendMessages.matchPending,
+      (state, action) => {
+        const { input } = action.meta.arg.originalArgs;
+        if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
+        state.waitingBranches.push(input.messages[0].ftm_alt);
+      },
+    );
+
+    builder.addMatcher(
+      graphqlQueriesAndMutations.endpoints.sendMessages.matchRejected,
+      (state, action) => {
+        const { input } = action.meta.arg.originalArgs;
+        if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
+        state.waitingBranches = state.waitingBranches.filter(
+          (n) => n !== input.messages[0].ftm_alt,
+        );
+      },
+    );
   },
 });
 

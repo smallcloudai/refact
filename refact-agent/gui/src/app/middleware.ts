@@ -34,9 +34,9 @@ import {
   threadMessagesSlice,
 } from "../features/ThreadMessages";
 import {
-  createMessage,
   createThreadWithMessage,
   createThreadWitMultipleMessages,
+  graphqlQueriesAndMutations,
   rejectToolUsageAction,
   toolConfirmationThunk,
 } from "../services/graphql/graphqlThunks";
@@ -226,10 +226,13 @@ startListening({
     }
 
     // TODO: thread or message error?
+
     if (
       (createThreadWitMultipleMessages.rejected.match(action) ||
         createThreadWithMessage.rejected.match(action) ||
-        createMessage.rejected.match(action)) &&
+        graphqlQueriesAndMutations.endpoints.sendMessages.matchRejected(
+          action,
+        )) &&
       !action.meta.aborted &&
       typeof action.payload === "string"
     ) {
@@ -281,15 +284,17 @@ startListening({
 
 startListening({
   matcher: isAnyOf(
-    createMessage.fulfilled,
+    graphqlQueriesAndMutations.endpoints.sendMessages.matchFulfilled,
     createThreadWithMessage.fulfilled,
     createThreadWitMultipleMessages.fulfilled,
   ),
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
     if (
-      createMessage.fulfilled.match(action) &&
-      action.meta.arg.input.ftm_belongs_to_ft_id ===
+      graphqlQueriesAndMutations.endpoints.sendMessages.matchFulfilled(
+        action,
+      ) &&
+      action.meta.arg.originalArgs.input.ftm_belongs_to_ft_id ===
         state.threadMessages.thread?.ft_id
     ) {
       listenerApi.dispatch(resetAttachedImagesSlice());

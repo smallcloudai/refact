@@ -9,7 +9,7 @@ import {
   type OperationContext,
   type OperationResult,
 } from "@urql/core";
-import { createClient as createWSClient } from "graphql-ws";
+import { ClientOptions, createClient as createWSClient } from "graphql-ws";
 import { WebSocket } from "ws";
 
 const THREE_MINUTES = 3 * 60 * 1000;
@@ -18,6 +18,7 @@ export const createGraphqlClient = (
   addressUrl: string,
   apiKey: string,
   signal: AbortSignal,
+  on?: ClientOptions["on"],
 ) => {
   const addr =
     !addressUrl || addressUrl === "Refact"
@@ -35,6 +36,7 @@ export const createGraphqlClient = (
     connectionParams: { apikey: apiKey },
     webSocketImpl: WebSocket,
     retryAttempts: 5,
+    on,
   });
 
   const urqlClient = createClient({
@@ -81,9 +83,10 @@ export function createSubscription<
   variables: Variables,
   signal: AbortSignal,
   handleResult: (v: OperationResult<T, Variables>) => void,
+  on: ClientOptions["on"],
   context?: Partial<OperationContext> | undefined,
 ) {
-  const client = createGraphqlClient(addressUrl, apiKey, signal);
+  const client = createGraphqlClient(addressUrl, apiKey, signal, on);
 
   const operation = client.subscription<T, Variables>(
     query,

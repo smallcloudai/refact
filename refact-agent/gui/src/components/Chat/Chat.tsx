@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex } from "@radix-ui/themes";
-import { useAppSelector } from "../../hooks";
+import { useAppSelector, useSendMessages } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
 
 import { DropzoneProvider } from "../Dropzone";
@@ -28,7 +28,8 @@ export const Chat: React.FC<ChatProps> = ({ style, maybeSendToSidebar }) => {
 
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
   // const isStreaming = useAppSelector(selectIsStreaming);
-  const { sendMessage } = useMessageSubscription();
+  useMessageSubscription();
+  const { sendMessage } = useSendMessages();
   // const totalMessages = useAppSelector(selectTotalMessagesInThread, {
   //   devModeChecks: { stabilityCheck: "never" },
   // });

@@ -28,5 +28,6 @@ export * from "./useHideScroll";
 export * from "./useEventBusForApp";
 export * from "./useTotalCostForChat";
 export * from "./useCheckpoints";
-export * from "./useThreadPageSub";
 export * from "./useBasicStuffQuery";
+export * from "./useSendMessages";
+export * from "./useIdForThread";

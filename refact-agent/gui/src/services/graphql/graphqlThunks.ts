@@ -59,6 +59,9 @@ import {
 import { Tool } from "../refact/tools";
 import { IntegrationMeta } from "../../features/Chat";
 import { receiveWorkspace, receiveWorkspaceError } from "../../features/Groups";
+import { v4 as uuidv4 } from "uuid";
+
+import { connected, connecting, closed } from "../../features/ConnectionStatus";
 
 export const threadsPageSub = createAsyncThunk<
   unknown,
@@ -71,6 +74,8 @@ export const threadsPageSub = createAsyncThunk<
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
   const address = state.config.addressURL ?? "https://app.refact.ai";
+
+  const connectionId = uuidv4();
 
   createSubscription<
     ThreadsPageSubsSubscription,
@@ -87,6 +92,24 @@ export const threadsPageSub = createAsyncThunk<
       } else if (result.error) {
         thunkAPI.dispatch(setError(result.error.message));
       }
+    },
+
+    {
+      connecting: () => {
+        thunkAPI.dispatch(
+          connecting({ id: connectionId, name: "ThreadsPageSub" }),
+        );
+      },
+
+      connected: () => {
+        thunkAPI.dispatch(
+          connected({ id: connectionId, name: "ThreadsPageSub" }),
+        );
+      },
+
+      closed: () => {
+        thunkAPI.dispatch(closed({ id: connectionId }));
+      },
     },
   );
 });
@@ -127,6 +150,8 @@ export const messagesSub = createAsyncThunk<
   const state = thunkApi.getState();
   const apiKey = state.config.apiKey ?? "";
   const address = state.config.addressURL ?? "https://app.refact.ai";
+
+  const connectionId = uuidv4();
 
   const sub = createSubscription<
     MessagesSubscriptionSubscription,
@@ -193,6 +218,21 @@ export const messagesSub = createAsyncThunk<
         );
       }
     },
+    {
+      connecting: () => {
+        thunkApi.dispatch(
+          connecting({ id: connectionId, name: "MessagesSub" }),
+        );
+      },
+
+      connected: () => {
+        thunkApi.dispatch(connected({ id: connectionId, name: "MessagesSub" }));
+      },
+
+      closed: () => {
+        thunkApi.dispatch(closed({ id: connectionId }));
+      },
+    },
   );
 
   // TODO: duplicated call to unsubscribe
@@ -205,7 +245,7 @@ export const messagesSub = createAsyncThunk<
 });
 
 // TODO: move to queries and mutations api
-export const createMessage = createAsyncThunk<
+const createMessage = createAsyncThunk<
   MessageCreateMultipleMutation,
   MessageCreateMultipleMutationVariables,
   {
@@ -243,6 +283,7 @@ export const createMessage = createAsyncThunk<
   return thunkAPI.fulfillWithValue(result.data);
 });
 
+// TODO: this can be moved to the api
 export function rejectToolUsageAction(
   ids: string[],
   ft_id: string,
@@ -693,6 +734,7 @@ export const workspaceTreeSubscriptionThunk = createAsyncThunk<
   const apiKey = state.config.apiKey ?? "";
 
   const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+  const connectionId = uuidv4();
   createSubscription<
     WorkspaceTreeSubscription,
     WorkspaceTreeSubscriptionVariables
@@ -709,6 +751,23 @@ export const workspaceTreeSubscriptionThunk = createAsyncThunk<
       if (result.data) {
         thunkAPI.dispatch(receiveWorkspace(result.data.tree_subscription));
       }
+    },
+    {
+      connecting: () => {
+        thunkAPI.dispatch(
+          connecting({ id: connectionId, name: "WorkspaceTreeSub" }),
+        );
+      },
+
+      connected: () => {
+        thunkAPI.dispatch(
+          connected({ id: connectionId, name: "WorkSpaceTreeSub" }),
+        );
+      },
+
+      closed: () => {
+        thunkAPI.dispatch(closed({ id: connectionId }));
+      },
     },
   );
 });
@@ -772,6 +831,36 @@ export const graphqlQueriesAndMutations = createApi({
               error:
                 result.error?.message ??
                 "no response when fetching for basic_stuff.",
+              data: result.data,
+            },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+
+    sendMessages: builder.mutation<
+      MessageCreateMultipleMutation,
+      MessageCreateMultipleMutationVariables
+    >({
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        const state = api.getState() as RootState;
+        const apiKey = state.config.apiKey ?? "";
+        const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+        const client = createGraphqlClient(addressUrl, apiKey, api.signal);
+
+        const result = await client.mutation<
+          MessageCreateMultipleMutation,
+          MessageCreateMultipleMutationVariables
+        >(MessageCreateMultipleDocument, args);
+
+        if (result.error ?? !result.data) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: result.error?.message ?? "No data in response",
               data: result.data,
             },
           };

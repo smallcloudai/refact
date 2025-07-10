@@ -55,6 +55,7 @@ import {
 import { toolsSlice } from "../features/Tools";
 import { graphqlQueriesAndMutations } from "../services/graphql/graphqlThunks";
 import { groupsSlice } from "../features/Groups";
+import { connectionStatusSlice } from "../features/ConnectionStatus";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -111,6 +112,7 @@ const rootReducer = combineSlices(
   expertsSlice,
   toolsSlice,
   groupsSlice,
+  connectionStatusSlice,
 );
 
 const rootPersistConfig = {

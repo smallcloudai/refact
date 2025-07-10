@@ -1,13 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  useAppDispatch,
-  useAppSelector,
-  // useSendChatRequest,
-} from "../../hooks";
+import { useAppDispatch, useAppSelector, useSendMessages } from "../../hooks";
 import { selectPages, change, ChatPage } from "../../features/Pages/pagesSlice";
 import { setInputValue } from "./actions";
 import { debugRefact } from "../../debugConfig";
-import { useMessageSubscription } from "../Chat/useMessageSubscription";
 
 export function useInputValue(
   uncheckCheckboxes: () => void,
@@ -19,7 +14,7 @@ export function useInputValue(
 ] {
   const [value, setValue] = useState<string>("");
   const [isSendImmediately, setIsSendImmediately] = useState<boolean>(false);
-  const { sendMessage, sendMultipleMessages } = useMessageSubscription();
+  const { sendMessage, sendMultipleMessages } = useSendMessages();
   const dispatch = useAppDispatch();
   const pages = useAppSelector(selectPages);
 

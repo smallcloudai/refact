@@ -15,6 +15,7 @@ export type Config = {
     vecdb?: boolean;
     ast?: boolean;
     images?: boolean;
+    connections?: boolean;
   };
   keyBindings?: {
     completeManual?: string;

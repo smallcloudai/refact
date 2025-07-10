@@ -43,6 +43,7 @@ import classNames from "classnames";
 import { usePatchesAndDiffsEventsForIDE } from "../hooks/usePatchesAndDiffEventsForIDE";
 
 import { selectActiveGroup } from "./Teams";
+import { ConnectionStatus } from "./ConnectionStatus/ConectionStatus";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -226,6 +227,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             chatId={page.chatId}
           />
         )}
+        <ConnectionStatus />
       </PageWrapper>
       {page.name !== "welcome" && <Tour page={pages[pages.length - 1].name} />}
     </Flex>
