@@ -286,42 +286,6 @@ function isGetAppSearchableResponse(
   return typeof response.app_searchable_id === "string";
 }
 
-// TODO: move to queries and mutations api
-export const toolConfirmationThunk = createAsyncThunk<
-  ThreadConfirmationResponseMutation,
-  ThreadConfirmationResponseMutationVariables,
-  {
-    dispatch: AppDispatch;
-    state: RootState;
-    rejectValue: {
-      message: string;
-      args: ThreadConfirmationResponseMutationVariables;
-    };
-  }
->("flexus/tools/confirmation/response", async (args, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const apiKey = state.config.apiKey ?? "";
-
-  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
-
-  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
-  const result = await client.mutation<
-    ThreadConfirmationResponseMutation,
-    ThreadConfirmationResponseMutationVariables
-  >(ThreadConfirmationResponseDocument, args);
-
-  if (result.error) {
-    return thunkAPI.rejectWithValue({ message: result.error.message, args });
-  } else if (!result.data) {
-    return thunkAPI.rejectWithValue({
-      message: "failed to confirm tools",
-      args,
-    });
-  }
-
-  return thunkAPI.fulfillWithValue(result.data);
-});
-
 export const workspaceTreeSubscriptionThunk = createAsyncThunk<
   unknown,
   WorkspaceTreeSubscriptionVariables,
@@ -858,6 +822,35 @@ export const graphqlQueriesAndMutations = createApi({
         if (!result.data) {
           return {
             error: { error: "failed to pause thread", status: "CUSTOM_ERROR" },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+    toolConfirmation: builder.mutation<
+      ThreadConfirmationResponseMutation,
+      ThreadConfirmationResponseMutationVariables
+    >({
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        const state = api.getState() as RootState;
+        const apiKey = state.config.apiKey ?? "";
+
+        const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+        const client = createGraphqlClient(addressUrl, apiKey, api.signal);
+        const result = await client.mutation<
+          ThreadConfirmationResponseMutation,
+          ThreadConfirmationResponseMutationVariables
+        >(ThreadConfirmationResponseDocument, args);
+
+        if (result.error) {
+          return {
+            error: { error: result.error.message, status: "FETCH_ERROR" },
+          };
+        } else if (!result.data) {
+          return {
+            error: { error: "failed to confirm tools", status: "CUSTOM_ERROR" },
           };
         }
 

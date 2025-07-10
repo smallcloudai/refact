@@ -36,7 +36,6 @@ import {
 import {
   graphqlQueriesAndMutations,
   rejectToolUsageAction,
-  toolConfirmationThunk,
 } from "../services/graphql/graphqlThunks";
 import { push } from "../features/Pages/pagesSlice";
 
@@ -381,10 +380,11 @@ startListening({
     if (!maybePendingToolCall) return;
 
     if (action.payload.accepted) {
-      const thunk = toolConfirmationThunk({
-        ft_id: action.payload.chatId,
-        confirmation_response: JSON.stringify([action.payload.toolCallId]),
-      });
+      const thunk =
+        graphqlQueriesAndMutations.endpoints.toolConfirmation.initiate({
+          ft_id: action.payload.chatId,
+          confirmation_response: JSON.stringify([action.payload.toolCallId]),
+        });
       void listenerApi.dispatch(thunk);
       return;
     }

@@ -25,28 +25,28 @@ import {
   selectThreadId,
   selectToolConfirmationResponses,
 } from "../../features/ThreadMessages";
-import { useAppSelector, useAppDispatch } from "../../hooks";
+import { useAppSelector } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
-import { toolConfirmationThunk } from "../../services/graphql/graphqlThunks";
+import { graphqlQueriesAndMutations } from "../../services/graphql/graphqlThunks";
 
 export const ApplyPatchSwitch: React.FC = () => {
-  const dispatch = useAppDispatch();
   const chatId = useAppSelector(selectThreadId);
   const isPatchAutomatic = useAppSelector(selectPatchIsAutomatic);
   const toolConfirmationResponses = useAppSelector(
     selectToolConfirmationResponses,
   );
+  const [toolConfirmation, _toolConfirmationResult] =
+    graphqlQueriesAndMutations.useToolConfirmationMutation();
 
   const handleAutomaticPatchChange = (checked: boolean) => {
     const value = checked
       ? toolConfirmationResponses.filter((res) => res !== "*")
       : [...toolConfirmationResponses, "*"];
 
-    const action = toolConfirmationThunk({
+    void toolConfirmation({
       ft_id: chatId,
       confirmation_response: JSON.stringify(value),
     });
-    void dispatch(action);
   };
 
   return (
