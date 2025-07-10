@@ -10,7 +10,7 @@ import {
   getAncestorsForNode,
 } from "./makeMessageTrie";
 import { pagesSlice } from "../Pages/pagesSlice";
-import { graphqlQueriesAndMutations } from "../../services/graphql/graphqlThunks";
+import { graphqlQueriesAndMutations } from "../../services/graphql";
 import { isToolMessage } from "../../events";
 import { isDiffMessage, isToolCall, ToolMessage } from "../../services/refact";
 import {

@@ -28,7 +28,7 @@ import {
 import {
   graphqlQueriesAndMutations,
   rejectToolUsageAction,
-} from "../../services/graphql/graphqlThunks";
+} from "../../services/graphql";
 import { parseOrElse } from "../../utils/parseOrElse";
 
 function useToolConfirmation() {

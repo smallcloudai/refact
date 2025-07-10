@@ -31,7 +31,7 @@ import { selectConfig } from "../../../features/Config/configSlice";
 import {
   graphqlQueriesAndMutations,
   workspaceTreeSubscriptionThunk,
-} from "../../../services/graphql/graphqlThunks";
+} from "../../../services/graphql";
 import {
   cleanupWorkspaceInsertedLater,
   pruneWorkspaceNodes,

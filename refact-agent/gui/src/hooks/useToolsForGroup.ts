@@ -1,4 +1,4 @@
-import { graphqlQueriesAndMutations } from "../services/graphql/graphqlThunks";
+import { graphqlQueriesAndMutations } from "../services/graphql";
 import { useAppSelector } from ".";
 import { selectActiveGroup } from "../features/Teams";
 

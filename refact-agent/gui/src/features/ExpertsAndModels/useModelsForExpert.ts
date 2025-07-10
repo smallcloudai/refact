@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks";
-import { graphqlQueriesAndMutations } from "../../services/graphql/graphqlThunks";
+import { graphqlQueriesAndMutations } from "../../services/graphql";
 import {
   selectCurrentExpert,
   selectCurrentModel,

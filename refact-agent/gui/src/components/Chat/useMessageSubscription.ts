@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useAppDispatch, useIdForThread } from "../../hooks";
-import { messagesSub } from "../../services/graphql/graphqlThunks";
+import { messagesSub } from "../../services/graphql/subscriptions";
 
 export function useMessageSubscription() {
   const dispatch = useAppDispatch();

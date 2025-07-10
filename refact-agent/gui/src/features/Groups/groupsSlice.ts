@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit/react";
 import { WorkspaceTreeSubscription } from "../../../generated/documents";
-import { workspaceTreeSubscriptionThunk } from "../../services/graphql/graphqlThunks";
+import { workspaceTreeSubscriptionThunk } from "../../services/graphql/subscriptions";
 import {
   cleanupInsertedLater,
   markForDelete,

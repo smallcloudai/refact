@@ -10,7 +10,7 @@ import {
 import {
   graphqlQueriesAndMutations,
   threadsPageSub,
-} from "../../services/graphql/graphqlThunks";
+} from "../../services/graphql";
 import { selectActiveGroup } from "../../features/Teams/teamsSlice";
 import { ScrollArea } from "../../components/ScrollArea";
 import { ChatBubbleIcon } from "@radix-ui/react-icons";

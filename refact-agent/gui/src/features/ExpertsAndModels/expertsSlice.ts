@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit/react";
-import { graphqlQueriesAndMutations } from "../../services/graphql/graphqlThunks";
+import { graphqlQueriesAndMutations } from "../../services/graphql";
 import {
   ExpertsForGroupQuery,
   ModelsForExpertQuery,

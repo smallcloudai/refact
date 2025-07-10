@@ -27,7 +27,7 @@ import {
 } from "../../features/ThreadMessages";
 import { useAppSelector } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
-import { graphqlQueriesAndMutations } from "../../services/graphql/graphqlThunks";
+import { graphqlQueriesAndMutations } from "../../services/graphql";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const chatId = useAppSelector(selectThreadId);

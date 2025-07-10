@@ -52,7 +52,7 @@ import {
   expertsSlice,
   expertsAndModelsMiddleWare,
 } from "../features/ExpertsAndModels";
-import { graphqlQueriesAndMutations } from "../services/graphql/graphqlThunks";
+import { graphqlQueriesAndMutations } from "../services/graphql";
 import { groupsSlice } from "../features/Groups";
 import { connectionStatusSlice } from "../features/ConnectionStatus";
 

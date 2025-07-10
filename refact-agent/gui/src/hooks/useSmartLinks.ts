@@ -14,7 +14,7 @@ import {
 } from "../features/ExpertsAndModels";
 import { useGetToolsLazyQuery } from "./useGetToolGroupsQuery";
 import { Tool } from "../services/refact";
-import { graphqlQueriesAndMutations } from "../services/graphql/graphqlThunks";
+import { graphqlQueriesAndMutations } from "../services/graphql";
 
 export function useSmartLinks() {
   const dispatch = useAppDispatch();

@@ -14,7 +14,7 @@ import {
   UserMessageContentWithImage,
 } from "../services/refact/types";
 import { useIdForThread } from "./useIdForThread";
-import { graphqlQueriesAndMutations } from "../services/graphql/graphqlThunks";
+import { graphqlQueriesAndMutations } from "../services/graphql";
 
 // TODO: since this is called twice it opens two sockets :/ move sendMessage and sendMultipleMessage to their own hooks
 

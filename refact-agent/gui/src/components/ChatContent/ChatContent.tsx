@@ -23,7 +23,7 @@ import { LogoAnimation } from "../LogoAnimation/LogoAnimation.tsx";
 import { selectThreadMessageTrie } from "../../features/ThreadMessages";
 import { MessageNode } from "../MessageNode/MessageNode.tsx";
 import { isEmptyNode } from "../../features/ThreadMessages/makeMessageTrie.ts";
-import { graphqlQueriesAndMutations } from "../../services/graphql/graphqlThunks.ts";
+import { graphqlQueriesAndMutations } from "../../services/graphql";
 import { popBackTo } from "../../features/Pages/pagesSlice.ts";
 
 const usePauseThread = () => {

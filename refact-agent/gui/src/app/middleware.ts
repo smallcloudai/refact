@@ -36,7 +36,7 @@ import {
 import {
   graphqlQueriesAndMutations,
   rejectToolUsageAction,
-} from "../services/graphql/graphqlThunks";
+} from "../services/graphql";
 import { push } from "../features/Pages/pagesSlice";
 
 const AUTH_ERROR_MESSAGE =
