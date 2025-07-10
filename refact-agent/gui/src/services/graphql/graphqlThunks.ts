@@ -114,34 +114,6 @@ export const threadsPageSub = createAsyncThunk<
   );
 });
 
-// TODO: move to queries and mutations api
-export const deleteThreadThunk = createAsyncThunk<
-  { id: string },
-  DeleteThreadMutationVariables,
-  {
-    dispatch: AppDispatch;
-    state: RootState;
-    rejectValue: { message: string; id: string };
-  }
->("graphql/deleteThread", async (args, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const apiKey = state.config.apiKey ?? "";
-  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
-
-  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
-  const result = await client.mutation<
-    DeleteThreadMutation,
-    DeleteThreadMutationVariables
-  >(DeleteThreadDocument, args);
-  if (result.error) {
-    return thunkAPI.rejectWithValue({
-      message: result.error.message,
-      id: args.id,
-    });
-  }
-  return thunkAPI.fulfillWithValue({ id: args.id });
-});
-
 export const messagesSub = createAsyncThunk<
   unknown,
   MessagesSubscriptionSubscriptionVariables,
