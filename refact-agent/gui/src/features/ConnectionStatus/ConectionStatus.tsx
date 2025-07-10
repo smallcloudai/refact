@@ -6,8 +6,9 @@ import { HoverCard, Table, Box, Text } from "@radix-ui/themes";
 
 export const ConnectionStatus: React.FC = () => {
   const config = useAppSelector(selectConfig);
-  const connections = useAppSelector(selectConnections);
-
+  const connections = useAppSelector(selectConnections, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
   if (config.host !== "web" && config.features?.connections !== true) return;
 
   return (

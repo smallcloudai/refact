@@ -74,7 +74,9 @@ const usePauseThread = () => {
 export const ChatContent: React.FC = () => {
   const dispatch = useAppDispatch();
   // TODO: stays when creating a new chat :/
-  const threadMessageTrie = useAppSelector(selectThreadMessageTrie);
+  const threadMessageTrie = useAppSelector(selectThreadMessageTrie, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
   const isStreaming = useAppSelector(selectIsStreaming);
 
   const { shouldShow } = useUsageCounter();

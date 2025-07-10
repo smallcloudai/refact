@@ -289,6 +289,7 @@ export const threadMessagesSlice = createSlice({
       selectMessagesValues,
       (messages) => messages.length === 0,
     ),
+
     selectAppSpecific: createSelector(selectMessagesValues, (messages) => {
       if (messages.length === 0) return "";
       if (typeof messages[0].ft_app_specific === "string") {
@@ -298,20 +299,15 @@ export const threadMessagesSlice = createSlice({
     }),
 
     // TODO: refactor this
-    selectMessagesFromEndNode: createSelector(
-      (state: InitialState) => {
-        const { endNumber, endAlt, endPrevAlt, messages } = state;
-        return { endNumber, endAlt, endPrevAlt, messages };
-      },
-      ({ endAlt, endNumber, endPrevAlt, messages }) => {
-        return getAncestorsForNode(
-          endNumber,
-          endAlt,
-          endPrevAlt,
-          Object.values(messages),
-        );
-      },
-    ),
+    selectMessagesFromEndNode: (state) => {
+      const { endNumber, endAlt, endPrevAlt, messages } = state;
+      return getAncestorsForNode(
+        endNumber,
+        endAlt,
+        endPrevAlt,
+        Object.values(messages),
+      );
+    },
 
     selectBranchLength: (state) => state.endNumber,
     selectTotalMessagesInThread: createSelector(
