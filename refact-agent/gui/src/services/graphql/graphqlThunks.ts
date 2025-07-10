@@ -244,46 +244,6 @@ export const messagesSub = createAsyncThunk<
   // return thunkApi.fulfillWithValue({});
 });
 
-// TODO: move to queries and mutations api
-const createMessage = createAsyncThunk<
-  MessageCreateMultipleMutation,
-  MessageCreateMultipleMutationVariables,
-  {
-    dispatch: AppDispatch;
-    state: RootState;
-    rejectValue: {
-      message: string;
-      args: MessageCreateMultipleMutationVariables;
-    };
-  }
->("graphql/createMessage", async (args, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const apiKey = state.config.apiKey ?? "";
-  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
-
-  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
-  const result = await client.mutation<
-    MessageCreateMultipleMutation,
-    MessageCreateMultipleMutationVariables
-  >(MessageCreateMultipleDocument, args);
-
-  if (result.error) {
-    thunkAPI.dispatch(setError(result.error.message));
-    return thunkAPI.rejectWithValue({
-      message: result.error.message,
-      args,
-    });
-  } else if (!result.data) {
-    return thunkAPI.rejectWithValue({
-      message: "create message: no data in response",
-      args,
-    });
-  }
-  // TODO: add the message to the message list
-  return thunkAPI.fulfillWithValue(result.data);
-});
-
-// TODO: this can be moved to the api
 export function rejectToolUsageAction(
   ids: string[],
   ft_id: string,
@@ -303,7 +263,8 @@ export function rejectToolUsageAction(
       ftm_provenance: "null",
     };
   });
-  const action = createMessage({
+
+  const action = graphqlQueriesAndMutations.endpoints.sendMessages.initiate({
     input: { messages: messagesToSend, ftm_belongs_to_ft_id: ft_id },
   });
 
