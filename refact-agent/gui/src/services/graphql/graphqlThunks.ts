@@ -287,38 +287,6 @@ function isGetAppSearchableResponse(
 }
 
 // TODO: move to queries and mutations api
-export const pauseThreadThunk = createAsyncThunk<
-  ThreadPatchMutation,
-  { id: string },
-  {
-    dispatch: AppDispatch;
-    state: RootState;
-    rejectValue: { message: string };
-  }
->("flexus/thread/pause", async (args, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const apiKey = state.config.apiKey ?? "";
-
-  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
-
-  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
-
-  const result = await client.mutation<
-    ThreadPatchMutation,
-    ThreadPatchMutationVariables
-  >(ThreadPatchDocument, { id: args.id, message: JSON.stringify("pause") });
-
-  if (result.error) {
-    return thunkAPI.rejectWithValue(result.error);
-  }
-
-  if (!result.data) {
-    return thunkAPI.rejectWithValue({ message: "failed to stop thread" });
-  }
-  return thunkAPI.fulfillWithValue(result.data);
-});
-
-// TODO: move to queries and mutations api
 export const toolConfirmationThunk = createAsyncThunk<
   ThreadConfirmationResponseMutation,
   ThreadConfirmationResponseMutationVariables,
@@ -861,6 +829,38 @@ export const graphqlQueriesAndMutations = createApi({
             },
           };
         }
+        return { data: result.data };
+      },
+    }),
+
+    pauseThread: builder.mutation<ThreadPatchMutation, { id: string }>({
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        const state = api.getState() as RootState;
+        const apiKey = state.config.apiKey ?? "";
+
+        const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+        const client = createGraphqlClient(addressUrl, apiKey, api.signal);
+
+        const result = await client.mutation<
+          ThreadPatchMutation,
+          ThreadPatchMutationVariables
+        >(ThreadPatchDocument, {
+          id: args.id,
+          message: JSON.stringify("pause"),
+        });
+
+        if (result.error) {
+          return {
+            error: { error: result.error.message, status: "FETCH_ERROR" },
+          };
+        }
+        if (!result.data) {
+          return {
+            error: { error: "failed to pause thread", status: "CUSTOM_ERROR" },
+          };
+        }
+
         return { data: result.data };
       },
     }),

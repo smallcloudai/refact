@@ -10,10 +10,7 @@ import {
   getAncestorsForNode,
 } from "./makeMessageTrie";
 import { pagesSlice } from "../Pages/pagesSlice";
-import {
-  graphqlQueriesAndMutations,
-  pauseThreadThunk,
-} from "../../services/graphql/graphqlThunks";
+import { graphqlQueriesAndMutations } from "../../services/graphql/graphqlThunks";
 import { isToolMessage } from "../../events";
 import { isDiffMessage, isToolCall, ToolMessage } from "../../services/refact";
 import {
@@ -474,11 +471,14 @@ export const threadMessagesSlice = createSlice({
       }
     });
 
-    builder.addCase(pauseThreadThunk.fulfilled, (state, action) => {
-      if (action.payload.thread_patch.ft_id !== state.ft_id) return state;
-      state.waitingBranches = [];
-      state.streamingBranches = [];
-    });
+    builder.addMatcher(
+      graphqlQueriesAndMutations.endpoints.pauseThread.matchFulfilled,
+      (state, action) => {
+        if (action.payload.thread_patch.ft_id !== state.ft_id) return state;
+        state.waitingBranches = [];
+        state.streamingBranches = [];
+      },
+    );
 
     builder.addMatcher(
       graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage
