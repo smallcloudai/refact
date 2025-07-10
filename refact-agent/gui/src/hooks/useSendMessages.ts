@@ -1,11 +1,6 @@
 import { useCallback } from "react";
-import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
 import { useGetToolsLazyQuery } from "./useGetToolGroupsQuery";
-import {
-  createThreadWithMessage,
-  createThreadWitMultipleMessages,
-} from "../services/graphql/graphqlThunks";
 import { FThreadMessageInput } from "../../generated/documents";
 import { selectThreadEnd, selectAppSpecific } from "../features/ThreadMessages";
 import {
@@ -24,7 +19,6 @@ import { graphqlQueriesAndMutations } from "../services/graphql/graphqlThunks";
 // TODO: since this is called twice it opens two sockets :/ move sendMessage and sendMultipleMessage to their own hooks
 
 export function useSendMessages() {
-  const dispatch = useAppDispatch();
   const leafMessage = useAppSelector(selectThreadEnd, {
     devModeChecks: { stabilityCheck: "never" },
   });
@@ -37,10 +31,15 @@ export function useSendMessages() {
   const selectedExpert = useAppSelector(selectCurrentExpert);
   const selectedModel = useAppSelector(selectCurrentModel);
   const attachedImages = useAppSelector(selectAllImages);
-  const [sendMessages, _] =
+  const [sendMessages, _sendMessagesResult] =
     graphqlQueriesAndMutations.useSendMessagesMutation();
 
-  const [getTools, _] = useGetToolsLazyQuery();
+  const [createThreadWitMultipleMessages] =
+    graphqlQueriesAndMutations.useCreateThreadWitMultipleMessagesMutation();
+  const [createThreadWithMessage] =
+    graphqlQueriesAndMutations.useCreateThreadWithSingleMessageMutation();
+
+  const [getTools, _getToolsResult] = useGetToolsLazyQuery();
 
   const maybeAddImagesToQuestion = useCallback(
     (question: string): UserMessage => {
@@ -84,14 +83,13 @@ export function useSendMessages() {
       const specs = enabledTools.map((tool) => tool.spec);
 
       if (leafMessage.endAlt === 0 && leafMessage.endNumber === 0) {
-        const action = createThreadWitMultipleMessages({
+        void createThreadWitMultipleMessages({
           messages,
           expertId: selectedExpert ?? "",
           model: selectedModel ?? "",
           tools: specs,
         });
 
-        void dispatch(action);
         return;
       }
 
@@ -124,7 +122,7 @@ export function useSendMessages() {
     },
     [
       appSpecific,
-      dispatch,
+      createThreadWitMultipleMessages,
       getTools,
       leafMessage.endAlt,
       leafMessage.endNumber,
@@ -148,14 +146,12 @@ export function useSendMessages() {
       // TODO: add images
 
       if (leafMessage.endAlt === 0 && leafMessage.endNumber === 0) {
-        void dispatch(
-          createThreadWithMessage({
-            content,
-            expertId: selectedExpert ?? "",
-            model: selectedModel ?? "",
-            tools: specs,
-          }),
-        );
+        void createThreadWithMessage({
+          content,
+          expertId: selectedExpert ?? "",
+          model: selectedModel ?? "",
+          tools: specs,
+        });
         return;
       }
       const input: FThreadMessageInput = {
@@ -185,7 +181,7 @@ export function useSendMessages() {
     },
     [
       appSpecific,
-      dispatch,
+      createThreadWithMessage,
       getTools,
       leafMessage.endAlt,
       leafMessage.endNumber,

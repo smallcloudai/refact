@@ -299,200 +299,6 @@ async function fetchAppSearchableId(apiKey: string, port: number) {
   return appIdQuery;
 }
 
-// TODO: move to queries and mutations api
-export const createThreadWithMessage = createAsyncThunk<
-  MessageCreateMultipleMutation & CreateThreadMutation,
-  {
-    content: string;
-    expertId: string;
-    model: string;
-    tools: (Tool["spec"] | FCloudTool)[];
-  },
-  {
-    dispatch: AppDispatch;
-    state: RootState;
-    rejectValue: { message: string };
-  }
->("flexus/createThreadWithMessage", async (args, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const apiKey = state.config.apiKey ?? "";
-  const port = state.config.lspPort;
-  // TODO: where is current workspace set?
-  const workspace =
-    state.teams.group?.id ?? state.config.currentWorkspaceName ?? "";
-
-  const appIdQuery = await fetchAppSearchableId(apiKey, port);
-
-  if (appIdQuery.error) {
-    thunkAPI.rejectWithValue({ message: JSON.stringify(appIdQuery.error) });
-  }
-
-  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
-
-  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
-
-  const threadQueryArgs: FThreadInput = {
-    ft_fexp_id: args.expertId, // TODO: user selected
-    ft_title: "", // TODO: generate the title
-    located_fgroup_id: workspace,
-    owner_shared: false,
-    ft_app_searchable: appIdQuery.data?.app_searchable_id,
-  };
-  const threadQuery = await client.mutation<
-    CreateThreadMutation,
-    CreateThreadMutationVariables
-  >(CreateThreadDocument, { input: threadQueryArgs });
-
-  if (threadQuery.error) {
-    return thunkAPI.rejectWithValue({ message: threadQuery.error.message });
-  }
-
-  if (!threadQuery.data) {
-    return thunkAPI.rejectWithValue({
-      message: "couldn't create flexus thread id",
-    });
-  }
-
-  if (state.threadMessages.ft_id === null) {
-    thunkAPI.dispatch(setThreadFtId(threadQuery.data.thread_create.ft_id));
-  }
-
-  // Note: ftm_num, ftm_alt, and ftm_prev_alt are also hard coded for tracking waiting state
-  const createMessageArgs: FThreadMessageInput = {
-    ftm_app_specific: JSON.stringify(appIdQuery.data?.app_searchable_id ?? ""),
-    ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
-    ftm_alt: 100,
-    ftm_num: 1,
-    ftm_call_id: "",
-    ftm_prev_alt: 100,
-    ftm_role: "user",
-    ftm_content: JSON.stringify(args.content),
-    ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
-    ftm_tool_calls: "null", // optional
-    ftm_usage: "null", // optional
-    ftm_user_preferences: JSON.stringify({
-      model: args.model,
-      tools: args.tools,
-    }),
-  };
-
-  const result = await client.mutation<
-    MessageCreateMultipleMutation,
-    MessageCreateMultipleMutationVariables
-  >(MessageCreateMultipleDocument, {
-    input: {
-      ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
-      messages: [createMessageArgs],
-    },
-  });
-
-  if (result.error) {
-    return thunkAPI.rejectWithValue({ message: result.error.message });
-  }
-  if (!result.data) {
-    return thunkAPI.rejectWithValue({ message: "failed to create message" });
-  }
-  return thunkAPI.fulfillWithValue({ ...result.data, ...threadQuery.data });
-});
-
-// TODO: move to queries and mutations api
-export const createThreadWitMultipleMessages = createAsyncThunk<
-  MessageCreateMultipleMutation & CreateThreadMutation,
-  {
-    messages: { ftm_role: string; ftm_content: unknown }[];
-    expertId: string;
-    model: string;
-    tools: (Tool["spec"] | FCloudTool)[];
-    integration?: IntegrationMeta;
-  },
-  {
-    dispatch: AppDispatch;
-    state: RootState;
-    rejectValue: { message: string };
-  }
->("flexus/createThreadWithMultipleMessages", async (args, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const apiKey = state.config.apiKey ?? "";
-  const port = state.config.lspPort;
-  // TODO: where is current workspace set?
-  const workspace =
-    state.teams.group?.id ?? state.config.currentWorkspaceName ?? "";
-
-  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
-  const appIdQuery = await fetchAppSearchableId(apiKey, port);
-
-  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
-
-  const threadQueryArgs: FThreadInput = {
-    ft_fexp_id: args.expertId, // TODO: user selected
-    ft_title: "", // TODO: generate the title
-    located_fgroup_id: workspace,
-    owner_shared: false,
-    ft_app_searchable: appIdQuery.data?.app_searchable_id,
-  };
-  const threadQuery = await client.mutation<
-    CreateThreadMutation,
-    CreateThreadMutationVariables
-  >(CreateThreadDocument, { input: threadQueryArgs });
-
-  if (threadQuery.error) {
-    return thunkAPI.rejectWithValue({ message: threadQuery.error.message });
-  }
-
-  if (!threadQuery.data) {
-    return thunkAPI.rejectWithValue({
-      message: "couldn't create flexus thread id",
-    });
-  }
-
-  if (state.threadMessages.ft_id === null) {
-    thunkAPI.dispatch(setThreadFtId(threadQuery.data.thread_create.ft_id));
-  }
-
-  const createMessageArgs: FThreadMessageInput[] = args.messages.map(
-    (message, index) => {
-      return {
-        ftm_app_specific: JSON.stringify(
-          appIdQuery.data?.app_searchable_id ?? "",
-        ),
-        ftm_belongs_to_ft_id: threadQuery.data?.thread_create.ft_id ?? "",
-        ftm_alt: 100,
-        ftm_num: index + 1,
-        ftm_call_id: "",
-        ftm_prev_alt: 100,
-        ftm_role: message.ftm_role,
-        ftm_content: JSON.stringify(message.ftm_content),
-        ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
-        ftm_tool_calls: "null", // optional
-        ftm_usage: "null", // optional
-        ftm_user_preferences: JSON.stringify({
-          model: args.model,
-          tools: args.tools,
-          ...(args.integration ? { integration: args.integration } : {}),
-        }),
-      };
-    },
-  );
-
-  const result = await client.mutation<
-    MessageCreateMultipleMutation,
-    MessageCreateMultipleMutationVariables
-  >(MessageCreateMultipleDocument, {
-    input: {
-      ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
-      messages: createMessageArgs,
-    },
-  });
-
-  if (result.error) {
-    return thunkAPI.rejectWithValue({ message: result.error.message });
-  }
-  if (!result.data) {
-    return thunkAPI.rejectWithValue({ message: "failed to create message" });
-  }
-  return thunkAPI.fulfillWithValue({ ...result.data, ...threadQuery.data });
-});
-
 // TODO: stop is ft_error, set this and it'll stop
 
 type GetAppSearchableIdResponse = {
@@ -828,6 +634,223 @@ export const graphqlQueriesAndMutations = createApi({
         }
 
         return { data: result.data };
+      },
+    }),
+
+    createThreadWitMultipleMessages: builder.mutation<
+      MessageCreateMultipleMutation & CreateThreadMutation,
+      {
+        messages: { ftm_role: string; ftm_content: unknown }[];
+        expertId: string;
+        model: string;
+        tools: (Tool["spec"] | FCloudTool)[];
+        integration?: IntegrationMeta;
+      }
+    >({
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        const state = api.getState() as RootState;
+        const apiKey = state.config.apiKey ?? "";
+        const port = state.config.lspPort;
+        // TODO: where is current workspace set?
+        const workspace =
+          state.teams.group?.id ?? state.config.currentWorkspaceName ?? "";
+
+        const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+        const appIdQuery = await fetchAppSearchableId(apiKey, port);
+
+        const client = createGraphqlClient(addressUrl, apiKey, api.signal);
+
+        const threadQueryArgs: FThreadInput = {
+          ft_fexp_id: args.expertId,
+          ft_title: "",
+          located_fgroup_id: workspace,
+          owner_shared: false,
+          ft_app_searchable: appIdQuery.data?.app_searchable_id,
+        };
+        const threadQuery = await client.mutation<
+          CreateThreadMutation,
+          CreateThreadMutationVariables
+        >(CreateThreadDocument, { input: threadQueryArgs });
+
+        if (threadQuery.error) {
+          return {
+            error: { error: threadQuery.error.message, status: "FETCH_ERROR" },
+          };
+        }
+
+        if (!threadQuery.data) {
+          return {
+            error: {
+              error: "no data in response from thread creation ",
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        if (state.threadMessages.ft_id === null) {
+          api.dispatch(setThreadFtId(threadQuery.data.thread_create.ft_id));
+        }
+
+        const createMessageArgs: FThreadMessageInput[] = args.messages.map(
+          (message, index) => {
+            return {
+              ftm_app_specific: JSON.stringify(
+                appIdQuery.data?.app_searchable_id ?? "",
+              ),
+              ftm_belongs_to_ft_id: threadQuery.data?.thread_create.ft_id ?? "",
+              ftm_alt: 100,
+              ftm_num: index + 1,
+              ftm_call_id: "",
+              ftm_prev_alt: 100,
+              ftm_role: message.ftm_role,
+              ftm_content: JSON.stringify(message.ftm_content),
+              ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
+              ftm_tool_calls: "null", // optional
+              ftm_usage: "null", // optional
+              ftm_user_preferences: JSON.stringify({
+                model: args.model,
+                tools: args.tools,
+                ...(args.integration ? { integration: args.integration } : {}),
+              }),
+            };
+          },
+        );
+
+        const result = await client.mutation<
+          MessageCreateMultipleMutation,
+          MessageCreateMultipleMutationVariables
+        >(MessageCreateMultipleDocument, {
+          input: {
+            ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
+            messages: createMessageArgs,
+          },
+        });
+
+        if (result.error) {
+          return {
+            error: { error: result.error.message, status: "FETCH_ERROR" },
+          };
+        }
+        if (!result.data) {
+          return {
+            error: {
+              error: "failed to create message",
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: { ...threadQuery.data, ...result.data } };
+      },
+    }),
+
+    createThreadWithSingleMessage: builder.mutation<
+      MessageCreateMultipleMutation & CreateThreadMutation,
+      {
+        content: string;
+        expertId: string;
+        model: string;
+        tools: (Tool["spec"] | FCloudTool)[];
+      }
+    >({
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        const state = api.getState() as RootState;
+        const apiKey = state.config.apiKey ?? "";
+        const port = state.config.lspPort;
+        // TODO: where is current workspace set?
+        const workspace =
+          state.teams.group?.id ?? state.config.currentWorkspaceName ?? "";
+
+        const appIdQuery = await fetchAppSearchableId(apiKey, port);
+
+        const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+        const client = createGraphqlClient(addressUrl, apiKey, api.signal);
+
+        const threadQueryArgs: FThreadInput = {
+          ft_fexp_id: args.expertId, // TODO: user selected
+          ft_title: "", // TODO: generate the title
+          located_fgroup_id: workspace,
+          owner_shared: false,
+          ft_app_searchable: appIdQuery.data?.app_searchable_id,
+        };
+        const threadQuery = await client.mutation<
+          CreateThreadMutation,
+          CreateThreadMutationVariables
+        >(CreateThreadDocument, { input: threadQueryArgs });
+
+        if (threadQuery.error) {
+          // return thunkAPI.rejectWithValue({
+          //   message: threadQuery.error.message,
+          // });
+          return {
+            error: { error: threadQuery.error.message, status: "FETCH_ERROR" },
+          };
+        }
+
+        if (!threadQuery.data) {
+          // return thunkAPI.rejectWithValue({
+          //   message: "couldn't create flexus thread id",
+          // });
+          return {
+            error: {
+              error: "couldn't create flexus thread",
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        if (state.threadMessages.ft_id === null) {
+          api.dispatch(setThreadFtId(threadQuery.data.thread_create.ft_id));
+        }
+
+        // Note: ftm_num, ftm_alt, and ftm_prev_alt are also hard coded for tracking waiting state
+        const createMessageArgs: FThreadMessageInput = {
+          ftm_app_specific: JSON.stringify(
+            appIdQuery.data?.app_searchable_id ?? "",
+          ),
+          ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
+          ftm_alt: 100,
+          ftm_num: 1,
+          ftm_call_id: "",
+          ftm_prev_alt: 100,
+          ftm_role: "user",
+          ftm_content: JSON.stringify(args.content),
+          ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
+          ftm_tool_calls: "null", // optional
+          ftm_usage: "null", // optional
+          ftm_user_preferences: JSON.stringify({
+            model: args.model,
+            tools: args.tools,
+          }),
+        };
+
+        const result = await client.mutation<
+          MessageCreateMultipleMutation,
+          MessageCreateMultipleMutationVariables
+        >(MessageCreateMultipleDocument, {
+          input: {
+            ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
+            messages: [createMessageArgs],
+          },
+        });
+
+        if (result.error) {
+          // return thunkAPI.rejectWithValue({ message: result.error.message });
+          return {
+            error: { error: result.error.message, status: "FETCH_ERROR" },
+          };
+        }
+        if (!result.data) {
+          return {
+            error: {
+              error: "failed to create message",
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: { ...threadQuery.data, ...result.data } };
       },
     }),
   }),

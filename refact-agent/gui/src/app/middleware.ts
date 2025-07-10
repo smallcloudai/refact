@@ -34,8 +34,6 @@ import {
   threadMessagesSlice,
 } from "../features/ThreadMessages";
 import {
-  createThreadWithMessage,
-  createThreadWitMultipleMessages,
   graphqlQueriesAndMutations,
   rejectToolUsageAction,
   toolConfirmationThunk,
@@ -228,8 +226,12 @@ startListening({
     // TODO: thread or message error?
 
     if (
-      (createThreadWitMultipleMessages.rejected.match(action) ||
-        createThreadWithMessage.rejected.match(action) ||
+      (graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage.matchRejected(
+        action,
+      ) ||
+        graphqlQueriesAndMutations.endpoints.createThreadWitMultipleMessages.matchRejected(
+          action,
+        ) ||
         graphqlQueriesAndMutations.endpoints.sendMessages.matchRejected(
           action,
         )) &&
@@ -285,8 +287,10 @@ startListening({
 startListening({
   matcher: isAnyOf(
     graphqlQueriesAndMutations.endpoints.sendMessages.matchFulfilled,
-    createThreadWithMessage.fulfilled,
-    createThreadWitMultipleMessages.fulfilled,
+    graphqlQueriesAndMutations.endpoints.createThreadWitMultipleMessages
+      .matchFulfilled,
+    graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage
+      .matchFulfilled,
   ),
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
@@ -299,12 +303,16 @@ startListening({
     ) {
       listenerApi.dispatch(resetAttachedImagesSlice());
     } else if (
-      createThreadWithMessage.fulfilled.match(action) &&
+      graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage.matchFulfilled(
+        action,
+      ) &&
       action.payload.thread_create.ft_id === state.threadMessages.ft_id
     ) {
       listenerApi.dispatch(resetAttachedImagesSlice());
     } else if (
-      createThreadWitMultipleMessages.fulfilled.match(action) &&
+      graphqlQueriesAndMutations.endpoints.createThreadWitMultipleMessages.matchFulfilled(
+        action,
+      ) &&
       action.payload.thread_create.ft_id !== state.threadMessages.ft_id
     ) {
       listenerApi.dispatch(resetAttachedImagesSlice());
@@ -341,9 +349,11 @@ startListening({
 
 // An integration chat was started.
 startListening({
-  actionCreator: createThreadWitMultipleMessages.fulfilled,
+  matcher:
+    graphqlQueriesAndMutations.endpoints.createThreadWitMultipleMessages
+      .matchFulfilled,
   effect: (action, listenerApi) => {
-    if (action.meta.arg.integration) {
+    if (action.meta.arg.originalArgs.integration) {
       listenerApi.dispatch(integrationsApi.util.resetApiState());
       listenerApi.dispatch(clearError());
       listenerApi.dispatch(

@@ -11,7 +11,6 @@ import {
 } from "./makeMessageTrie";
 import { pagesSlice } from "../Pages/pagesSlice";
 import {
-  createThreadWithMessage,
   graphqlQueriesAndMutations,
   pauseThreadThunk,
 } from "../../services/graphql/graphqlThunks";
@@ -475,18 +474,27 @@ export const threadMessagesSlice = createSlice({
       }
     });
 
-    builder.addCase(createThreadWithMessage.pending, (state) => {
-      state.waitingBranches.push(100);
-    });
-    builder.addCase(createThreadWithMessage.rejected, (state) => {
-      state.waitingBranches = state.waitingBranches.filter((n) => n !== 100);
-    });
-
     builder.addCase(pauseThreadThunk.fulfilled, (state, action) => {
       if (action.payload.thread_patch.ft_id !== state.ft_id) return state;
       state.waitingBranches = [];
       state.streamingBranches = [];
     });
+
+    builder.addMatcher(
+      graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage
+        .matchRejected,
+      (state) => {
+        state.waitingBranches = state.waitingBranches.filter((n) => n !== 100);
+      },
+    );
+
+    builder.addMatcher(
+      graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage
+        .matchPending,
+      (state) => {
+        state.waitingBranches.push(100);
+      },
+    );
 
     builder.addMatcher(
       graphqlQueriesAndMutations.endpoints.sendMessages.matchPending,
