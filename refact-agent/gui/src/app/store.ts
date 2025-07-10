@@ -52,7 +52,6 @@ import {
   expertsSlice,
   expertsAndModelsMiddleWare,
 } from "../features/ExpertsAndModels";
-import { toolsSlice } from "../features/Tools";
 import { graphqlQueriesAndMutations } from "../services/graphql/graphqlThunks";
 import { groupsSlice } from "../features/Groups";
 import { connectionStatusSlice } from "../features/ConnectionStatus";
@@ -110,7 +109,6 @@ const rootReducer = combineSlices(
   threadListSlice,
   threadMessagesSlice,
   expertsSlice,
-  toolsSlice,
   groupsSlice,
   connectionStatusSlice,
 );

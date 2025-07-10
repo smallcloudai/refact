@@ -31,3 +31,4 @@ export * from "./useCheckpoints";
 export * from "./useBasicStuffQuery";
 export * from "./useSendMessages";
 export * from "./useIdForThread";
+export * from "./useToolsForGroup";

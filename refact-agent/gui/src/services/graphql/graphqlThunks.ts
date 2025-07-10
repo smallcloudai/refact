@@ -346,38 +346,6 @@ export const pauseThreadThunk = createAsyncThunk<
   return thunkAPI.fulfillWithValue(result.data);
 });
 
-// Note: these could be moved into the slice https://redux-toolkit.js.org/api/createslice#createasyncthunk
-// TODO: move to queries and mutations api
-export const getToolsForGroupThunk = createAsyncThunk<
-  ToolsForGroupQuery,
-  ToolsForGroupQueryVariables,
-  {
-    dispatch: AppDispatch;
-    state: RootState;
-    rejectValue: { message: string; args: ToolsForGroupQueryVariables };
-  }
->("flexus/tools", async (args, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const apiKey = state.config.apiKey ?? "";
-  const addressUrl = state.config.addressURL ?? "https://app.refact.ai";
-
-  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
-
-  const result = await client.query<
-    ToolsForGroupQuery,
-    ToolsForGroupQueryVariables
-  >(ToolsForGroupDocument, args);
-
-  if (result.error) {
-    return thunkAPI.rejectWithValue({ message: result.error.message, args });
-  }
-  if (!result.data) {
-    return thunkAPI.rejectWithValue({ message: "erro fetching tools", args });
-  }
-
-  return thunkAPI.fulfillWithValue(result.data);
-});
-
 // TODO: move to queries and mutations api
 export const toolConfirmationThunk = createAsyncThunk<
   ThreadConfirmationResponseMutation,
@@ -845,6 +813,45 @@ export const graphqlQueriesAndMutations = createApi({
               error: `failed to models for expert ${args.fexp_id}`,
               status: "CUSTOM_ERROR",
             },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+
+    toolsForWorkspace: builder.query<
+      ToolsForGroupQuery,
+      ToolsForGroupQueryVariables
+    >({
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        const state = api.getState() as RootState;
+        const apiKey = state.config.apiKey ?? "";
+        const addressUrl = state.config.addressURL ?? "https://app.refact.ai";
+
+        const client = createGraphqlClient(addressUrl, apiKey, api.signal);
+
+        const result = await client.query<
+          ToolsForGroupQuery,
+          ToolsForGroupQueryVariables
+        >(ToolsForGroupDocument, args);
+
+        if (result.error) {
+          // return thunkAPI.rejectWithValue({
+          //   message: result.error.message,
+          //   args,
+          // });
+          return {
+            error: { error: result.error.message, status: "FETCH_ERROR" },
+          };
+        }
+        if (!result.data) {
+          // return thunkAPI.rejectWithValue({
+          //   message: "erro fetching tools",
+          //   args,
+          // });
+          return {
+            error: { error: "no data in tool request", status: "CUSTOM_ERROR" },
           };
         }
 
