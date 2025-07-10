@@ -858,5 +858,39 @@ export const graphqlQueriesAndMutations = createApi({
         return { data: result.data };
       },
     }),
+
+    deleteThread: builder.mutation<
+      DeleteThreadMutation,
+      DeleteThreadMutationVariables
+    >({
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        const state = api.getState() as RootState;
+        const apiKey = state.config.apiKey ?? "";
+        const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+        const client = createGraphqlClient(addressUrl, apiKey, api.signal);
+        const result = await client.mutation<
+          DeleteThreadMutation,
+          DeleteThreadMutationVariables
+        >(DeleteThreadDocument, args);
+        if (result.error) {
+          return {
+            error: {
+              error: result.error.message,
+              status: "FETCH_ERROR",
+            },
+          };
+        }
+        if (!result.data) {
+          return {
+            error: {
+              error: "no response data from thread deletion",
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+        return { data: result.data };
+      },
+    }),
   }),
 });
