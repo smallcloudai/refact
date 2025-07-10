@@ -20,7 +20,7 @@ export function useSmartLinks() {
   const dispatch = useAppDispatch();
   // TODO: find the correct expert, don't use last used
   const { selectedExpert } = useExpertsAndModels();
-  const { selectedModelOrDefault } = useModelsForExpert();
+  const { selectedModel } = useModelsForExpert();
   const [getTools, _] = useGetToolsLazyQuery();
 
   const [createThreadWitMultipleMessages, result] =
@@ -49,7 +49,7 @@ export function useSmartLinks() {
       void createThreadWitMultipleMessages({
         messages,
         expertId: selectedExpert ?? "",
-        model: selectedModelOrDefault ?? "",
+        model: selectedModel ?? "",
         tools: tools,
         integration: {
           name: integrationName,
@@ -63,7 +63,7 @@ export function useSmartLinks() {
       dispatch,
       getTools,
       selectedExpert,
-      selectedModelOrDefault,
+      selectedModel,
     ],
   );
 

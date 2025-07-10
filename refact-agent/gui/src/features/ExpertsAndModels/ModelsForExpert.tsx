@@ -6,7 +6,7 @@ import { useModelsForExpert } from "./useModelsForExpert";
 export const ModelsForExpert: React.FC<{ disabled?: boolean }> = ({
   disabled,
 }) => {
-  const { modelsLoading, selectedModelOrDefault, selectModel, options } =
+  const { modelsLoading, selectedModel, selectModel, options } =
     useModelsForExpert();
   return (
     <Skeleton loading={modelsLoading}>
@@ -14,7 +14,7 @@ export const ModelsForExpert: React.FC<{ disabled?: boolean }> = ({
         disabled={disabled}
         placeholder="Select Model"
         title="Models For Expert"
-        value={selectedModelOrDefault}
+        value={selectedModel ?? undefined}
         options={options}
         onChange={selectModel}
       />

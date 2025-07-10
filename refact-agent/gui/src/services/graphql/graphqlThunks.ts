@@ -346,77 +346,6 @@ export const pauseThreadThunk = createAsyncThunk<
   return thunkAPI.fulfillWithValue(result.data);
 });
 
-// TODO: move to queries and mutations api
-export const getExpertsThunk = createAsyncThunk<
-  ExpertsForGroupQuery,
-  ExpertsForGroupQueryVariables,
-  {
-    dispatch: AppDispatch;
-    state: RootState;
-    rejectValue: { message: string; args: ExpertsForGroupQueryVariables };
-  }
->("flexus/getExperts", async (args, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const apiKey = state.config.apiKey ?? "";
-
-  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
-
-  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
-
-  const result = await client.query<
-    ExpertsForGroupQuery,
-    ExpertsForGroupQueryVariables
-  >(ExpertsForGroupDocument, args);
-
-  if (result.error) {
-    return thunkAPI.rejectWithValue({ message: result.error.message, args });
-  }
-  if (!result.data) {
-    return thunkAPI.rejectWithValue({
-      message: "failed to get expert data",
-      args,
-    });
-  }
-
-  return thunkAPI.fulfillWithValue(result.data);
-});
-
-// TODO: move to queries and mutations api
-export const getModelsForExpertThunk = createAsyncThunk<
-  ModelsForExpertQuery,
-  ModelsForExpertQueryVariables,
-  {
-    dispatch: AppDispatch;
-    state: RootState;
-    rejectValue: { message: string; args: ModelsForExpertQueryVariables };
-  }
->("flexus/modelsForExpert", async (args, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const apiKey = state.config.apiKey ?? "";
-
-  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
-
-  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
-
-  const result = await client.query<
-    ModelsForExpertQuery,
-    ModelsForExpertQueryVariables
-  >(ModelsForExpertDocument, args);
-
-  if (result.error) {
-    return thunkAPI.rejectWithValue({ message: result.error.message, args });
-  }
-
-  if (!result.data) {
-    return thunkAPI.rejectWithValue({
-      message: "error get models for expert",
-      args,
-    });
-  }
-
-  return thunkAPI.fulfillWithValue(result.data);
-});
-
 // Note: these could be moved into the slice https://redux-toolkit.js.org/api/createslice#createasyncthunk
 // TODO: move to queries and mutations api
 export const getToolsForGroupThunk = createAsyncThunk<
@@ -851,6 +780,75 @@ export const graphqlQueriesAndMutations = createApi({
         }
 
         return { data: { ...threadQuery.data, ...result.data } };
+      },
+    }),
+
+    experts: builder.query<ExpertsForGroupQuery, ExpertsForGroupQueryVariables>(
+      {
+        async queryFn(args, api, _extraOptions, _baseQuery) {
+          const state = api.getState() as RootState;
+          const apiKey = state.config.apiKey ?? "";
+
+          const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+          const client = createGraphqlClient(addressUrl, apiKey, api.signal);
+
+          const result = await client.query<
+            ExpertsForGroupQuery,
+            ExpertsForGroupQueryVariables
+          >(ExpertsForGroupDocument, args);
+
+          if (result.error) {
+            return {
+              error: { error: result.error.message, status: "FETCH_ERROR" },
+            };
+          }
+          if (!result.data) {
+            return {
+              error: {
+                error: "failed to get expert data",
+                status: "CUSTOM_ERROR",
+              },
+            };
+          }
+
+          return { data: result.data };
+        },
+      },
+    ),
+    modelsForExpert: builder.query<
+      ModelsForExpertQuery,
+      ModelsForExpertQueryVariables
+    >({
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        const state = api.getState() as RootState;
+        const apiKey = state.config.apiKey ?? "";
+
+        const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+        const client = createGraphqlClient(addressUrl, apiKey, api.signal);
+
+        const result = await client.query<
+          ModelsForExpertQuery,
+          ModelsForExpertQueryVariables
+        >(ModelsForExpertDocument, args);
+
+        if (result.error) {
+          return {
+            error: { status: "FETCH_ERROR", error: result.error.message },
+          };
+        }
+
+        if (!result.data) {
+          return {
+            error: {
+              error: `failed to models for expert ${args.fexp_id}`,
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: result.data };
       },
     }),
   }),
