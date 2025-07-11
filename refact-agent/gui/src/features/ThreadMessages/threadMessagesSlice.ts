@@ -10,11 +10,7 @@ import {
   getAncestorsForNode,
 } from "./makeMessageTrie";
 import { pagesSlice } from "../Pages/pagesSlice";
-import {
-  createMessage,
-  createThreadWithMessage,
-  pauseThreadThunk,
-} from "../../services/graphql/graphqlThunks";
+import { graphqlQueriesAndMutations } from "../../services/graphql";
 import { isToolMessage } from "../../events";
 import { isDiffMessage, isToolCall, ToolMessage } from "../../services/refact";
 import {
@@ -293,6 +289,7 @@ export const threadMessagesSlice = createSlice({
       selectMessagesValues,
       (messages) => messages.length === 0,
     ),
+
     selectAppSpecific: createSelector(selectMessagesValues, (messages) => {
       if (messages.length === 0) return "";
       if (typeof messages[0].ft_app_specific === "string") {
@@ -302,20 +299,15 @@ export const threadMessagesSlice = createSlice({
     }),
 
     // TODO: refactor this
-    selectMessagesFromEndNode: createSelector(
-      (state: InitialState) => {
-        const { endNumber, endAlt, endPrevAlt, messages } = state;
-        return { endNumber, endAlt, endPrevAlt, messages };
-      },
-      ({ endAlt, endNumber, endPrevAlt, messages }) => {
-        return getAncestorsForNode(
-          endNumber,
-          endAlt,
-          endPrevAlt,
-          Object.values(messages),
-        );
-      },
-    ),
+    selectMessagesFromEndNode: (state) => {
+      const { endNumber, endAlt, endPrevAlt, messages } = state;
+      return getAncestorsForNode(
+        endNumber,
+        endAlt,
+        endPrevAlt,
+        Object.values(messages),
+      );
+    },
 
     selectBranchLength: (state) => state.endNumber,
     selectTotalMessagesInThread: createSelector(
@@ -475,31 +467,50 @@ export const threadMessagesSlice = createSlice({
       }
     });
 
-    builder.addCase(createThreadWithMessage.pending, (state) => {
-      state.waitingBranches.push(100);
-    });
-    builder.addCase(createThreadWithMessage.rejected, (state) => {
-      state.waitingBranches = state.waitingBranches.filter((n) => n !== 100);
-    });
+    builder.addMatcher(
+      graphqlQueriesAndMutations.endpoints.pauseThread.matchFulfilled,
+      (state, action) => {
+        if (action.payload.thread_patch.ft_id !== state.ft_id) return state;
+        state.waitingBranches = [];
+        state.streamingBranches = [];
+      },
+    );
 
-    builder.addCase(createMessage.pending, (state, action) => {
-      const { input } = action.meta.arg;
-      if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
-      state.waitingBranches.push(input.messages[0].ftm_alt);
-    });
-    builder.addCase(createMessage.rejected, (state, action) => {
-      const { input } = action.meta.arg;
-      if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
-      state.waitingBranches = state.waitingBranches.filter(
-        (n) => n !== input.messages[0].ftm_alt,
-      );
-    });
+    builder.addMatcher(
+      graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage
+        .matchRejected,
+      (state) => {
+        state.waitingBranches = state.waitingBranches.filter((n) => n !== 100);
+      },
+    );
 
-    builder.addCase(pauseThreadThunk.fulfilled, (state, action) => {
-      if (action.payload.thread_patch.ft_id !== state.ft_id) return state;
-      state.waitingBranches = [];
-      state.streamingBranches = [];
-    });
+    builder.addMatcher(
+      graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage
+        .matchPending,
+      (state) => {
+        state.waitingBranches.push(100);
+      },
+    );
+
+    builder.addMatcher(
+      graphqlQueriesAndMutations.endpoints.sendMessages.matchPending,
+      (state, action) => {
+        const { input } = action.meta.arg.originalArgs;
+        if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
+        state.waitingBranches.push(input.messages[0].ftm_alt);
+      },
+    );
+
+    builder.addMatcher(
+      graphqlQueriesAndMutations.endpoints.sendMessages.matchRejected,
+      (state, action) => {
+        const { input } = action.meta.arg.originalArgs;
+        if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
+        state.waitingBranches = state.waitingBranches.filter(
+          (n) => n !== input.messages[0].ftm_alt,
+        );
+      },
+    );
   },
 });
 

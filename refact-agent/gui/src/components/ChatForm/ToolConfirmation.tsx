@@ -26,26 +26,27 @@ import {
   ToolConfirmationRequest,
 } from "../../features/ThreadMessages";
 import {
+  graphqlQueriesAndMutations,
   rejectToolUsageAction,
-  toolConfirmationThunk,
-} from "../../services/graphql/graphqlThunks";
+} from "../../services/graphql";
 import { parseOrElse } from "../../utils/parseOrElse";
 
 function useToolConfirmation() {
   const dispatch = useAppDispatch();
   const threadMeta = useAppSelector(selectThreadMeta);
   const threadEnd = useAppSelector(selectThreadEnd);
+  const [toolConfirmation, _toolConfirmationResult] =
+    graphqlQueriesAndMutations.useToolConfirmationMutation();
 
   const confirmToolUsage = useCallback(
     (ids: string[]) => {
       if (!threadMeta?.ft_id) return;
-      const action = toolConfirmationThunk({
+      void toolConfirmation({
         ft_id: threadMeta.ft_id,
         confirmation_response: JSON.stringify(ids),
       });
-      void dispatch(action);
     },
-    [dispatch, threadMeta?.ft_id],
+    [threadMeta?.ft_id, toolConfirmation],
   );
 
   const rejectToolUsage = useCallback(
@@ -72,13 +73,12 @@ function useToolConfirmation() {
 
   const allowAll = useCallback(() => {
     if (!threadMeta?.ft_id) return;
-    const action = toolConfirmationThunk({
+
+    void toolConfirmation({
       ft_id: threadMeta.ft_id,
       confirmation_response: JSON.stringify(["*"]),
     });
-
-    void dispatch(action);
-  }, [dispatch, threadMeta?.ft_id]);
+  }, [threadMeta?.ft_id, toolConfirmation]);
 
   return { confirmToolUsage, rejectToolUsage, allowAll };
 }

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import { LspChatMessage } from "../services/refact/chat";
 import { formatMessagesForChat } from "../features/Chat/Thread/utils";
@@ -7,22 +7,25 @@ import { clearInformation } from "../features/Errors/informationSlice";
 
 import { useGoToLink } from "./useGoToLink";
 // import { newIntegrationChat } from "../features/Chat/Thread/actions";
-import { createThreadWitMultipleMessages } from "../services/graphql/graphqlThunks";
+// import { createThreadWitMultipleMessages } from "../services/graphql/graphqlThunks";
 import {
   useExpertsAndModels,
   useModelsForExpert,
 } from "../features/ExpertsAndModels";
 import { useGetToolsLazyQuery } from "./useGetToolGroupsQuery";
 import { Tool } from "../services/refact";
+import { graphqlQueriesAndMutations } from "../services/graphql";
 
 export function useSmartLinks() {
   const dispatch = useAppDispatch();
   // TODO: find the correct expert, don't use last used
   const { selectedExpert } = useExpertsAndModels();
-  const { selectedModelOrDefault } = useModelsForExpert();
+  const { selectedModel } = useModelsForExpert();
   const [getTools, _] = useGetToolsLazyQuery();
 
-  const [loading, setLoading] = useState<boolean>(false);
+  const [createThreadWitMultipleMessages, result] =
+    graphqlQueriesAndMutations.useCreateThreadWitMultipleMessagesMutation();
+
   const { handleGoTo } = useGoToLink();
   const handleSmartLink = useCallback(
     async (
@@ -43,10 +46,10 @@ export function useSmartLinks() {
       const messages = formatMessagesForChat(sl_chat);
       dispatch(clearInformation());
       // TODO: when in an integration, we should enable all patch like tool requests
-      const action = createThreadWitMultipleMessages({
+      void createThreadWitMultipleMessages({
         messages,
         expertId: selectedExpert ?? "",
-        model: selectedModelOrDefault ?? "",
+        model: selectedModel ?? "",
         tools: tools,
         integration: {
           name: integrationName,
@@ -54,16 +57,19 @@ export function useSmartLinks() {
           project: integrationProject,
         },
       });
-
-      // TODO: when resolved, navigate to the thread
-      void dispatch(action).finally(() => setLoading(false));
     },
-    [dispatch, getTools, selectedExpert, selectedModelOrDefault],
+    [
+      createThreadWitMultipleMessages,
+      dispatch,
+      getTools,
+      selectedExpert,
+      selectedModel,
+    ],
   );
 
   return {
     handleSmartLink,
     handleGoTo,
-    loading,
+    loading: result.isLoading,
   };
 }

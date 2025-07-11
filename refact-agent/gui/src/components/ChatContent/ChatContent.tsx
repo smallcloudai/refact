@@ -23,11 +23,10 @@ import { LogoAnimation } from "../LogoAnimation/LogoAnimation.tsx";
 import { selectThreadMessageTrie } from "../../features/ThreadMessages";
 import { MessageNode } from "../MessageNode/MessageNode.tsx";
 import { isEmptyNode } from "../../features/ThreadMessages/makeMessageTrie.ts";
-import { pauseThreadThunk } from "../../services/graphql/graphqlThunks.ts";
+import { graphqlQueriesAndMutations } from "../../services/graphql";
 import { popBackTo } from "../../features/Pages/pagesSlice.ts";
 
 const usePauseThread = () => {
-  const dispatch = useAppDispatch();
   const isThreadRunning = useAppSelector(selectIsThreadRunning);
   const threadId = useAppSelector(selectThreadId);
   const toolConfirmationRequests = useAppSelector(
@@ -35,25 +34,49 @@ const usePauseThread = () => {
     { devModeChecks: { stabilityCheck: "never" } },
   );
 
+  const [pauseThread, pauseThreadResponse] =
+    graphqlQueriesAndMutations.usePauseThreadMutation();
+
   const shouldShowStopButton = useMemo(() => {
     if (!threadId) return false;
     if (toolConfirmationRequests.length > 0) return false;
+    if (pauseThreadResponse.isLoading) return true;
     // if (pauseReasonsWithPause.pause) return false;
     return isThreadRunning;
-  }, [threadId, toolConfirmationRequests.length, isThreadRunning]);
+  }, [
+    threadId,
+    toolConfirmationRequests.length,
+    pauseThreadResponse.isLoading,
+    isThreadRunning,
+  ]);
 
   const handlePause = useCallback(() => {
     if (!threadId) return;
-    void dispatch(pauseThreadThunk({ id: threadId }));
-  }, [dispatch, threadId]);
+    void pauseThread({ id: threadId });
+  }, [pauseThread, threadId]);
 
-  return { shouldShowStopButton, handlePause };
+  const loading = useMemo(() => {
+    if (pauseThreadResponse.originalArgs?.id !== threadId) return false;
+    return pauseThreadResponse.isLoading;
+  }, [
+    pauseThreadResponse.isLoading,
+    pauseThreadResponse.originalArgs?.id,
+    threadId,
+  ]);
+
+  return {
+    shouldShowStopButton,
+    handlePause,
+    loading,
+  };
 };
 
 export const ChatContent: React.FC = () => {
   const dispatch = useAppDispatch();
   // TODO: stays when creating a new chat :/
-  const threadMessageTrie = useAppSelector(selectThreadMessageTrie);
+  const threadMessageTrie = useAppSelector(selectThreadMessageTrie, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
   const isStreaming = useAppSelector(selectIsStreaming);
 
   const { shouldShow } = useUsageCounter();
@@ -65,7 +88,7 @@ export const ChatContent: React.FC = () => {
     { devModeChecks: { stabilityCheck: "never" } },
   );
 
-  const { shouldShowStopButton, handlePause } = usePauseThread();
+  const { shouldShowStopButton, handlePause, loading } = usePauseThread();
 
   const handleReturnToConfigurationClick = useCallback(() => {
     // console.log(`[DEBUG]: going back to configuration page`);
@@ -146,6 +169,7 @@ export const ChatContent: React.FC = () => {
                 color="red"
                 title="Pause thread"
                 onClick={handlePause}
+                loading={loading}
               >
                 Stop
               </Button>

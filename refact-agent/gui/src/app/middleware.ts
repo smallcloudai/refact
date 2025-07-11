@@ -34,12 +34,9 @@ import {
   threadMessagesSlice,
 } from "../features/ThreadMessages";
 import {
-  createMessage,
-  createThreadWithMessage,
-  createThreadWitMultipleMessages,
+  graphqlQueriesAndMutations,
   rejectToolUsageAction,
-  toolConfirmationThunk,
-} from "../services/graphql/graphqlThunks";
+} from "../services/graphql";
 import { push } from "../features/Pages/pagesSlice";
 
 const AUTH_ERROR_MESSAGE =
@@ -226,10 +223,17 @@ startListening({
     }
 
     // TODO: thread or message error?
+
     if (
-      (createThreadWitMultipleMessages.rejected.match(action) ||
-        createThreadWithMessage.rejected.match(action) ||
-        createMessage.rejected.match(action)) &&
+      (graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage.matchRejected(
+        action,
+      ) ||
+        graphqlQueriesAndMutations.endpoints.createThreadWitMultipleMessages.matchRejected(
+          action,
+        ) ||
+        graphqlQueriesAndMutations.endpoints.sendMessages.matchRejected(
+          action,
+        )) &&
       !action.meta.aborted &&
       typeof action.payload === "string"
     ) {
@@ -281,25 +285,33 @@ startListening({
 
 startListening({
   matcher: isAnyOf(
-    createMessage.fulfilled,
-    createThreadWithMessage.fulfilled,
-    createThreadWitMultipleMessages.fulfilled,
+    graphqlQueriesAndMutations.endpoints.sendMessages.matchFulfilled,
+    graphqlQueriesAndMutations.endpoints.createThreadWitMultipleMessages
+      .matchFulfilled,
+    graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage
+      .matchFulfilled,
   ),
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
     if (
-      createMessage.fulfilled.match(action) &&
-      action.meta.arg.input.ftm_belongs_to_ft_id ===
+      graphqlQueriesAndMutations.endpoints.sendMessages.matchFulfilled(
+        action,
+      ) &&
+      action.meta.arg.originalArgs.input.ftm_belongs_to_ft_id ===
         state.threadMessages.thread?.ft_id
     ) {
       listenerApi.dispatch(resetAttachedImagesSlice());
     } else if (
-      createThreadWithMessage.fulfilled.match(action) &&
+      graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage.matchFulfilled(
+        action,
+      ) &&
       action.payload.thread_create.ft_id === state.threadMessages.ft_id
     ) {
       listenerApi.dispatch(resetAttachedImagesSlice());
     } else if (
-      createThreadWitMultipleMessages.fulfilled.match(action) &&
+      graphqlQueriesAndMutations.endpoints.createThreadWitMultipleMessages.matchFulfilled(
+        action,
+      ) &&
       action.payload.thread_create.ft_id !== state.threadMessages.ft_id
     ) {
       listenerApi.dispatch(resetAttachedImagesSlice());
@@ -336,9 +348,11 @@ startListening({
 
 // An integration chat was started.
 startListening({
-  actionCreator: createThreadWitMultipleMessages.fulfilled,
+  matcher:
+    graphqlQueriesAndMutations.endpoints.createThreadWitMultipleMessages
+      .matchFulfilled,
   effect: (action, listenerApi) => {
-    if (action.meta.arg.integration) {
+    if (action.meta.arg.originalArgs.integration) {
       listenerApi.dispatch(integrationsApi.util.resetApiState());
       listenerApi.dispatch(clearError());
       listenerApi.dispatch(
@@ -366,10 +380,11 @@ startListening({
     if (!maybePendingToolCall) return;
 
     if (action.payload.accepted) {
-      const thunk = toolConfirmationThunk({
-        ft_id: action.payload.chatId,
-        confirmation_response: JSON.stringify([action.payload.toolCallId]),
-      });
+      const thunk =
+        graphqlQueriesAndMutations.endpoints.toolConfirmation.initiate({
+          ft_id: action.payload.chatId,
+          confirmation_response: JSON.stringify([action.payload.toolCallId]),
+        });
       void listenerApi.dispatch(thunk);
       return;
     }

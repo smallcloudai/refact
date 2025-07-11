@@ -1,28 +1,22 @@
 import React, { useCallback, useEffect } from "react";
-import {
-  Box,
-  Flex,
-  Text,
-  //  Spinner
-} from "@radix-ui/themes";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { useAppSelector, useAppDispatch } from "../../hooks";
 import {
-  selectThreadIsDeleting,
   selectThreadList,
   selectThreadListError,
   selectThreadListLoading,
   ThreadListItem,
 } from "./threadListSlice";
 import {
-  deleteThreadThunk,
+  graphqlQueriesAndMutations,
   threadsPageSub,
-} from "../../services/graphql/graphqlThunks";
+} from "../../services/graphql";
 import { selectActiveGroup } from "../../features/Teams/teamsSlice";
 import { ScrollArea } from "../../components/ScrollArea";
 import { ChatBubbleIcon } from "@radix-ui/react-icons";
 import { CloseButton } from "../../components/Buttons/Buttons";
 import { CardButton } from "../../components/Buttons";
-import { RootState } from "../../app/store";
+
 import { pagesSlice } from "../Pages/pagesSlice";
 
 function useThreadPageSub() {
@@ -36,13 +30,6 @@ function useThreadPageSub() {
   const onOpen = useCallback(
     (ft_id: string) => {
       dispatch(pagesSlice.actions.push({ name: "chat", ft_id }));
-    },
-    [dispatch],
-  );
-
-  const onDelete = useCallback(
-    (id: string) => {
-      void dispatch(deleteThreadThunk({ id }));
     },
     [dispatch],
   );
@@ -66,19 +53,12 @@ function useThreadPageSub() {
     error,
     threads,
     onOpen,
-    onDelete,
   };
 }
 
 export const ThreadList: React.FC = () => {
   // TODO: error and loading states
-  const {
-    error: _error,
-    loading: _loading,
-    threads,
-    onOpen,
-    onDelete,
-  } = useThreadPageSub();
+  const { threads, onOpen } = useThreadPageSub();
 
   return (
     <Box
@@ -103,7 +83,6 @@ export const ThreadList: React.FC = () => {
               key={thread.ft_id}
               thread={thread}
               onOpen={onOpen}
-              onDelete={onDelete}
             />
           ))}
           {/* {sortedHistory.length !== 0 ? (
@@ -132,25 +111,17 @@ export const ThreadList: React.FC = () => {
 type ThreadItemProps = {
   thread: ThreadListItem;
   onOpen: (id: string) => void;
-  onDelete: (id: string) => void;
 };
 
-const ThreadLustItem: React.FC<ThreadItemProps> = ({
-  thread,
-  onOpen,
-  onDelete,
-}) => {
+const ThreadLustItem: React.FC<ThreadItemProps> = ({ thread, onOpen }) => {
   // TODO: handel updating state
   // TODO: handle read state
   // TODO: change this to created at
 
   const dateCreated = new Date(thread.ft_created_ts);
   const dateTimeString = dateCreated.toLocaleString();
-  const checkIfDeleting = useCallback(
-    (state: RootState) => selectThreadIsDeleting(state, thread.ft_id),
-    [thread.ft_id],
-  );
-  const deleting = useAppSelector(checkIfDeleting);
+  const [deleteThread, deleteThreadRequest] =
+    graphqlQueriesAndMutations.useDeleteThreadMutation();
   return (
     <Box style={{ position: "relative", width: "100%" }}>
       <CardButton
@@ -214,12 +185,12 @@ const ThreadLustItem: React.FC<ThreadItemProps> = ({
         align="center"
       >
         <CloseButton
-          loading={deleting}
+          loading={deleteThreadRequest.isLoading}
           size="1"
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            onDelete(thread.ft_id);
+            void deleteThread({ id: thread.ft_id });
           }}
           iconSize={10}
           title="delete thread"
