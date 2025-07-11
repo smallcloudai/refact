@@ -20,16 +20,17 @@ export const coinBallanceSlice = createSlice({
         state.balance = action.payload.metering_balance;
       },
     );
-    builder.addMatcher(
-      threadMessagesSlice.actions.receiveThreadMessages.match,
-      (state, action) => {
-        if (!isUsage(action.payload.news_payload_thread_message.ftm_usage))
-          return state;
+    // TODO: this only tracks the coins used, so will be inaccurate when reloading a chat :/
+    //   builder.addMatcher(
+    //     threadMessagesSlice.actions.receiveThreadMessages.match,
+    //     (state, action) => {
+    //       if (!isUsage(action.payload.news_payload_thread_message.ftm_usage))
+    //         return state;
 
-        state.balance =
-          action.payload.news_payload_thread_message.ftm_usage.coins;
-      },
-    );
+    //       state.balance =
+    //         action.payload.news_payload_thread_message.ftm_usage.coins;
+    //     },
+    //   );
   },
 
   selectors: {
