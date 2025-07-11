@@ -158,7 +158,7 @@ function processLines(
       <Text
         size="2"
         as="div"
-        key={key}
+        key={`text-${key}`}
         wrap="balance"
         className={styles.break_word}
       >
@@ -172,7 +172,7 @@ function processLines(
 
   const code = [head].concat(tail.slice(0, endIndex)).join("\n");
   const processedLines = processedLinesMemo.concat(
-    <Markdown key={key}>{code}</Markdown>,
+    <Markdown key={`markdown-${key}`}>{code}</Markdown>,
   );
 
   const next = tail.slice(endIndex);
@@ -200,12 +200,18 @@ function processUserInputArray(
 
   if ("type" in head && head.type === "text") {
     const processedLines = processLines(head.text.split("\n"));
-    return processUserInputArray(tail, memo.concat(processedLines));
+    const elem = (
+      <Box key={`multimodal-text-${memo.length}`}>{processedLines}</Box>
+    );
+    return processUserInputArray(tail, memo.concat(elem));
   }
 
   if ("m_type" in head && head.m_type === "text") {
     const processedLines = processLines(head.m_content.split("\n"));
-    return processUserInputArray(tail, memo.concat(processedLines));
+    const elem = (
+      <Box key={`multimodal-text-${memo.length}`}>{processedLines}</Box>
+    );
+    return processUserInputArray(tail, memo.concat(elem));
   }
 
   const isImage = isUserContentImage(head);
