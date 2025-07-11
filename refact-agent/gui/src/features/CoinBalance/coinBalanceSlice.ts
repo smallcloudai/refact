@@ -1,7 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { smallCloudApi } from "../../services/smallcloud";
-import { threadMessagesSlice } from "../ThreadMessages";
-import { isUsage } from "../../services/refact";
 
 type CoinBalance = {
   balance: number;
