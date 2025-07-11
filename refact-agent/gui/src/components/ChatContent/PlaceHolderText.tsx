@@ -2,7 +2,12 @@ import React, { useCallback } from "react";
 
 import { Flex, Text, Link } from "@radix-ui/themes";
 
-import { useConfig, useAppSelector, useEventsBusForIDE } from "../../hooks";
+import {
+  useConfig,
+  useAppSelector,
+  useEventsBusForIDE,
+  useIdForThread,
+} from "../../hooks";
 
 import { currentTipOfTheDay } from "../../features/TipOfTheDay";
 
@@ -21,6 +26,7 @@ export const PlaceHolderText: React.FC = () => {
   const hasVecDB = config.features?.vecdb ?? false;
   const hasAst = config.features?.ast ?? false;
   const { openSettings } = useEventsBusForIDE();
+  const chatId = useIdForThread();
 
   const handleOpenSettings = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -71,6 +77,8 @@ export const PlaceHolderText: React.FC = () => {
       </Flex>
     );
   }
+
+  if (chatId) return null;
 
   return (
     <Flex direction="column" gap="4">
