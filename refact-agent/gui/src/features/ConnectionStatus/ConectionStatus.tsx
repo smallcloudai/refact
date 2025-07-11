@@ -2,7 +2,7 @@ import React from "react";
 import { useAppSelector } from "../../hooks";
 import { selectConfig } from "../Config/configSlice";
 import { selectConnections } from "./connectionStatusSlice";
-import { HoverCard, Table, Box, Text } from "@radix-ui/themes";
+import { HoverCard, Table, Text, Flex } from "@radix-ui/themes";
 
 export const ConnectionStatus: React.FC = () => {
   const config = useAppSelector(selectConfig);
@@ -12,8 +12,8 @@ export const ConnectionStatus: React.FC = () => {
   if (config.host !== "web" && config.features?.connections !== true) return;
 
   return (
-    <Box>
-      <HoverCard.Root>
+    <Flex justify="end">
+      <HoverCard.Root open={connections.length === 0 ? false : undefined}>
         <HoverCard.Trigger>
           <Text size="1">sockets: {connections.length}</Text>
         </HoverCard.Trigger>
@@ -40,6 +40,6 @@ export const ConnectionStatus: React.FC = () => {
           </Table.Root>
         </HoverCard.Content>
       </HoverCard.Root>
-    </Box>
+    </Flex>
   );
 };

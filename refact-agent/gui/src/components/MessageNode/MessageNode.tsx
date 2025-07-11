@@ -16,7 +16,6 @@ import { GroupedDiffs } from "../ChatContent/DiffContent";
 
 import { FTMMessageNode as FTMessageNode } from "../../features/ThreadMessages/makeMessageTrie";
 import {
-  selectIsMessageNearEnd,
   selectIsStreaming,
   selectIsWaiting,
   selectMessageIsLastOfType,

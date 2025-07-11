@@ -38,6 +38,7 @@ import { useWindowDimensions } from "../../hooks/useWindowDimensions";
 // import styles from "./Toolbar.module.css";
 import { resetThread } from "../../features/ThreadMessages";
 import { useActiveTeamsGroup } from "../../hooks/useActiveTeamsGroup";
+import { ConnectionStatus } from "../../features/ConnectionStatus/ConectionStatus";
 
 export type DashboardTab = {
   type: "dashboard";
@@ -334,6 +335,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           <Text>New chat</Text>
         </Button>
       )}
+
       <Dropdown handleNavigation={handleNavigation} />
     </Flex>
   );

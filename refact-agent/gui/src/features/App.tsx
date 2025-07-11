@@ -173,6 +173,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         <UserSurvey />
         {page.name === "login page" && <LoginPage />}
         {activeTab && <Toolbar activeTab={activeTab} />}
+        <ConnectionStatus />
         {page.name === "welcome" && <Welcome onPressNext={startTour} />}
         {page.name === "tour end" && <TourEnd />}
         {page.name === "history" && (
@@ -227,7 +228,6 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             chatId={page.chatId}
           />
         )}
-        <ConnectionStatus />
       </PageWrapper>
       {page.name !== "welcome" && <Tour page={pages[pages.length - 1].name} />}
     </Flex>
