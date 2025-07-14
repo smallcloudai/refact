@@ -3,6 +3,7 @@ import uuid
 import logging
 import asyncio
 import pandas as pd
+from sqlalchemy import text
 
 from datetime import datetime
 
@@ -255,10 +256,10 @@ class RefactDatabase:
             asyncio.shield(self._session.shutdown())
 
     async def _create_keyspace_if_not_exists(self, keyspace: str) -> None:
-        await self._session.execute(f"""
+        await self._session.execute(text("""
             CREATE KEYSPACE IF NOT EXISTS {keyspace}
             WITH replication = {{ 'class': 'SimpleStrategy', 'replication_factor': '2' }}
-        """)
+        """))
 
     @property
     def session(self) -> Scylla:
