@@ -231,6 +231,10 @@ export const threadMessagesSlice = createSlice({
       if (action.payload.news_action === "UPDATE") {
         state.messages[action.payload.news_payload_id] =
           action.payload.news_payload_thread_message;
+
+        state.waitingBranches = state.waitingBranches.filter(
+          (n) => n !== action.payload.news_payload_thread_message.ftm_alt,
+        );
       }
 
       if (action.payload.news_action === "INSERT") {
