@@ -1,14 +1,11 @@
 import { Box, Button, Flex, Heading } from "@radix-ui/themes";
 import { ScrollArea } from "../ScrollArea";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
-import {
-  FThreadMessageOutput,
-  FThreadOutput,
-} from "../../../generated/documents";
+import { MessagesSubscriptionSubscription } from "../../../generated/documents";
 
 type ChatRawJSONProps = {
-  thread: FThreadOutput;
-  messages: FThreadMessageOutput;
+  thread: MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread"];
+  messages: MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"][];
   copyHandler: () => void;
 };
 
@@ -39,7 +36,7 @@ export const ChatRawJSON = ({
         <Heading as="h3" align="center" mb="2">
           Thread History
         </Heading>
-        {thread.ft_title && (
+        {thread?.ft_title && (
           <Heading as="h6" size="2" align="center" mb="4">
             {thread.ft_title}
           </Heading>

@@ -36,6 +36,7 @@ const MockedStore: React.FC<{
         ft_need_assistant: -1,
         ft_fexp_id: "id:ask:1.0",
         located_fgroup_id: "0000000",
+        ft_title: "test",
       },
       ft_id: "foo",
       streamingBranches: [],
