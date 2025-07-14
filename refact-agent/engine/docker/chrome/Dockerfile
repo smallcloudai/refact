@@ -1,5 +1,16 @@
 FROM debian:bookworm
 
+# Create a non-root user for security
+RUN groupadd -r chromeuser && useradd -r -g chromeuser -s /bin/false chromeuser
+
+# Create a non-root user for security
+RUN groupadd -r chromeuser && useradd -r -g chromeuser -u 1001 chromeuser
+
+
+# Create a non-root user for security
+RUN groupadd -r chromeuser && useradd -r -g chromeuser -u 1001 chromeuser
+
+
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -26,4 +37,13 @@ COPY nginx.conf /etc/nginx/nginx.conf
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+
+# Switch to non-root user
+USER chromeuser
+
 ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+# Switch to non-root user
+USER chromeuser
+
+# Switch to non-root user
+USER chromeuser
