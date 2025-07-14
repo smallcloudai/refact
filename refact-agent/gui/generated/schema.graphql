@@ -48,6 +48,11 @@ type FAuditRecordOutput {
   audit_ts: Float!
 }
 
+type FBotInstallOutput {
+  marketable_name: String!
+  marketable_version: String!
+}
+
 type FCloudTool {
   ctool_confirmed_exists_ts: Float
   ctool_description: String!
@@ -151,6 +156,11 @@ type FExternalDataSourceSubs {
   news_payload_id: String!
 }
 
+input FKanbanTaskInput {
+  state: String!
+  title: String!
+}
+
 input FKnowledgeItemInput {
   iknow_is_core: Boolean! = false
   iknow_memory: String!
@@ -192,6 +202,14 @@ type FKnowledgeItemSubs {
   news_pubsub: String!
 }
 
+input FMarketplaceExpertInput {
+  fexp_allow_tools: String!
+  fexp_block_tools: String!
+  fexp_name: String!
+  fexp_python_kernel: String!
+  fexp_system_prompt: String!
+}
+
 type FMassInvitationOutput {
   fuser_id: String!
   result: String!
@@ -220,11 +238,34 @@ type FPermissionSubs {
 
 input FPersonaInput {
   located_fgroup_id: String!
-  persona_expert1_fexp_name: String = null
-  persona_expert2_fexp_name: String = null
-  persona_module: String!
+  persona_discounts: String = null
+  persona_marketable_name: String!
+  persona_marketable_version: String!
   persona_name: String!
   persona_setup: String!
+}
+
+type FPersonaKanbanSubs {
+  news_action: String!
+  news_bucket: String!
+  news_payload_id: String!
+  news_payload_task: FPersonaKanbanTaskOutput
+}
+
+type FPersonaKanbanTaskOutput {
+  ktask_blocks_ktask_id: String
+  ktask_budget: Int!
+  ktask_details: JSON!
+  ktask_done_ts: Float!
+  ktask_failed_ts: Float!
+  ktask_id: String!
+  ktask_inbox_provenance: JSON!
+  ktask_inbox_ts: Float!
+  ktask_inprogress_ft_id: String!
+  ktask_inprogress_ts: Float!
+  ktask_title: String!
+  ktask_todo_ts: Float!
+  persona_id: String!
 }
 
 type FPersonaOutput {
@@ -232,10 +273,11 @@ type FPersonaOutput {
   owner_fuser_id: String!
   persona_archived_ts: Float!
   persona_created_ts: Float!
-  persona_expert1_fexp_name: String
-  persona_expert2_fexp_name: String
+  persona_discounts: JSON
+  persona_enabled: Boolean!
   persona_id: String!
-  persona_module: String!
+  persona_marketable_name: String!
+  persona_marketable_version: String!
   persona_name: String!
   persona_setup: JSON!
 }
@@ -243,9 +285,8 @@ type FPersonaOutput {
 input FPersonaPatch {
   located_fgroup_id: String = null
   persona_archived_ts: Float = null
-  persona_expert1_fexp_name: String = null
-  persona_expert2_fexp_name: String = null
-  persona_module: String = null
+  persona_enabled: Boolean = null
+  persona_marketable_version: String = null
   persona_name: String = null
   persona_setup: String = null
 }
@@ -295,11 +336,12 @@ input FThreadInput {
   ft_app_specific: String! = "null"
   ft_error: String! = "null"
   ft_fexp_id: String!
+  ft_persona_id: String = null
+  ft_subchat_dest_ft_id: String = null
   ft_title: String!
   ft_toolset: String! = "null"
   located_fgroup_id: String!
   owner_shared: Boolean!
-  parent_ft_id: String = null
 }
 
 input FThreadMessageInput {
@@ -369,13 +411,14 @@ type FThreadOutput {
   ft_need_assistant: Int!
   ft_need_tool_calls: Int!
   ft_need_user: Int!
+  ft_persona_id: String
+  ft_subchat_dest_ft_id: String
   ft_title: String!
   ft_toolset: JSON
   ft_updated_ts: Float!
   located_fgroup_id: String!
   owner_fuser_id: String!
   owner_shared: Boolean!
-  parent_ft_id: String
 }
 
 input FThreadPatch {
@@ -385,11 +428,11 @@ input FThreadPatch {
   ft_confirmation_request: String = null
   ft_confirmation_response: String = null
   ft_error: String = null
+  ft_subchat_dest_ft_id: String = null
   ft_title: String = null
   ft_toolset: String = null
   located_fgroup_id: String = null
   owner_shared: Boolean = null
-  parent_ft_id: String = null
 }
 
 type FThreadSubs {
@@ -462,6 +505,9 @@ scalar JSON
 type Mutation {
   api_key_delete(apikey_id: String!): Boolean!
   api_key_generate: FApiKeyOutput!
+  bot_activate(activation_type: String!, first_calls: String!, first_question: String!, localtools: String!, persona_id: String!, title: String!, who_is_asking: String!): FThreadOutput!
+  bot_arrange_kanban_situation(persona_id: String!, tasks: [FKanbanTaskInput!]!, ws_id: String!): Boolean!
+  bot_install_from_marketplace(inside_fgroup_id: String!, new_setup: String!, persona_id: String!, persona_marketable_name: String!, persona_marketable_version: String!, persona_name: String!): Boolean!
   cloudtool_post_result(input: CloudtoolResultInput!): Boolean!
   create_captured_thread(input: FThreadInput!, on_behalf_of_fuser_id: String = null): FThreadOutput!
   email_confirm(token: String!): EmailConfirmResult!
@@ -482,7 +528,8 @@ type Mutation {
   knowledge_item_delete(id: String!): Boolean!
   knowledge_item_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
   knowledge_item_patch(id: String!, patch: FKnowledgeItemPatch!): FKnowledgeItemOutput!
-  make_sure_have_expert(fexp_name_without_version: String!, fgroup_id: String, owner_fuser_id: String, system_prompt: String!): String!
+  make_sure_have_expert(fexp_name: String!, fgroup_id: String, owner_fuser_id: String, python_kernel: String!, system_prompt: String!): String!
+  marketplace_upsert_dev_bot(marketable_description: String!, marketable_expert_scheduled: FMarketplaceExpertInput!, marketable_expert_setup: FMarketplaceExpertInput!, marketable_expert_subchat: FMarketplaceExpertInput!, marketable_expert_todo: FMarketplaceExpertInput!, marketable_github_repo: String!, marketable_name: String!, marketable_run_this: String!, marketable_setup_default: String!, marketable_version: String!, ws_id: String!): FBotInstallOutput!
   password_change(new_password: String!, old_password: String!): Boolean!
   permission_delete(fgroup_id: String!, fuser_id: String!): Boolean!
   permission_patch(fgroup_id: String!, fuser_id: String!, patch: FPermissionPatch!): FPermissionOutput!
@@ -578,6 +625,7 @@ type Subscription {
   external_data_sources_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FExternalDataSourceSubs!
   knowledge_items_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FKnowledgeItemSubs!
   permissions_in_group_subs(fgroup_id: String!, limit: Int!, quicksearch: String!): FPermissionSubs!
+  persona_kanban_subs(limit_done: Int! = 30, limit_garbage: Int! = 30, limit_inbox: Int! = 30, persona_id: String!): FPersonaKanbanSubs!
   personas_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FPersonaSubs!
   threads_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FThreadSubs!
   tree_subscription(ws_id: String!): TreeUpdateSubs!
