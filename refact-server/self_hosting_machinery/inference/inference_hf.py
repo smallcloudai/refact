@@ -4,6 +4,7 @@ import time
 from itertools import chain
 
 import torch
+from packaging import version
 import traceback
 import termcolor
 
@@ -178,7 +179,11 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
         for name in chain(self._model_cfg["freeze_exceptions_mapping"]["wte"],
                           self._model_cfg["freeze_exceptions_mapping"]["lm_head"]):
             param = find_param_by_name(model=self._model, name=name)
-            weights = torch.load(f"{self.cache_dir}/{self._model_dir}/{name}", map_location=self._device)
+            weights = try:
+            torch.load(f"{self.cache_dir}/{self._model_dir}/{name}", map_location=self._device, weights_only=True)
+        except TypeError:
+            # Fallback for older PyTorch versions that don't support weights_only
+            torch.load(f"{self.cache_dir}/{self._model_dir}/{name}", map_location=self._device)
             param.data.copy_(weights)
 
     def _prepare_scratchpad(self, request: Dict[str, Any]):
