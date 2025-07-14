@@ -36,7 +36,7 @@ export const ChatRawJSON = ({
         <Heading as="h3" align="center" mb="2">
           Thread History
         </Heading>
-        {thread.ft_title && (
+        {thread?.ft_title && (
           <Heading as="h6" size="2" align="center" mb="4">
             {thread.ft_title}
           </Heading>
