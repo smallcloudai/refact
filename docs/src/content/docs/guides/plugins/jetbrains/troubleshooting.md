@@ -40,3 +40,28 @@ To resolve this issue:
 ![JCEF disable sandbox](../../../../../assets/jb_jcef_disable_sandbox.png)
 * Close the Registry Editor.
 * Restart the IDE.
+
+## JetBrains 2025.* Platform Issues
+
+### JCEF Out-of-Process Mode Bug (IJPL-186252)
+
+If you're experiencing issues with JetBrains IDEs version 2025.*, you may encounter freezes related to the JCEF (Java Chromium Embedded Framework) out-of-process mode. This is a known issue tracked as IJPL-186252.
+
+To resolve this issue, add the following VM option to your IntelliJ IDEA configuration:
+
+```
+-Dide.browser.jcef.out-of-process.enabled=false
+```
+
+This option reverts the IDE to use the in-process JCEF mode, which bypasses the bug.
+
+#### How to Apply the VM Option
+
+1. Open your JetBrains IDE
+2. Go to **Help** > **Edit Custom VM Options...**
+3. Add the line `-Dide.browser.jcef.out-of-process.enabled=false`
+4. Save the file and restart the IDE
+
+#### Long-term Solution
+
+Keep your JetBrains IDE updated to the latest patch release of version 2025.1.x or newer. Future updates are expected to include a permanent fix for IJPL-186252, which will eliminate the need for this manual workaround.
