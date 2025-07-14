@@ -13,6 +13,15 @@ type BasicStuffResult {
   workspaces: [FWorkspaceOutput!]!
 }
 
+input CloudtoolResultInput {
+  dollars: Float! = 0
+  ft_id: String!
+  ftm_alt: Int!
+  ftm_content: String!
+  ftm_num: Int!
+  ftm_provenance: String!
+}
+
 type EmailConfirmResult {
   fuser_id: String!
 }
@@ -67,6 +76,11 @@ type FEphemeralSubs {
   news_action: String!
   news_payload: FEphemeralDocumentOutput
   news_payload_id: String!
+}
+
+type FExpertChoiceConsequences {
+  cloudtools: [FCloudTool!]!
+  models: [FModelItem!]!
 }
 
 input FExpertInput {
@@ -353,7 +367,6 @@ type FThreadOutput {
   ft_id: String!
   ft_locked_by: String!
   ft_need_assistant: Int!
-  ft_need_kernel: Int!
   ft_need_tool_calls: Int!
   ft_need_user: Int!
   ft_title: String!
@@ -449,6 +462,8 @@ scalar JSON
 type Mutation {
   api_key_delete(apikey_id: String!): Boolean!
   api_key_generate: FApiKeyOutput!
+  cloudtool_post_result(input: CloudtoolResultInput!): Boolean!
+  create_captured_thread(input: FThreadInput!, on_behalf_of_fuser_id: String = null): FThreadOutput!
   email_confirm(token: String!): EmailConfirmResult!
   expert_create(input: FExpertInput!): FExpertOutput!
   expert_delete(id: String!): Boolean!
@@ -511,6 +526,7 @@ type Query {
   audit_list(limit: Int!, skip: Int!, ws_id: String!): [FAuditRecordOutput!]!
   cloud_tools_list(include_offline: Boolean! = false, located_fgroup_id: String!): [FCloudTool!]!
   expert_choice_consequences(fexp_id: String!, inside_fgroup_id: String!): [FModelItem!]!
+  expert_choice_consequences2(fexp_id: String!, inside_fgroup_id: String!): FExpertChoiceConsequences!
   expert_get(id: String!): FExpertOutput!
   expert_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FExpertOutput!]!
   experts_effective_list(located_fgroup_id: String!): [FExpertOutput!]!

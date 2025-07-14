@@ -16,6 +16,9 @@ import { GroupedDiffs } from "../ChatContent/DiffContent";
 
 import { FTMMessageNode as FTMessageNode } from "../../features/ThreadMessages/makeMessageTrie";
 import {
+  selectIsStreaming,
+  selectIsWaiting,
+  selectMessageIsLastOfType,
   selectThreadMessageTopAltNumber,
   setThreadEnd,
 } from "../../features/ThreadMessages";
@@ -23,6 +26,7 @@ import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { type NodeSelectButtonsProps } from "../ChatContent/UserInput";
 import { useAppSelector } from "../../hooks";
 import { parseOrElse } from "../../utils";
+import { ScrollAreaWithAnchor } from "../ScrollArea";
 
 const ElementForNodeMessage: React.FC<{
   message: FTMessageNode["value"];
@@ -80,6 +84,12 @@ export const MessageNode: React.FC<MessageNodeProps> = ({
 }) => {
   const dispatch = useAppDispatch();
 
+  const isLastOfRole = useAppSelector((state) =>
+    selectMessageIsLastOfType(state, children.value),
+  );
+  const isWaiting = useAppSelector(selectIsWaiting);
+  const isStreaming = useAppSelector(selectIsStreaming);
+
   useEffect(() => {
     if (children.children.length === 0) {
       const action = setThreadEnd({
@@ -99,6 +109,11 @@ export const MessageNode: React.FC<MessageNodeProps> = ({
 
   return (
     <>
+      {/**TODO: this could be put at the end of the assistant message */}
+      {!isWaiting &&
+        !isStreaming &&
+        children.value.ftm_role === "user" &&
+        isLastOfRole && <ScrollAreaWithAnchor.ScrollAnchor />}
       <ElementForNodeMessage branch={branch} message={children.value} />
       <MessageNodeChildren>{children.children}</MessageNodeChildren>
     </>

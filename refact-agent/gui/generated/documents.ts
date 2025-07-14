@@ -28,6 +28,15 @@ export type BasicStuffResult = {
   workspaces: Array<FWorkspaceOutput>;
 };
 
+export type CloudtoolResultInput = {
+  dollars?: Scalars['Float']['input'];
+  ft_id: Scalars['String']['input'];
+  ftm_alt: Scalars['Int']['input'];
+  ftm_content: Scalars['String']['input'];
+  ftm_num: Scalars['Int']['input'];
+  ftm_provenance: Scalars['String']['input'];
+};
+
 export type EmailConfirmResult = {
   __typename?: 'EmailConfirmResult';
   fuser_id: Scalars['String']['output'];
@@ -88,6 +97,12 @@ export type FEphemeralSubs = {
   news_action: Scalars['String']['output'];
   news_payload?: Maybe<FEphemeralDocumentOutput>;
   news_payload_id: Scalars['String']['output'];
+};
+
+export type FExpertChoiceConsequences = {
+  __typename?: 'FExpertChoiceConsequences';
+  cloudtools: Array<FCloudTool>;
+  models: Array<FModelItem>;
 };
 
 export type FExpertInput = {
@@ -393,7 +408,6 @@ export type FThreadOutput = {
   ft_id: Scalars['String']['output'];
   ft_locked_by: Scalars['String']['output'];
   ft_need_assistant: Scalars['Int']['output'];
-  ft_need_kernel: Scalars['Int']['output'];
   ft_need_tool_calls: Scalars['Int']['output'];
   ft_need_user: Scalars['Int']['output'];
   ft_title: Scalars['String']['output'];
@@ -490,6 +504,8 @@ export type Mutation = {
   __typename?: 'Mutation';
   api_key_delete: Scalars['Boolean']['output'];
   api_key_generate: FApiKeyOutput;
+  cloudtool_post_result: Scalars['Boolean']['output'];
+  create_captured_thread: FThreadOutput;
   email_confirm: EmailConfirmResult;
   expert_create: FExpertOutput;
   expert_delete: Scalars['Boolean']['output'];
@@ -545,6 +561,17 @@ export type Mutation = {
 
 export type MutationApi_Key_DeleteArgs = {
   apikey_id: Scalars['String']['input'];
+};
+
+
+export type MutationCloudtool_Post_ResultArgs = {
+  input: CloudtoolResultInput;
+};
+
+
+export type MutationCreate_Captured_ThreadArgs = {
+  input: FThreadInput;
+  on_behalf_of_fuser_id?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -833,6 +860,7 @@ export type Query = {
   audit_list: Array<FAuditRecordOutput>;
   cloud_tools_list: Array<FCloudTool>;
   expert_choice_consequences: Array<FModelItem>;
+  expert_choice_consequences2: FExpertChoiceConsequences;
   expert_get: FExpertOutput;
   expert_list: Array<FExpertOutput>;
   experts_effective_list: Array<FExpertOutput>;
@@ -878,6 +906,12 @@ export type QueryCloud_Tools_ListArgs = {
 
 
 export type QueryExpert_Choice_ConsequencesArgs = {
+  fexp_id: Scalars['String']['input'];
+  inside_fgroup_id: Scalars['String']['input'];
+};
+
+
+export type QueryExpert_Choice_Consequences2Args = {
   fexp_id: Scalars['String']['input'];
   inside_fgroup_id: Scalars['String']['input'];
 };
@@ -1171,26 +1205,6 @@ export type TreeUpdateSubs = {
   treeupd_type: Scalars['String']['output'];
 };
 
-export type CreateGroupMutationVariables = Exact<{
-  fgroup_name: Scalars['String']['input'];
-  fgroup_parent_id: Scalars['String']['input'];
-}>;
-
-
-export type CreateGroupMutation = { __typename?: 'Mutation', group_create: { __typename?: 'FlexusGroup', fgroup_id: string, fgroup_name: string, ws_id: string, fgroup_parent_id?: string | null, fgroup_created_ts: number } };
-
-export type NavTreeSubsSubscriptionVariables = Exact<{
-  ws_id: Scalars['String']['input'];
-}>;
-
-
-export type NavTreeSubsSubscription = { __typename?: 'Subscription', tree_subscription: { __typename?: 'TreeUpdateSubs', treeupd_action: string, treeupd_id: string, treeupd_path: string, treeupd_type: string, treeupd_title: string } };
-
-export type NavTreeWantWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
-
-
-export type NavTreeWantWorkspacesQuery = { __typename?: 'Query', query_basic_stuff: { __typename?: 'BasicStuffResult', fuser_id: string, my_own_ws_id?: string | null, workspaces: Array<{ __typename?: 'FWorkspaceOutput', ws_id: string, ws_owner_fuser_id: string, ws_root_group_id: string, root_group_name: string, have_coins_exactly: any, have_coins_enough: boolean, have_admin: boolean }> } };
-
 export type ThreadsPageSubsSubscriptionVariables = Exact<{
   located_fgroup_id: Scalars['String']['input'];
   limit: Scalars['Int']['input'];
@@ -1271,13 +1285,6 @@ export type BasicStuffQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type BasicStuffQuery = { __typename?: 'Query', query_basic_stuff: { __typename?: 'BasicStuffResult', fuser_id: string, my_own_ws_id?: string | null, workspaces: Array<{ __typename?: 'FWorkspaceOutput', ws_id: string, ws_owner_fuser_id: string, ws_root_group_id: string, root_group_name: string, have_coins_exactly: any, have_coins_enough: boolean, have_admin: boolean }> } };
 
-export type WorkspaceTreeSubscriptionVariables = Exact<{
-  ws_id: Scalars['String']['input'];
-}>;
-
-
-export type WorkspaceTreeSubscription = { __typename?: 'Subscription', tree_subscription: { __typename?: 'TreeUpdateSubs', treeupd_action: string, treeupd_id: string, treeupd_path: string, treeupd_type: string, treeupd_title: string } };
-
 export type CreateWorkSpaceGroupMutationVariables = Exact<{
   fgroup_name: Scalars['String']['input'];
   fgroup_parent_id: Scalars['String']['input'];
@@ -1286,10 +1293,14 @@ export type CreateWorkSpaceGroupMutationVariables = Exact<{
 
 export type CreateWorkSpaceGroupMutation = { __typename?: 'Mutation', group_create: { __typename?: 'FlexusGroup', fgroup_id: string, fgroup_name: string, ws_id: string, fgroup_parent_id?: string | null, fgroup_created_ts: number } };
 
+export type WorkspaceTreeSubscriptionVariables = Exact<{
+  ws_id: Scalars['String']['input'];
+}>;
 
-export const CreateGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_parent_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"group_create"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"fgroup_name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_name"}}},{"kind":"ObjectField","name":{"kind":"Name","value":"fgroup_parent_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_parent_id"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"fgroup_id"}},{"kind":"Field","name":{"kind":"Name","value":"fgroup_name"}},{"kind":"Field","name":{"kind":"Name","value":"ws_id"}},{"kind":"Field","name":{"kind":"Name","value":"fgroup_parent_id"}},{"kind":"Field","name":{"kind":"Name","value":"fgroup_created_ts"}}]}}]}}]} as unknown as DocumentNode<CreateGroupMutation, CreateGroupMutationVariables>;
-export const NavTreeSubsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"NavTreeSubs"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ws_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"tree_subscription"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ws_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ws_id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"treeupd_action"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_id"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_path"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_type"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_title"}}]}}]}}]} as unknown as DocumentNode<NavTreeSubsSubscription, NavTreeSubsSubscriptionVariables>;
-export const NavTreeWantWorkspacesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"NavTreeWantWorkspaces"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"query_basic_stuff"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"fuser_id"}},{"kind":"Field","name":{"kind":"Name","value":"my_own_ws_id"}},{"kind":"Field","name":{"kind":"Name","value":"workspaces"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ws_id"}},{"kind":"Field","name":{"kind":"Name","value":"ws_owner_fuser_id"}},{"kind":"Field","name":{"kind":"Name","value":"ws_root_group_id"}},{"kind":"Field","name":{"kind":"Name","value":"root_group_name"}},{"kind":"Field","name":{"kind":"Name","value":"have_coins_exactly"}},{"kind":"Field","name":{"kind":"Name","value":"have_coins_enough"}},{"kind":"Field","name":{"kind":"Name","value":"have_admin"}}]}}]}}]}}]} as unknown as DocumentNode<NavTreeWantWorkspacesQuery, NavTreeWantWorkspacesQueryVariables>;
+
+export type WorkspaceTreeSubscription = { __typename?: 'Subscription', tree_subscription: { __typename?: 'TreeUpdateSubs', treeupd_action: string, treeupd_id: string, treeupd_path: string, treeupd_type: string, treeupd_title: string } };
+
+
 export const ThreadsPageSubsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"ThreadsPageSubs"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"located_fgroup_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"threads_in_group"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"located_fgroup_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"located_fgroup_id"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"news_action"}},{"kind":"Field","name":{"kind":"Name","value":"news_payload_id"}},{"kind":"Field","name":{"kind":"Name","value":"news_payload"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"owner_fuser_id"}},{"kind":"Field","name":{"kind":"Name","value":"owner_shared"}},{"kind":"Field","name":{"kind":"Name","value":"ft_id"}},{"kind":"Field","name":{"kind":"Name","value":"ft_title"}},{"kind":"Field","name":{"kind":"Name","value":"ft_error"}},{"kind":"Field","name":{"kind":"Name","value":"ft_updated_ts"}},{"kind":"Field","name":{"kind":"Name","value":"ft_locked_by"}},{"kind":"Field","name":{"kind":"Name","value":"ft_need_assistant"}},{"kind":"Field","name":{"kind":"Name","value":"ft_need_tool_calls"}},{"kind":"Field","name":{"kind":"Name","value":"ft_archived_ts"}},{"kind":"Field","name":{"kind":"Name","value":"ft_created_ts"}}]}}]}}]}}]} as unknown as DocumentNode<ThreadsPageSubsSubscription, ThreadsPageSubsSubscriptionVariables>;
 export const DeleteThreadDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteThread"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"thread_delete"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeleteThreadMutation, DeleteThreadMutationVariables>;
 export const CreateThreadDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateThread"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"FThreadInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"thread_create"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ft_id"}}]}}]}}]} as unknown as DocumentNode<CreateThreadMutation, CreateThreadMutationVariables>;
@@ -1301,8 +1312,8 @@ export const ModelsForExpertDocument = {"kind":"Document","definitions":[{"kind"
 export const ToolsForGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ToolsForGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"located_fgroup_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cloud_tools_list"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"located_fgroup_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"located_fgroup_id"}}},{"kind":"Argument","name":{"kind":"Name","value":"include_offline"},"value":{"kind":"BooleanValue","value":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ctool_confirmed_exists_ts"}},{"kind":"Field","name":{"kind":"Name","value":"ctool_description"}},{"kind":"Field","name":{"kind":"Name","value":"ctool_id"}},{"kind":"Field","name":{"kind":"Name","value":"ctool_name"}},{"kind":"Field","name":{"kind":"Name","value":"ctool_parameters"}},{"kind":"Field","name":{"kind":"Name","value":"located_fgroup_id"}},{"kind":"Field","name":{"kind":"Name","value":"owner_fuser_id"}}]}}]}}]} as unknown as DocumentNode<ToolsForGroupQuery, ToolsForGroupQueryVariables>;
 export const ThreadConfirmationResponseDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ThreadConfirmationResponse"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"confirmation_response"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}},"defaultValue":{"kind":"StringValue","value":"","block":false}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ft_id"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"thread_set_confirmation_response"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ft_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ft_id"}}},{"kind":"Argument","name":{"kind":"Name","value":"confirmation_response"},"value":{"kind":"Variable","name":{"kind":"Name","value":"confirmation_response"}}}]}]}}]} as unknown as DocumentNode<ThreadConfirmationResponseMutation, ThreadConfirmationResponseMutationVariables>;
 export const BasicStuffDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"BasicStuff"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"query_basic_stuff"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"fuser_id"}},{"kind":"Field","name":{"kind":"Name","value":"my_own_ws_id"}},{"kind":"Field","name":{"kind":"Name","value":"workspaces"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ws_id"}},{"kind":"Field","name":{"kind":"Name","value":"ws_owner_fuser_id"}},{"kind":"Field","name":{"kind":"Name","value":"ws_root_group_id"}},{"kind":"Field","name":{"kind":"Name","value":"root_group_name"}},{"kind":"Field","name":{"kind":"Name","value":"have_coins_exactly"}},{"kind":"Field","name":{"kind":"Name","value":"have_coins_enough"}},{"kind":"Field","name":{"kind":"Name","value":"have_admin"}}]}}]}}]}}]} as unknown as DocumentNode<BasicStuffQuery, BasicStuffQueryVariables>;
-export const WorkspaceTreeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"WorkspaceTree"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ws_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"tree_subscription"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ws_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ws_id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"treeupd_action"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_id"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_path"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_type"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_title"}}]}}]}}]} as unknown as DocumentNode<WorkspaceTreeSubscription, WorkspaceTreeSubscriptionVariables>;
 export const CreateWorkSpaceGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateWorkSpaceGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_parent_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"group_create"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"fgroup_name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_name"}}},{"kind":"ObjectField","name":{"kind":"Name","value":"fgroup_parent_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_parent_id"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"fgroup_id"}},{"kind":"Field","name":{"kind":"Name","value":"fgroup_name"}},{"kind":"Field","name":{"kind":"Name","value":"ws_id"}},{"kind":"Field","name":{"kind":"Name","value":"fgroup_parent_id"}},{"kind":"Field","name":{"kind":"Name","value":"fgroup_created_ts"}}]}}]}}]} as unknown as DocumentNode<CreateWorkSpaceGroupMutation, CreateWorkSpaceGroupMutationVariables>;
+export const WorkspaceTreeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"WorkspaceTree"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ws_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"tree_subscription"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ws_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ws_id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"treeupd_action"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_id"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_path"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_type"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_title"}}]}}]}}]} as unknown as DocumentNode<WorkspaceTreeSubscription, WorkspaceTreeSubscriptionVariables>;
 
 type Properties<T> = Required<{
   [K in keyof T]: z.ZodType<T[K], any, T[K]>;
@@ -1313,6 +1324,17 @@ type definedNonNullAny = {};
 export const isDefinedNonNullAny = (v: any): v is definedNonNullAny => v !== undefined && v !== null;
 
 export const definedNonNullAnySchema = z.any().refine((v) => isDefinedNonNullAny(v));
+
+export function CloudtoolResultInputSchema(): z.ZodObject<Properties<CloudtoolResultInput>> {
+  return z.object({
+    dollars: z.number().default(0),
+    ft_id: z.string(),
+    ftm_alt: z.number(),
+    ftm_content: z.string(),
+    ftm_num: z.number(),
+    ftm_provenance: z.string()
+  })
+}
 
 export function FExpertInputSchema(): z.ZodObject<Properties<FExpertInput>> {
   return z.object({

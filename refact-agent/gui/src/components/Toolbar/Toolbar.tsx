@@ -334,6 +334,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           <Text>New chat</Text>
         </Button>
       )}
+
       <Dropdown handleNavigation={handleNavigation} />
     </Flex>
   );

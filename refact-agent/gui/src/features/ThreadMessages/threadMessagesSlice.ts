@@ -17,6 +17,7 @@ import {
   isMessageWithIntegrationMeta,
   MessageWithIntegrationMeta,
 } from "../Chat";
+import { takeWhile } from "../../utils";
 
 // TODO: move this somewhere
 export type ToolConfirmationRequest = {
@@ -451,6 +452,32 @@ export const threadMessagesSlice = createSlice({
       const message = maybeIntegrationMeta as MessageWithIntegrationMeta;
       return message.ftm_user_preferences.integration;
     }),
+
+    selectMessageIsLastOfType: (state, message: FTMMessage) => {
+      const { endNumber, endAlt, endPrevAlt, messages } = state;
+      const currentBranch = getAncestorsForNode(
+        endNumber,
+        endAlt,
+        endPrevAlt,
+        Object.values(messages),
+      );
+      const hasMessageInBranch = currentBranch.some((msg) => {
+        return (
+          msg.ftm_num === message.ftm_num &&
+          msg.ftm_alt === message.ftm_alt &&
+          msg.ftm_prev_alt === message.ftm_prev_alt
+        );
+      });
+
+      if (!hasMessageInBranch) return false;
+      const tail = takeWhile(currentBranch, (msg) => {
+        return msg.ftm_num > message.ftm_num;
+      });
+
+      if (tail.length === 0) return true;
+      const hasMore = tail.some((msg) => msg.ftm_role === message.ftm_role);
+      return !hasMore;
+    },
   },
 
   extraReducers(builder) {
@@ -548,4 +575,5 @@ export const {
   selectToolConfirmationResponses,
   selectManyDiffMessageByIds,
   selectIntegrationMeta,
+  selectMessageIsLastOfType,
 } = threadMessagesSlice.selectors;
