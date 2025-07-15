@@ -10,6 +10,7 @@ on:
     paths:
       - "refact-agent/gui/**"
       - ".github/workflows/agent_gui_*"
+  workflow_dispatch:
 
 defaults:
   run:
