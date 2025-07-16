@@ -4,6 +4,18 @@ import { ComboBox, type ComboBoxProps } from "./ComboBox";
 import { TextArea } from "../TextArea";
 import { Card } from "@radix-ui/themes";
 import { useDebounceCallback } from "usehooks-ts";
+import { setUpStore } from "../../app/store";
+import { Provider } from "react-redux";
+import { Theme } from "../Theme";
+
+const Template: React.FC<{ children: JSX.Element }> = ({ children }) => {
+  const store = setUpStore();
+  return (
+    <Provider store={store}>
+      <Theme>{children}</Theme>
+    </Provider>
+  );
+};
 
 async function getCommands(query: string, cursor: number) {
   return fetch("/v1/at-command-completion", {
@@ -47,7 +59,7 @@ const App: React.FC<ComboBoxProps> = (props) => {
 };
 
 const meta = {
-  title: "ComboBox V2",
+  title: "ComboBox",
   component: App,
 } satisfies Meta<typeof ComboBox>;
 
@@ -59,4 +71,11 @@ export const Default: StoryObj<typeof ComboBox> = {
     placeholder: "Type @ for commands",
     render: (props) => <TextArea {...props} />,
   },
+  decorators: [
+    (Story) => (
+      <Template>
+        <Story />
+      </Template>
+    ),
+  ],
 };

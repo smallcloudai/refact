@@ -1,10 +1,30 @@
+import React from "react";
 import type { Meta } from "@storybook/react";
 import { Table } from "./Table";
 import { Box } from "@radix-ui/themes";
+import { setUpStore } from "../../app/store";
+import { Provider } from "react-redux";
+import { Theme } from "../Theme";
+
+const Template: React.FC<{ children: JSX.Element }> = ({ children }) => {
+  const store = setUpStore();
+  return (
+    <Provider store={store}>
+      <Theme>{children}</Theme>
+    </Provider>
+  );
+};
 
 const meta = {
   title: "Table",
   component: Table,
+  decorators: [
+    (Story) => (
+      <Template>
+        <Story />
+      </Template>
+    ),
+  ],
 } satisfies Meta<typeof Table>;
 
 export default meta;
@@ -14,7 +34,7 @@ export const Primary = () => {
     <Box
       p="2"
       style={{
-        width: "260px",
+        // width: "50%",
         backgroundColor: "color(display-p3 0.004 0.004 0.204 / 0.059)",
         height: "100vh",
       }}

@@ -1,15 +1,32 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Reveal } from ".";
 import { Text, Container, Box } from "@radix-ui/themes";
+import { Provider } from "react-redux";
+import { setUpStore } from "../../app/store";
+import { Theme } from "../Theme";
+
+const Template: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const store = setUpStore();
+  return (
+    <Provider store={store}>
+      <Theme>
+        <Container size="1" p="8">
+          {children}
+        </Container>
+      </Theme>
+    </Provider>
+  );
+};
 
 const meta: Meta<typeof Reveal> = {
   title: "Reveal",
   component: Reveal,
   decorators: [
     (Story) => (
-      <Container size="1">
+      <Template>
         <Story />
-      </Container>
+      </Template>
     ),
   ],
 };

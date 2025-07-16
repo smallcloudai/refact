@@ -1,7 +1,22 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { DocumentationSettings } from ".";
 import { Flex } from "@radix-ui/themes";
 import { fn } from "@storybook/test";
+import { setUpStore } from "../../app/store";
+import { Provider } from "react-redux";
+import { Theme } from "../Theme";
+
+const Template: React.FC<{ children: JSX.Element }> = ({ children }) => {
+  const store = setUpStore();
+  return (
+    <Provider store={store}>
+      <Theme>
+        <Flex p="4">{children}</Flex>
+      </Theme>
+    </Provider>
+  );
+};
 
 const meta: Meta<typeof DocumentationSettings> = {
   title: "Documentation settings",
@@ -27,9 +42,9 @@ const meta: Meta<typeof DocumentationSettings> = {
   },
   decorators: [
     (Children) => (
-      <Flex p="4">
+      <Template>
         <Children />
-      </Flex>
+      </Template>
     ),
   ],
 } satisfies Meta<typeof DocumentationSettings>;

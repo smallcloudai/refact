@@ -1,17 +1,30 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Select } from ".";
-import { Theme, Container } from "@radix-ui/themes";
+import { Container } from "@radix-ui/themes";
+import { setUpStore } from "../../app/store";
+import { Provider } from "react-redux";
+import { Theme } from "../Theme";
+
+const Template: React.FC<{ children: JSX.Element }> = ({ children }) => {
+  const store = setUpStore();
+  return (
+    <Provider store={store}>
+      <Theme>
+        <Container p="8">{children}</Container>
+      </Theme>
+    </Provider>
+  );
+};
 
 const meta: Meta<typeof Select> = {
   title: "Select",
   component: Select,
   decorators: [
     (Story) => (
-      <Theme>
-        <Container>
-          <Story />
-        </Container>
-      </Theme>
+      <Template>
+        <Story />
+      </Template>
     ),
   ],
 };

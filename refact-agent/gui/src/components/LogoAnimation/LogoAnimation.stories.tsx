@@ -42,4 +42,18 @@ export default meta;
 
 type Story = StoryObj<typeof LogoAnimation>;
 
-export const Primary: Story = {};
+export const Default: Story = {
+  args: {},
+};
+
+export const Waiting: Story = {
+  args: {
+    isWaiting: true,
+  },
+};
+
+export const Streaming: Story = {
+  args: {
+    isStreaming: true,
+  },
+};
