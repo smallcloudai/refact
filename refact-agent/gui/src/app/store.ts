@@ -48,7 +48,7 @@ import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/
 import { coinBallanceSlice } from "../features/CoinBalance/coinBalanceSlice";
 import { threadListSlice } from "../features/ThreadList/threadListSlice";
 import { threadMessagesSlice } from "../features/ThreadMessages/threadMessagesSlice";
-import { expertsAndModelsMiddleWare } from "../features/ExpertsAndModels/middleware";
+// import { expertsAndModelsMiddleWare } from "../features/ExpertsAndModels/middleware";
 import { expertsSlice } from "../features/ExpertsAndModels/expertsSlice";
 import { graphqlQueriesAndMutations } from "../services/graphql/queriesAndMutationsApi";
 import { groupsSlice } from "../features/Groups/groupsSlice";
@@ -182,7 +182,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
           )
           // .prepend(errorMiddleware.middleware)
           .prepend(listenerMiddleware.middleware)
-          .prepend(expertsAndModelsMiddleWare.middleware)
+        // .prepend(expertsAndModelsMiddleWare.middleware)
       );
     },
   });

@@ -28,6 +28,8 @@ import {
 
 import { isToolMessage, modelsApi, providersApi } from "../services/refact";
 import {
+  receiveThread,
+  receiveThreadMessages,
   selectLastMessageForAlt,
   selectMessageByToolCallId,
   selectToolConfirmationRequests,
@@ -38,6 +40,7 @@ import {
   rejectToolUsageAction,
 } from "../services/graphql";
 import { push } from "../features/Pages/pagesSlice";
+import { setExpert, setModel } from "../features/ExpertsAndModels/expertsSlice";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -433,3 +436,56 @@ startListening({
     window.postIntellijMessage(ideForceReloadProjectTreeFiles());
   },
 });
+
+startListening({
+  actionCreator: receiveThread,
+  effect: (action, listenerApi) => {
+    const state = listenerApi.getState();
+    if (
+      !state.threadMessages.ft_id ||
+      !action.payload.news_payload_id.startsWith(state.threadMessages.ft_id)
+    ) {
+      return;
+    }
+
+    if (
+      action.payload.news_payload_thread.ft_fexp_id &&
+      action.payload.news_payload_thread.ft_fexp_id !==
+        state.experts.selectedExpert
+    ) {
+      listenerApi.dispatch(
+        setExpert(action.payload.news_payload_thread.ft_fexp_id),
+      );
+    }
+  },
+});
+
+startListening({
+  actionCreator: receiveThreadMessages,
+  effect: (action, listenerApi) => {
+    const state = listenerApi.getState();
+    if (
+      !state.threadMessages.ft_id ||
+      !action.payload.news_payload_id.startsWith(state.threadMessages.ft_id)
+    ) {
+      return;
+    }
+
+    const maybeModel = getModel(action.payload);
+    if (maybeModel && maybeModel !== state.experts.selectedModel) {
+      listenerApi.dispatch(setModel(maybeModel));
+    }
+  },
+});
+
+function getModel(preferences: unknown): string | null {
+  if (!preferences) return null;
+  if (typeof preferences !== "object") return null;
+  if (!("model" in preferences)) {
+    return null;
+  }
+  if (typeof preferences.model !== "string") {
+    return null;
+  }
+  return preferences.model;
+}
