@@ -2,19 +2,22 @@ import { useCallback } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { useGetToolsLazyQuery } from "./useGetToolGroupsQuery";
 import { FThreadMessageInput } from "../../generated/documents";
-import { selectThreadEnd, selectAppSpecific } from "../features/ThreadMessages";
+import {
+  selectThreadEnd,
+  selectAppSpecific,
+} from "../features/ThreadMessages/threadMessagesSlice";
 import {
   selectCurrentExpert,
   selectCurrentModel,
-} from "../features/ExpertsAndModels";
+} from "../features/ExpertsAndModels/expertsSlice";
 import { Tool } from "../services/refact/tools";
-import { selectAllImages } from "../features/AttachedImages";
+import { selectAllImages } from "../features/AttachedImages/imagesSlice";
 import {
   UserMessage,
   UserMessageContentWithImage,
 } from "../services/refact/types";
 import { useIdForThread } from "./useIdForThread";
-import { graphqlQueriesAndMutations } from "../services/graphql";
+import { graphqlQueriesAndMutations } from "../services/graphql/queriesAndMutationsApi";
 
 // TODO: since this is called twice it opens two sockets :/ move sendMessage and sendMultipleMessage to their own hooks
 

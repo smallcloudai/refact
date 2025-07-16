@@ -3,7 +3,7 @@ import { useAppSelector } from "./useAppSelector";
 import {
   selectActiveGroup,
   selectIsSkippedWorkspaceSelection,
-} from "../features/Teams";
+} from "../features/Teams/teamsSlice";
 
 /**
  * Use this hook to get states related to caps supported features alongside the current active teams group.

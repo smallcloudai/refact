@@ -64,7 +64,6 @@ const ElementForNodeMessage: React.FC<{
   }
 
   if (isDiffMessage(message)) {
-    // TODO: do we still need to group diffs?
     return <GroupedDiffs diffs={[message]} />;
   }
 

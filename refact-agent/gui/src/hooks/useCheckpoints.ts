@@ -15,14 +15,14 @@ import {
 import { useAppDispatch } from "./useAppDispatch";
 import { useRestoreCheckpoints } from "./useRestoreCheckpoints";
 import { Checkpoint, FileChanged } from "../features/Checkpoints/types";
-import { isUserMessage } from "../services/refact";
+import { isUserMessage } from "../services/refact/types";
 import { usePreviewCheckpoints } from "./usePreviewCheckpoints";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 import { selectConfig } from "../features/Config/configSlice";
 import {
   resetThread,
   selectMessagesFromEndNode,
-} from "../features/ThreadMessages";
+} from "../features/ThreadMessages/threadMessagesSlice";
 
 // TODO: how will check points works?
 export const useCheckpoints = () => {

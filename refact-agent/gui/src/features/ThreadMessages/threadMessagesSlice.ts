@@ -11,8 +11,13 @@ import {
 } from "./makeMessageTrie";
 import { pagesSlice } from "../Pages/pagesSlice";
 import { graphqlQueriesAndMutations } from "../../services/graphql";
-import { isToolMessage } from "../../events";
-import { isDiffMessage, isToolCall, ToolMessage } from "../../services/refact";
+
+import {
+  isDiffMessage,
+  isToolCall,
+  ToolMessage,
+  isToolMessage,
+} from "../../services/refact";
 import {
   isMessageWithIntegrationMeta,
   MessageWithIntegrationMeta,

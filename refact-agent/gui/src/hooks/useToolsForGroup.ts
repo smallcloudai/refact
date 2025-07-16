@@ -1,6 +1,6 @@
 import { graphqlQueriesAndMutations } from "../services/graphql";
-import { useAppSelector } from ".";
-import { selectActiveGroup } from "../features/Teams";
+import { useAppSelector } from "./useAppSelector";
+import { selectActiveGroup } from "../features/Teams/teamsSlice";
 
 export function useToolsForGroup() {
   const group = useAppSelector(selectActiveGroup);

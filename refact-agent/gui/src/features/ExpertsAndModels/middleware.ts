@@ -1,6 +1,9 @@
 import { createListenerMiddleware } from "@reduxjs/toolkit/react";
 import { type AppDispatch, type RootState } from "../../app/store";
-import { threadMessagesSlice } from "../ThreadMessages";
+import {
+  receiveThread,
+  receiveThreadMessages,
+} from "../ThreadMessages/threadMessagesSlice";
 import { setExpert, setModel } from "./expertsSlice";
 
 export const expertsAndModelsMiddleWare = createListenerMiddleware();
@@ -10,7 +13,7 @@ const startListening = expertsAndModelsMiddleWare.startListening.withTypes<
 >();
 
 startListening({
-  actionCreator: threadMessagesSlice.actions.receiveThread,
+  actionCreator: receiveThread,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
     if (
@@ -33,7 +36,7 @@ startListening({
 });
 
 startListening({
-  actionCreator: threadMessagesSlice.actions.receiveThreadMessages,
+  actionCreator: receiveThreadMessages,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
     if (

@@ -1,4 +1,4 @@
-import { providersApi } from "../services/refact";
+import { providersApi } from "../services/refact/providers";
 
 export function useGetConfiguredProvidersQuery() {
   return providersApi.useGetConfiguredProvidersQuery(undefined);

@@ -10,7 +10,7 @@ import {
 } from "../events/setup";
 import { pathApi } from "../services/refact/path";
 
-import { ToolEditResult } from "../services/refact";
+import { ToolEditResult } from "../services/refact/tools";
 import { TextDocToolCall } from "../components/Tools/types";
 import type { TeamsGroup, TeamsWorkspace } from "../services/smallcloud/types";
 

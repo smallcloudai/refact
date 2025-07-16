@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { useAppSelector } from ".";
+import { useAppSelector } from "./useAppSelector";
 import { selectAddressURL, selectApiKey } from "../features/Config/configSlice";
-import { graphqlQueriesAndMutations } from "../services/graphql";
+import { graphqlQueriesAndMutations } from "../services/graphql/queriesAndMutationsApi";
 
 export function useBasicStuffQuery() {
   const maybeApiKey = useAppSelector(selectApiKey);

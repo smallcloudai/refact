@@ -1,4 +1,4 @@
-import { toolsApi } from "../services/refact";
+import { toolsApi } from "../services/refact/tools";
 
 export function useUpdateToolGroupsMutation() {
   const [mutationTrigger, mutationResult] =

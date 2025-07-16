@@ -1,5 +1,5 @@
 import { Integration, integrationsApi } from "../services/refact/integrations";
-import { removeFromCache } from "../features/Integrations";
+import { removeFromCache } from "../features/Integrations/integrationsSlice";
 import { useCallback } from "react";
 
 export const useSaveIntegrationData = () => {
