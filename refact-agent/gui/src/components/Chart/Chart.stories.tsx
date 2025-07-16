@@ -1,10 +1,30 @@
+import React from "react";
 import type { Meta } from "@storybook/react";
 import { Chart } from "./Chart";
 import { Box } from "@radix-ui/themes";
+import { Provider } from "react-redux";
+import { setUpStore } from "../../app/store";
+import { Theme } from "../Theme";
+
+const Template: React.FC<{ children: JSX.Element }> = ({ children }) => {
+  const store = setUpStore();
+  return (
+    <Provider store={store}>
+      <Theme>{children}</Theme>
+    </Provider>
+  );
+};
 
 const meta = {
   title: "Chart",
   component: Chart,
+  decorators: [
+    (Story) => (
+      <Template>
+        <Story />
+      </Template>
+    ),
+  ],
 } satisfies Meta<typeof Chart>;
 
 export default meta;

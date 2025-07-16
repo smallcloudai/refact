@@ -36,25 +36,23 @@ import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
 import { informationSlice } from "../features/Errors/informationSlice";
-import { attachedImagesSlice } from "../features/AttachedImages";
-import { teamsSlice } from "../features/Teams";
+import { attachedImagesSlice } from "../features/AttachedImages/imagesSlice";
+import { teamsSlice } from "../features/Teams/teamsSlice";
 import { userSurveySlice } from "../features/UserSurvey/userSurveySlice";
 import { linksApi } from "../services/refact/links";
-import { integrationsSlice } from "../features/Integrations";
+import { integrationsSlice } from "../features/Integrations/integrationsSlice";
 import { currentProjectInfoReducer } from "../features/Chat/currentProject";
 import { checkpointsSlice } from "../features/Checkpoints/checkpointsSlice";
 import { checkpointsApi } from "../services/refact/checkpoints";
 import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/patchesAndDiffsTrackerSlice";
-import { coinBallanceSlice } from "../features/CoinBalance";
-import { threadListSlice } from "../features/ThreadList";
-import { threadMessagesSlice } from "../features/ThreadMessages";
-import {
-  expertsSlice,
-  expertsAndModelsMiddleWare,
-} from "../features/ExpertsAndModels";
-import { graphqlQueriesAndMutations } from "../services/graphql";
-import { groupsSlice } from "../features/Groups";
-import { connectionStatusSlice } from "../features/ConnectionStatus";
+import { coinBallanceSlice } from "../features/CoinBalance/coinBalanceSlice";
+import { threadListSlice } from "../features/ThreadList/threadListSlice";
+import { threadMessagesSlice } from "../features/ThreadMessages/threadMessagesSlice";
+// import { expertsAndModelsMiddleWare } from "../features/ExpertsAndModels/middleware";
+import { expertsSlice } from "../features/ExpertsAndModels/expertsSlice";
+import { graphqlQueriesAndMutations } from "../services/graphql/queriesAndMutationsApi";
+import { groupsSlice } from "../features/Groups/groupsSlice";
+import { connectionStatusSlice } from "../features/ConnectionStatus/connectionStatusSlice";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -184,7 +182,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
           )
           // .prepend(errorMiddleware.middleware)
           .prepend(listenerMiddleware.middleware)
-          .prepend(expertsAndModelsMiddleWare.middleware)
+        // .prepend(expertsAndModelsMiddleWare.middleware)
       );
     },
   });

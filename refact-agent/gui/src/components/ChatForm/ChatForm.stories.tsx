@@ -1,7 +1,12 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 
 import { ChatForm } from "./ChatForm";
 import { useDebounceCallback } from "usehooks-ts";
+import { setUpStore } from "../../app/store";
+import { Provider } from "react-redux";
+import { Theme } from "../Theme";
+import { TourProvider } from "../../features/Tour";
 
 // const _testCommands = [
 //   "@workspace",
@@ -43,6 +48,17 @@ import { useDebounceCallback } from "usehooks-ts";
 
 // const noop = () => ({});
 
+const Template: React.FC<{ children: JSX.Element }> = ({ children }) => {
+  const store = setUpStore();
+  return (
+    <Provider store={store}>
+      <TourProvider>
+        <Theme>{children}</Theme>
+      </TourProvider>
+    </Provider>
+  );
+};
+
 const meta: Meta<typeof ChatForm> = {
   title: "Chat Form",
   component: ChatForm,
@@ -67,7 +83,11 @@ const meta: Meta<typeof ChatForm> = {
       //     <Children requestCommandsCompletion={requestCommandsCompletion} />
       //   </ConfigProvider>
       // );
-      return <Children requestCommandsCompletion={requestCommandsCompletion} />;
+      return (
+        <Template>
+          <Children requestCommandsCompletion={requestCommandsCompletion} />
+        </Template>
+      );
     },
   ],
 } satisfies Meta<typeof ChatForm>;

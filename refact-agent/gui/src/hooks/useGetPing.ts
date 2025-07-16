@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 import { selectConfig } from "../features/Config/configSlice";
-import { pingApi } from "../services/refact";
+import { pingApi } from "../services/refact/ping";
 import { useAppSelector } from "./useAppSelector";
 
 export const useGetPing = () => {

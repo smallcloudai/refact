@@ -1,6 +1,9 @@
-import { modelsApi } from "../services/refact";
+import { modelsApi } from "../services/refact/models";
 
-import type { GetModelArgs, GetModelDefaultsArgs } from "../services/refact";
+import type {
+  GetModelArgs,
+  GetModelDefaultsArgs,
+} from "../services/refact/models";
 
 export function useGetModelsByProviderNameQuery({
   providerName,

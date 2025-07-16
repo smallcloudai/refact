@@ -1,7 +1,22 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Collapsible } from ".";
 import { Text } from "../Text";
 import { Flex } from "@radix-ui/themes";
+import { Provider } from "react-redux";
+import { setUpStore } from "../../app/store";
+import { Theme } from "../Theme";
+
+const Template: React.FC<{ children: JSX.Element }> = ({ children }) => {
+  const store = setUpStore();
+  return (
+    <Provider store={store}>
+      <Theme>
+        <Flex p="4">{children}</Flex>
+      </Theme>
+    </Provider>
+  );
+};
 
 const meta = {
   title: "Collapsible",
@@ -21,4 +36,11 @@ export const Default: StoryObj<typeof Collapsible> = {
       </Flex>
     ),
   },
+  decorators: [
+    (Story) => (
+      <Template>
+        <Story />
+      </Template>
+    ),
+  ],
 };

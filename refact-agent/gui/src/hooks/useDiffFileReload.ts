@@ -2,8 +2,8 @@ import { useEffect, useRef } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 import { selectConfig } from "../features/Config/configSlice";
-import { isDiffChunk, isDiffMessage } from "../services/refact";
-import { selectThreadMessages } from "../features/ThreadMessages";
+import { isDiffChunk, isDiffMessage } from "../services/refact/types";
+import { selectThreadMessages } from "../features/ThreadMessages/threadMessagesSlice";
 
 /**
  * Hook to handle file reloading for diff messages in JetBrains IDE

@@ -7,7 +7,7 @@ import {
   addImage,
   type ImageFile,
   resetAttachedImagesSlice,
-} from "../features/AttachedImages";
+} from "../features/AttachedImages/imagesSlice";
 import { setError } from "../features/Errors/errorsSlice";
 import { setInformation } from "../features/Errors/informationSlice";
 // import { useCapsForToolUse } from "./useCapsForToolUse";

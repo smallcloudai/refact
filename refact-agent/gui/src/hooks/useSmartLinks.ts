@@ -8,13 +8,11 @@ import { clearInformation } from "../features/Errors/informationSlice";
 import { useGoToLink } from "./useGoToLink";
 // import { newIntegrationChat } from "../features/Chat/Thread/actions";
 // import { createThreadWitMultipleMessages } from "../services/graphql/graphqlThunks";
-import {
-  useExpertsAndModels,
-  useModelsForExpert,
-} from "../features/ExpertsAndModels";
+import { useExpertsAndModels } from "../features/ExpertsAndModels/useExpertsAndModels";
+import { useModelsForExpert } from "../features/ExpertsAndModels/useModelsForExpert";
 import { useGetToolsLazyQuery } from "./useGetToolGroupsQuery";
 import { Tool } from "../services/refact";
-import { graphqlQueriesAndMutations } from "../services/graphql";
+import { graphqlQueriesAndMutations } from "../services/graphql/queriesAndMutationsApi";
 
 export function useSmartLinks() {
   const dispatch = useAppDispatch();

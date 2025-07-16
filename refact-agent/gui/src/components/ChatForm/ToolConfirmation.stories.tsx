@@ -11,14 +11,19 @@ import {
   MIXED_PAUSE_REASONS,
 } from "../../__fixtures__/confirmation";
 import { ToolConfirmationRequest } from "../../features/ThreadMessages/threadMessagesSlice";
+import { setUpStore } from "../../app/store";
+import { Provider } from "react-redux";
 
 const MockedStore: React.FC<{
   toolConfirmationRequests: ToolConfirmationRequest[];
 }> = (props) => {
+  const store = setUpStore();
   return (
-    <Theme accentColor="gray">
-      <ToolConfirmation {...props} />
-    </Theme>
+    <Provider store={store}>
+      <Theme accentColor="gray">
+        <ToolConfirmation {...props} />
+      </Theme>
+    </Provider>
   );
 };
 

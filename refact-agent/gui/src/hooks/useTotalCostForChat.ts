@@ -1,4 +1,4 @@
-import { selectThreadMessages } from "../features/ThreadMessages";
+import { selectThreadMessages } from "../features/ThreadMessages/threadMessagesSlice";
 import {
   getTotalCostMeteringForMessages,
   getTotalTokenMeteringForMessages,
