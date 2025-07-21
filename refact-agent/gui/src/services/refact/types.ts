@@ -1,8 +1,14 @@
 // import { FThreadMessageOutput } from "../../../generated/documents";
+import type { MessagesSubscriptionSubscription } from "../../../generated/documents";
 import { LspChatMode } from "../../features/Chat";
 import { Checkpoint } from "../../features/Checkpoints/types";
+import { Override } from "../../utils/Override";
 import { GetChatTitleActionPayload, GetChatTitleResponse, Usage } from "./chat";
 import { MCPArgs, MCPEnvs } from "./integrations";
+
+export type BaseMessage = NonNullable<
+  MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"]
+>;
 
 export type ChatRole =
   | "user"
@@ -121,22 +127,10 @@ export function isSingleModelToolMessage(toolMessage: ToolMessage) {
   return typeof toolMessage.ftm_content === "string";
 }
 
-// FTheadMessageOutput
-interface BaseMessage {
-  ftm_role: ChatRole;
-  ftm_content:
-    | string
-    | ChatContextFile[]
-    | MultiModalToolContent[]
-    | DiffChunk[]
-    | null
-    | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
-}
-
-export interface ChatContextFileMessage extends BaseMessage {
-  ftm_role: "context_file";
-  ftm_content: string; // ChatContextFile[];
-}
+export type ChatContextFileMessage = Override<
+  BaseMessage,
+  { ftm_role: "context_file"; ftm_content: string }
+>;
 
 export type UserImage = {
   type: "image_url";
@@ -149,43 +143,58 @@ export type UserMessageContentWithImage =
       text: string;
     }
   | UserImage;
-export interface UserMessage extends BaseMessage {
-  ftm_role: "user";
-  ftm_content:
-    | string
-    | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
-  checkpoints?: Checkpoint[];
-  compression_strength?: CompressionStrength;
-}
+
+export type UserMessage = Override<
+  BaseMessage,
+  {
+    ftm_role: "user";
+    ftm_content:
+      | string
+      | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
+    checkpoints?: Checkpoint[];
+    compression_strength?: CompressionStrength;
+  }
+>;
 
 export type ProcessedUserMessageContentWithImages = {
   m_type: string;
   m_content: string;
 };
-export interface AssistantMessage extends BaseMessage, CostInfo {
-  ftm_role: "assistant";
-  ftm_content: string | null;
-  reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
-  ftm_tool_calls?: ToolCall[] | null;
-  thinking_blocks?: ThinkingBlock[] | null;
-  finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
-  usage?: Usage | null;
-}
 
+export type AssistantMessage = Override<
+  BaseMessage,
+  {
+    ftm_role: "assistant";
+    ftm_content: string | null;
+    reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
+    ftm_tool_calls?: ToolCall[] | null;
+    thinking_blocks?: ThinkingBlock[] | null; // is this still here?
+    finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
+    usage?: Usage | null;
+  }
+>; // & CostInfo
+
+// TODO: is this still used?
 export interface ToolCallMessage extends AssistantMessage {
   tool_calls: ToolCall[];
 }
 
-export interface SystemMessage extends BaseMessage {
-  ftm_role: "system";
-  ftm_content: string;
-}
+export type SystemMessage = Override<
+  BaseMessage,
+  {
+    ftm_role: "system";
+    ftm_content: string;
+  }
+>;
 
-export interface ToolMessage extends BaseMessage {
-  ftm_role: "tool";
-  ftm_content: ToolContent;
-  ftm_call_id: string;
-}
+export type ToolMessage = Override<
+  BaseMessage,
+  {
+    ftm_role: "tool";
+    ftm_content: ToolContent;
+    ftm_call_id: string;
+  }
+>;
 
 // TODO: There maybe sub-types for this
 export type DiffChunk = {
@@ -228,11 +237,14 @@ export function isDiffChunk(json: unknown): json is DiffChunk {
   }
   return true;
 }
-export interface DiffMessage extends BaseMessage {
-  ftm_role: "diff";
-  ftm_content: DiffChunk[];
-  tool_call_id: string;
-}
+export type DiffMessage = Override<
+  BaseMessage,
+  {
+    ftm_role: "diff";
+    ftm_content: DiffChunk[];
+    tool_call_id: string;
+  }
+>;
 
 export function isUserMessage(message: unknown): message is UserMessage {
   if (!message) return false;
@@ -242,15 +254,21 @@ export function isUserMessage(message: unknown): message is UserMessage {
   return message.ftm_role === "user";
 }
 
-export interface PlainTextMessage extends BaseMessage {
-  ftm_role: "plain_text";
-  ftm_content: string;
-}
+export type PlainTextMessage = Override<
+  BaseMessage,
+  {
+    ftm_role: "plain_text";
+    ftm_content: string;
+  }
+>;
 
-export interface CDInstructionMessage extends BaseMessage {
-  ftm_role: "cd_instruction";
-  ftm_content: string;
-}
+export type CDInstructionMessage = Override<
+  BaseMessage,
+  {
+    ftm_role: "cd_instruction";
+    ftm_content: string;
+  }
+>;
 
 export type ChatMessage =
   | UserMessage
@@ -350,6 +368,7 @@ export function isCDInstructionMessage(
   return message.ftm_role === "cd_instruction";
 }
 
+// Is this still used?
 interface BaseDelta {
   ftm_role?: ChatRole | null;
   // TODO: what are these felids for
@@ -367,6 +386,7 @@ interface AssistantDelta extends BaseDelta {
   thinking_blocks?: ThinkingBlock[] | null;
 }
 
+// TODO: can remove
 export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
   if (!delta) return false;
   if (typeof delta !== "object") return false;

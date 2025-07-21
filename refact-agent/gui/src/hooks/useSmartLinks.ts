@@ -27,7 +27,7 @@ export function useSmartLinks() {
   const { handleGoTo } = useGoToLink();
   const handleSmartLink = useCallback(
     async (
-      sl_chat: LspChatMessage[],
+      _sl_chat: LspChatMessage[],
       integrationName: string,
       integrationPath: string,
       integrationProject: string,
@@ -40,8 +40,9 @@ export function useSmartLinks() {
         .filter((tool) => tool.enabled)
         .map((tool) => tool.spec);
 
-      // TODO: change this to flexus format
-      const messages = formatMessagesForChat(sl_chat);
+      // TODO: change this to flexus format, when / if smart links are enabled
+      // const messages = formatMessagesForChat(sl_chat);
+      const messages = formatMessagesForChat([]);
       dispatch(clearInformation());
       // TODO: when in an integration, we should enable all patch like tool requests
       void createThreadWitMultipleMessages({

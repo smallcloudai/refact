@@ -1,7 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Chat } from "./Chat";
-import { ChatThread } from "../../features/Chat/Thread/types";
+// import { ChatThread } from "../../features/Chat/Thread/types";
 import { RootState, setUpStore } from "../../app/store";
 import { Provider } from "react-redux";
 import { Theme } from "../Theme";
@@ -21,26 +21,31 @@ import {
 import { TourProvider } from "../../features/Tour";
 import { Flex } from "@radix-ui/themes";
 import { http, HttpResponse } from "msw";
+import { BaseMessage } from "../../services/refact/types";
 
 const Template: React.FC<{
-  thread?: ChatThread;
+  messages: BaseMessage[];
   config?: RootState["config"];
-}> = ({ config }) => {
+}> = ({ config, messages }) => {
   const store = setUpStore({
     tour: {
       type: "finished",
     },
-    // chat: {
-    //   streaming: false,
-    //   prevent_send: false,
-    //   waiting_for_response: false,
-    //   max_new_tokens: 4096,
-    //   tool_use: "agent",
-    //   send_immediately: false,
-    //   error: null,
-    //   cache: {},
-    //   thread: threadData,
-    // },
+    threadMessages: {
+      waitingBranches: [],
+      streamingBranches: [],
+      ft_id: null,
+      endNumber: 0,
+      endAlt: 0,
+      endPrevAlt: 0,
+      thread: null,
+      messages: messages.reduce((acc, message) => {
+        return {
+          ...acc,
+          [message.ftm_call_id]: message,
+        };
+      }, {}),
+    },
     config,
   });
 
@@ -81,7 +86,7 @@ export const Primary: Story = {};
 
 export const Configuration: Story = {
   args: {
-    thread: CHAT_CONFIG_THREAD.thread,
+    messages: CHAT_CONFIG_THREAD,
   },
 };
 
@@ -130,28 +135,31 @@ export const Knowledge: Story = {
 
 export const EmptySpaceAtBottom: Story = {
   args: {
-    thread: {
-      id: "test",
-      model: "gpt-4o", // or any model from STUB CAPS REQUEst
-      messages: [
-        {
-          ftm_role: "user",
-          ftm_content: "Hello",
-        },
-        {
-          ftm_role: "assistant",
-          ftm_content: "Hi",
-        },
-        {
-          ftm_role: "user",
-          ftm_content: "👋",
-        },
-        // { ftm_role: "assistant", ftm_content: "👋" },
-      ],
-      new_chat_suggested: {
-        wasSuggested: false,
+    messages: [
+      {
+        ftm_role: "user",
+        ftm_content: "Hello",
       },
-    },
+      {
+        ftm_role: "assistant",
+        ftm_content: "Hi",
+      },
+      {
+        ftm_role: "user",
+        ftm_content: "👋",
+      },
+      // { ftm_role: "assistant", ftm_content: "👋" },
+    ].map((message, index) => {
+      return {
+        ftm_belongs_to_ft_id: "test",
+        ftm_num: index,
+        ftm_alt: 100,
+        ftm_prev_alt: 100,
+        ftm_created_ts: Date.now(),
+        ftm_call_id: "",
+        ...message,
+      };
+    }),
   },
 
   parameters: {
@@ -170,67 +178,70 @@ export const EmptySpaceAtBottom: Story = {
 
 export const UserMessageEmptySpaceAtBottom: Story = {
   args: {
-    thread: {
-      id: "test",
-      model: "gpt-4o", // or any model from STUB CAPS REQUEst
-      messages: [
-        {
-          ftm_role: "user",
-          ftm_content: "Hello",
-        },
-        {
-          ftm_role: "assistant",
-          ftm_content: "Hi",
-        },
-        {
-          ftm_role: "user",
-          ftm_content: "👋",
-        },
-        { ftm_role: "assistant", ftm_content: "👋" },
-        {
-          ftm_role: "user",
-          ftm_content: "Hello",
-        },
-        {
-          ftm_role: "assistant",
-          ftm_content: "Hi",
-        },
-        {
-          ftm_role: "user",
-          ftm_content: "👋",
-        },
-        { ftm_role: "assistant", ftm_content: "👋" },
-        {
-          ftm_role: "user",
-          ftm_content: "Hello",
-        },
-        {
-          ftm_role: "assistant",
-          ftm_content: "Hi",
-        },
-        {
-          ftm_role: "user",
-          ftm_content: "👋",
-        },
-        { ftm_role: "assistant", ftm_content: "👋" },
-        {
-          ftm_role: "user",
-          ftm_content: "Hello",
-        },
-        {
-          ftm_role: "assistant",
-          ftm_content: "Hi",
-        },
-        {
-          ftm_role: "user",
-          ftm_content: "👋",
-        },
-        { ftm_role: "assistant", ftm_content: "👋" },
-      ],
-      new_chat_suggested: {
-        wasSuggested: false,
+    messages: [
+      {
+        ftm_role: "user",
+        ftm_content: "Hello",
       },
-    },
+      {
+        ftm_role: "assistant",
+        ftm_content: "Hi",
+      },
+      {
+        ftm_role: "user",
+        ftm_content: "👋",
+      },
+      { ftm_role: "assistant", ftm_content: "👋" },
+      {
+        ftm_role: "user",
+        ftm_content: "Hello",
+      },
+      {
+        ftm_role: "assistant",
+        ftm_content: "Hi",
+      },
+      {
+        ftm_role: "user",
+        ftm_content: "👋",
+      },
+      { ftm_role: "assistant", ftm_content: "👋" },
+      {
+        ftm_role: "user",
+        ftm_content: "Hello",
+      },
+      {
+        ftm_role: "assistant",
+        ftm_content: "Hi",
+      },
+      {
+        ftm_role: "user",
+        ftm_content: "👋",
+      },
+      { ftm_role: "assistant", ftm_content: "👋" },
+      {
+        ftm_role: "user",
+        ftm_content: "Hello",
+      },
+      {
+        ftm_role: "assistant",
+        ftm_content: "Hi",
+      },
+      {
+        ftm_role: "user",
+        ftm_content: "👋",
+      },
+      { ftm_role: "assistant", ftm_content: "👋" },
+    ].map((message, index) => {
+      return {
+        ftm_belongs_to_ft_id: "test",
+        ftm_num: index,
+        ftm_alt: 100,
+        ftm_prev_alt: 100,
+        ftm_created_ts: Date.now(),
+        ftm_call_id: "",
+        ...message,
+      };
+    }),
   },
 
   parameters: {
@@ -249,69 +260,72 @@ export const UserMessageEmptySpaceAtBottom: Story = {
 
 export const CompressButton: Story = {
   args: {
-    thread: {
-      id: "test",
-      model: "gpt-4o", // or any model from STUB CAPS REQUEst
-      messages: [
-        {
-          ftm_role: "user",
-          ftm_content: "Hello",
-        },
-        {
-          ftm_role: "assistant",
-          ftm_content: "Hi",
-        },
-        {
-          ftm_role: "user",
-          ftm_content: "👋",
-        },
-        { ftm_role: "assistant", ftm_content: "👋" },
-        {
-          ftm_role: "user",
-          ftm_content: "Hello",
-        },
-        {
-          ftm_role: "assistant",
-          ftm_content: "Hi",
-        },
-        {
-          ftm_role: "user",
-          ftm_content: "👋",
-        },
-        { ftm_role: "assistant", ftm_content: "👋" },
-        {
-          ftm_role: "user",
-          ftm_content: "Hello",
-        },
-        {
-          ftm_role: "assistant",
-          ftm_content: "Hi",
-        },
-        {
-          ftm_role: "user",
-          ftm_content: "👋",
-        },
-        { ftm_role: "assistant", ftm_content: "👋" },
-        {
-          ftm_role: "user",
-          ftm_content: "Hello",
-        },
-        {
-          ftm_role: "assistant",
-          ftm_content: "Hi",
-        },
-        {
-          ftm_role: "user",
-          ftm_content: "👋",
-          // change this to see different button colours
-          compression_strength: "low",
-        },
-        { ftm_role: "assistant", ftm_content: "👋" },
-      ],
-      new_chat_suggested: {
-        wasSuggested: false,
+    messages: [
+      {
+        ftm_role: "user",
+        ftm_content: "Hello",
       },
-    },
+      {
+        ftm_role: "assistant",
+        ftm_content: "Hi",
+      },
+      {
+        ftm_role: "user",
+        ftm_content: "👋",
+      },
+      { ftm_role: "assistant", ftm_content: "👋" },
+      {
+        ftm_role: "user",
+        ftm_content: "Hello",
+      },
+      {
+        ftm_role: "assistant",
+        ftm_content: "Hi",
+      },
+      {
+        ftm_role: "user",
+        ftm_content: "👋",
+      },
+      { ftm_role: "assistant", ftm_content: "👋" },
+      {
+        ftm_role: "user",
+        ftm_content: "Hello",
+      },
+      {
+        ftm_role: "assistant",
+        ftm_content: "Hi",
+      },
+      {
+        ftm_role: "user",
+        ftm_content: "👋",
+      },
+      { ftm_role: "assistant", ftm_content: "👋" },
+      {
+        ftm_role: "user",
+        ftm_content: "Hello",
+      },
+      {
+        ftm_role: "assistant",
+        ftm_content: "Hi",
+      },
+      {
+        ftm_role: "user",
+        ftm_content: "👋",
+        // change this to see different button colours
+        compression_strength: "low",
+      },
+      { ftm_role: "assistant", ftm_content: "👋" },
+    ].map((message, index) => {
+      return {
+        ftm_belongs_to_ft_id: "test",
+        ftm_num: index,
+        ftm_alt: 100,
+        ftm_prev_alt: 100,
+        ftm_created_ts: Date.now(),
+        ftm_call_id: "",
+        ...message,
+      };
+    }),
   },
 
   parameters: {

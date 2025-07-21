@@ -1,31 +1,31 @@
 import {
   // AssistantMessage,
   // ChatContextFile,
-  ChatContextFileMessage,
+  // ChatContextFileMessage,
   // ChatMessage,
   ChatMessages,
   // ChatResponse,
   // DiffChunk,
   // SubchatResponse,
-  ToolMessage,
-  UserMessage,
+  // ToolMessage,
+  // UserMessage,
   // isAssistantDelta,
   isAssistantMessage,
   // isCDInstructionResponse,
   // isChatContextFileDelta,
   // isChatResponseChoice,
   // isContextFileResponse,
-  isDiffChunk,
+  // isDiffChunk,
   isDiffMessage,
   // isDiffResponse,
-  isLspUserMessage,
+  // isLspUserMessage,
   // isPlainTextResponse,
   // isSubchatContextFileResponse,
   // isSubchatResponse,
   // isSystemResponse,
   // isToolCallDelta,
   // isThinkingBlocksDelta,
-  isToolContent,
+  // isToolContent,
   isToolMessage,
   // isToolResponse,
   isUserMessage,
@@ -90,84 +90,85 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
 }
 
 export function formatMessagesForChat(
-  messages: LspChatMessage[],
+  _messages: LspChatMessage[],
 ): ChatMessages {
-  return messages.reduce<ChatMessages>((acc, message) => {
-    if (isLspUserMessage(message) && typeof message.content === "string") {
-      const userMessage: UserMessage = {
-        ftm_role: message.role,
-        ftm_content: message.content,
-        checkpoints: message.checkpoints,
-      };
-      return acc.concat(userMessage);
-    }
+  return [];
+  // return messages.reduce<ChatMessages>((acc, message) => {
+  //   if (isLspUserMessage(message) && typeof message.content === "string") {
+  //     const userMessage: UserMessage = {
+  //       ftm_role: message.role,
+  //       ftm_content: message.content,
+  //       checkpoints: message.checkpoints,
+  //     };
+  //     return acc.concat(userMessage);
+  //   }
 
-    if (message.role === "assistant") {
-      const { role, content, ...rest } = message;
-      return acc.concat({
-        ftm_role: role,
-        ftm_content: content,
-        ...rest,
-      });
-    }
+  //   if (message.role === "assistant") {
+  //     const { role, content, ...rest } = message;
+  //     return acc.concat({
+  //       ftm_role: role,
+  //       ftm_content: content,
+  //       ...rest,
+  //     });
+  //   }
 
-    if (
-      message.role === "context_file" &&
-      typeof message.content === "string"
-    ) {
-      const contextFileMessage: ChatContextFileMessage = {
-        ftm_role: message.role,
-        ftm_content: message.content,
-      };
-      return acc.concat(contextFileMessage);
-    }
+  //   if (
+  //     message.role === "context_file" &&
+  //     typeof message.content === "string"
+  //   ) {
+  //     const contextFileMessage: ChatContextFileMessage = {
+  //       ftm_role: message.role,
+  //       ftm_content: message.content,
+  //     };
+  //     return acc.concat(contextFileMessage);
+  //   }
 
-    if (message.role === "system" && typeof message.content === "string") {
-      return acc.concat({
-        ftm_role: message.role,
-        ftm_content: message.content,
-      });
-    }
+  //   if (message.role === "system" && typeof message.content === "string") {
+  //     return acc.concat({
+  //       ftm_role: message.role,
+  //       ftm_content: message.content,
+  //     });
+  //   }
 
-    if (message.role === "plain_text" && typeof message.content === "string") {
-      return acc.concat({
-        ftm_role: message.role,
-        ftm_content: message.content,
-      });
-    }
+  //   if (message.role === "plain_text" && typeof message.content === "string") {
+  //     return acc.concat({
+  //       ftm_role: message.role,
+  //       ftm_content: message.content,
+  //     });
+  //   }
 
-    if (
-      message.role === "cd_instruction" &&
-      typeof message.content === "string"
-    ) {
-      return acc.concat({
-        ftm_role: message.role,
-        ftm_content: message.content,
-      });
-    }
+  //   if (
+  //     message.role === "cd_instruction" &&
+  //     typeof message.content === "string"
+  //   ) {
+  //     return acc.concat({
+  //       ftm_role: message.role,
+  //       ftm_content: message.content,
+  //     });
+  //   }
 
-    if (
-      message.role === "tool" &&
-      (typeof message.content === "string" || isToolContent(message.content)) &&
-      typeof message.tool_call_id === "string"
-    ) {
-      // TODO: why type cast this
-      return acc.concat(message as unknown as ToolMessage);
-    }
+  //   if (
+  //     message.role === "tool" &&
+  //     (typeof message.content === "string" || isToolContent(message.content)) &&
+  //     typeof message.tool_call_id === "string"
+  //   ) {
+  //     // TODO: why type cast this
+  //     return acc.concat(message as unknown as ToolMessage);
+  //   }
 
-    if (
-      message.role === "diff" &&
-      Array.isArray(message.content) &&
-      message.content.every(isDiffChunk) &&
-      typeof message.tool_call_id === "string"
-    ) {
-      return acc.concat({
-        ftm_role: message.role,
-        ftm_content: message.content,
-        tool_call_id: message.tool_call_id,
-      });
-    }
+  //   if (
+  //     message.role === "diff" &&
+  //     Array.isArray(message.content) &&
+  //     message.content.every(isDiffChunk) &&
+  //     typeof message.tool_call_id === "string"
+  //   ) {
+  //     return acc.concat({
+  //       ftm_role: message.role,
+  //       ftm_content: message.content,
+  //       tool_call_id: message.tool_call_id,
+  //     });
+  //   }
 
-    return acc;
-  }, []);
+  //   return acc;
+  // }, []);
 }

@@ -4,11 +4,8 @@ import {
   type PayloadAction,
 } from "@reduxjs/toolkit";
 import { MessagesSubscriptionSubscription } from "../../../generated/documents";
-import {
-  FTMMessage,
-  makeMessageTrie,
-  getAncestorsForNode,
-} from "./makeMessageTrie";
+import { makeMessageTrie, getAncestorsForNode } from "./makeMessageTrie";
+import type { BaseMessage } from "../../services/refact/types";
 import { pagesSlice } from "../Pages/pagesSlice";
 import { graphqlQueriesAndMutations } from "../../services/graphql";
 
@@ -63,7 +60,7 @@ type Message = NonNullable<
 type InitialState = {
   waitingBranches: number[]; // alt numbers
   streamingBranches: number[]; // alt number
-  messages: Record<string, FTMMessage>;
+  messages: Record<string, BaseMessage>;
   ft_id: string | null;
   endNumber: number;
   endAlt: number;
@@ -179,7 +176,7 @@ export const threadMessagesSlice = createSlice({
       const infoFromId = getInfoFromId(action.payload.news_payload_id);
       if (!infoFromId) return state;
       if (!(action.payload.news_payload_id in state.messages)) {
-        const msg: FTMMessage = {
+        const msg: BaseMessage = {
           ...infoFromId,
           ftm_role: action.payload.stream_delta.ftm_role,
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -462,7 +459,7 @@ export const threadMessagesSlice = createSlice({
       return message.ftm_user_preferences.integration;
     }),
 
-    selectMessageIsLastOfType: (state, message: FTMMessage) => {
+    selectMessageIsLastOfType: (state, message: BaseMessage) => {
       const { endNumber, endAlt, endPrevAlt, messages } = state;
       const currentBranch = getAncestorsForNode(
         endNumber,

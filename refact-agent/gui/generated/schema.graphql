@@ -15,10 +15,8 @@ type BasicStuffResult {
 
 input CloudtoolResultInput {
   dollars: Float! = 0
-  ft_id: String!
-  ftm_alt: Int!
+  fcall_id: String!
   ftm_content: String!
-  ftm_num: Int!
   ftm_provenance: String!
 }
 
@@ -90,6 +88,7 @@ type FExpertChoiceConsequences {
 
 input FExpertInput {
   fexp_allow_tools: String!
+  fexp_app_capture_tools: String! = "null"
   fexp_block_tools: String!
   fexp_name: String!
   fexp_python_kernel: String!
@@ -101,6 +100,7 @@ input FExpertInput {
 
 type FExpertOutput {
   fexp_allow_tools: String!
+  fexp_app_capture_tools: JSON
   fexp_block_tools: String!
   fexp_id: String!
   fexp_name: String!
@@ -157,6 +157,7 @@ type FExternalDataSourceSubs {
 }
 
 input FKanbanTaskInput {
+  details_json: String = null
   state: String!
   title: String!
 }
@@ -204,15 +205,76 @@ type FKnowledgeItemSubs {
 
 input FMarketplaceExpertInput {
   fexp_allow_tools: String!
+  fexp_app_capture_tools: String! = ""
   fexp_block_tools: String!
   fexp_name: String!
   fexp_python_kernel: String!
   fexp_system_prompt: String!
 }
 
+type FMarketplaceInstallOutput {
+  persona_id: String!
+}
+
+type FMarketplaceOutput {
+  available_ws_id: String
+  marketable_description: String!
+  marketable_name: String!
+  marketable_picture_big: String
+  marketable_picture_small: String
+  marketable_popularity_counter: Int!
+  marketable_price: Int!
+  marketable_star_event: Int!
+  marketable_star_sum: Int!
+  marketable_title1: String!
+  marketable_title2: String!
+  marketable_version: String!
+  seller_fuser_id: String
+}
+
 type FMassInvitationOutput {
   fuser_id: String!
   result: String!
+}
+
+input FMcpServerInput {
+  located_fgroup_id: String!
+  mcp_command: String!
+  mcp_description: String! = ""
+  mcp_enabled: Boolean! = false
+  mcp_env_vars: JSON = null
+  mcp_name: String!
+}
+
+type FMcpServerOutput {
+  located_fgroup_id: String!
+  mcp_command: String!
+  mcp_created_ts: Float!
+  mcp_description: String!
+  mcp_enabled: Boolean!
+  mcp_env_vars: JSON
+  mcp_id: String!
+  mcp_modified_ts: Float!
+  mcp_name: String!
+  owner_fuser_id: String!
+  owner_shared: Boolean!
+}
+
+input FMcpServerPatch {
+  located_fgroup_id: String = null
+  mcp_command: String = null
+  mcp_description: String = null
+  mcp_enabled: Boolean = null
+  mcp_env_vars: JSON = null
+  mcp_name: String = null
+  owner_shared: Boolean = null
+}
+
+type FMcpServerSubs {
+  news_action: String!
+  news_payload: FMcpServerOutput
+  news_payload_id: String!
+  news_pubsub: String!
 }
 
 type FModelItem {
@@ -246,8 +308,8 @@ input FPersonaInput {
 }
 
 type FPersonaKanbanSubs {
+  bucket: String!
   news_action: String!
-  news_bucket: String!
   news_payload_id: String!
   news_payload_task: FPersonaKanbanTaskOutput
 }
@@ -269,7 +331,9 @@ type FPersonaKanbanTaskOutput {
 }
 
 type FPersonaOutput {
+  ft_id: String
   located_fgroup_id: String!
+  marketable_setup_default: JSON
   owner_fuser_id: String!
   persona_archived_ts: Float!
   persona_created_ts: Float!
@@ -279,6 +343,8 @@ type FPersonaOutput {
   persona_marketable_name: String!
   persona_marketable_version: String!
   persona_name: String!
+  persona_picture_big: String
+  persona_picture_small: String
   persona_setup: JSON!
 }
 
@@ -296,12 +362,6 @@ type FPersonaSubs {
   news_payload: FPersonaOutput
   news_payload_id: String!
   news_pubsub: String!
-}
-
-type FPluginOutput {
-  plugin_name: String!
-  plugin_setup_page: String!
-  plugin_version: String!
 }
 
 input FStatsAddInput {
@@ -384,11 +444,6 @@ type FThreadMessageSubs {
   news_payload_thread: FThreadOutput
   news_payload_thread_message: FThreadMessageOutput
   stream_delta: FThreadDelta
-}
-
-type FThreadMessagesCreateResult {
-  count: Int!
-  messages: [FThreadMessageOutput!]!
 }
 
 input FThreadMultipleMessagesInput {
@@ -508,6 +563,7 @@ type Mutation {
   bot_activate(activation_type: String!, first_calls: String!, first_question: String!, localtools: String!, persona_id: String!, title: String!, who_is_asking: String!): FThreadOutput!
   bot_arrange_kanban_situation(persona_id: String!, tasks: [FKanbanTaskInput!]!, ws_id: String!): Boolean!
   bot_install_from_marketplace(inside_fgroup_id: String!, new_setup: String!, persona_id: String!, persona_marketable_name: String!, persona_marketable_version: String!, persona_name: String!): Boolean!
+  bot_kanban_post_into_inbox(budget: Int!, details_json: String!, persona_id: String!, title: String!): Boolean!
   cloudtool_post_result(input: CloudtoolResultInput!): Boolean!
   create_captured_thread(input: FThreadInput!, on_behalf_of_fuser_id: String = null): FThreadOutput!
   email_confirm(token: String!): EmailConfirmResult!
@@ -529,7 +585,12 @@ type Mutation {
   knowledge_item_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
   knowledge_item_patch(id: String!, patch: FKnowledgeItemPatch!): FKnowledgeItemOutput!
   make_sure_have_expert(fexp_name: String!, fgroup_id: String, owner_fuser_id: String, python_kernel: String!, system_prompt: String!): String!
-  marketplace_upsert_dev_bot(marketable_description: String!, marketable_expert_scheduled: FMarketplaceExpertInput!, marketable_expert_setup: FMarketplaceExpertInput!, marketable_expert_subchat: FMarketplaceExpertInput!, marketable_expert_todo: FMarketplaceExpertInput!, marketable_github_repo: String!, marketable_name: String!, marketable_run_this: String!, marketable_setup_default: String!, marketable_version: String!, ws_id: String!): FBotInstallOutput!
+  marketplace_install(fgroup_id: String!, marketable_name: String!): FMarketplaceInstallOutput!
+  marketplace_upgrade(fgroup_id: String!, marketable_name: String!, specific_version: String!): Boolean!
+  marketplace_upsert_dev_bot(marketable_description: String!, marketable_expert_default: FMarketplaceExpertInput!, marketable_expert_setup: FMarketplaceExpertInput, marketable_expert_subchat: FMarketplaceExpertInput, marketable_expert_todo: FMarketplaceExpertInput, marketable_github_repo: String!, marketable_name: String!, marketable_picture_big_b64: String = null, marketable_picture_small_b64: String = null, marketable_run_this: String!, marketable_setup_default: String!, marketable_title1: String!, marketable_title2: String!, marketable_version: String!, ws_id: String!): FBotInstallOutput!
+  mcp_server_create(input: FMcpServerInput!): FMcpServerOutput!
+  mcp_server_delete(id: String!): Boolean!
+  mcp_server_patch(id: String!, patch: FMcpServerPatch!): FMcpServerOutput!
   password_change(new_password: String!, old_password: String!): Boolean!
   permission_delete(fgroup_id: String!, fuser_id: String!): Boolean!
   permission_patch(fgroup_id: String!, fuser_id: String!, patch: FPermissionPatch!): FPermissionOutput!
@@ -541,16 +602,14 @@ type Mutation {
   session_open(password: String!, username: String!): String!
   session_renew: String!
   stats_add(records: [FStatsAddInput!]!): Boolean!
-  tech_support_activate(ws_id: String!): Boolean!
-  tech_support_set_config(config: TechSupportSettingsInput!, ws_id: String!): Boolean!
+  thread_app_capture_patch(ft_app_searchable: String = null, ft_app_specific: String = null, ft_id: String!): Boolean!
   thread_clear_confirmation(ft_id: String!): Boolean!
   thread_create(input: FThreadInput!): FThreadOutput!
   thread_delete(id: String!): Boolean!
   thread_lock(ft_id: String!, worker_name: String!): Boolean!
   thread_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
-  thread_messages_create_multiple(input: FThreadMultipleMessagesInput!): FThreadMessagesCreateResult!
+  thread_messages_create_multiple(delete_negative: Boolean! = false, input: FThreadMultipleMessagesInput!): Int!
   thread_patch(id: String!, patch: FThreadPatch!): FThreadOutput!
-  thread_provide_toolset(ft_id: String!, toolset: String!): Boolean!
   thread_reset_error(ft_error: String!, ft_id: String!): Boolean!
   thread_reset_title(ft_id: String!, ft_title: String!): Boolean!
   thread_set_confirmation_request(confirmation_request: String!, ft_id: String!): Boolean!
@@ -572,8 +631,7 @@ type Query {
   api_key_list: [FApiKeyOutput!]!
   audit_list(limit: Int!, skip: Int!, ws_id: String!): [FAuditRecordOutput!]!
   cloud_tools_list(include_offline: Boolean! = false, located_fgroup_id: String!): [FCloudTool!]!
-  expert_choice_consequences(fexp_id: String!, inside_fgroup_id: String!): [FModelItem!]!
-  expert_choice_consequences2(fexp_id: String!, inside_fgroup_id: String!): FExpertChoiceConsequences!
+  expert_choice_consequences(fexp_id: String!, inside_fgroup_id: String!): FExpertChoiceConsequences!
   expert_get(id: String!): FExpertOutput!
   expert_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FExpertOutput!]!
   experts_effective_list(located_fgroup_id: String!): [FExpertOutput!]!
@@ -586,15 +644,19 @@ type Query {
   knowledge_item_get(id: String!): FKnowledgeItemOutput!
   knowledge_item_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FKnowledgeItemOutput!]!
   knowledge_vecdb_search(fgroup_id: String!, q: String!, top_n: Int! = 5): [FKnowledgeItemOutput!]!
+  marketplace_details(fgroup_id: String!, marketable_name: String!): [FMarketplaceOutput!]!
+  marketplace_list(fgroup_id: String!, take: Int! = 20): [FMarketplaceOutput!]!
+  marketplace_search(fgroup_id: String!, query: String!, take: Int! = 20): [FMarketplaceOutput!]!
+  mcp_server_get(id: String!): FMcpServerOutput!
+  mcp_server_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FMcpServerOutput!]!
   permission_list(fgroup_id: String!): [FPermissionOutput!]!
   persona_get(id: String!): FPersonaOutput!
   persona_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FPersonaOutput!]!
-  plugins_installed: [FPluginOutput!]!
+  persona_opened_in_ui(persona_id: String!): FPersonaOutput!
   query_basic_stuff(want_invitations: Boolean! = false): BasicStuffResult!
   reset_password_token_info(token: String!): PasswordResetTokenInfo!
   stats_query(breakdown_fexp_name: [String!]!, breakdown_fuser_id: [String!]!, breakdown_model: [String!]!, fgroup_id: String! = "", filter_fexp_id: [String!]! = [], filter_fuser_id: [String!]! = [], filter_model: [String!]! = [], filter_thing: [String!]! = [], st_chart: Int!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String! = ""): [FStatsOutput!]!
   stats_query_distinct(fgroup_id: String!, filter_fexp_id: [String!]!, filter_fuser_id: [String!]!, filter_model: [String!]!, st_chart: Int!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String!): StatsDistinctOutput!
-  tech_support_get_config(ws_id: String!): TechSupportSettingsOutput
   thread_get(id: String!): FThreadOutput!
   thread_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FThreadOutput!]!
   thread_messages_list(ft_id: String!, ftm_alt: Int = null): [FThreadMessageOutput!]!
@@ -624,27 +686,12 @@ type Subscription {
   experts_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FExpertSubs!
   external_data_sources_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FExternalDataSourceSubs!
   knowledge_items_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FKnowledgeItemSubs!
+  mcp_servers_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FMcpServerSubs!
   permissions_in_group_subs(fgroup_id: String!, limit: Int!, quicksearch: String!): FPermissionSubs!
   persona_kanban_subs(limit_done: Int! = 30, limit_garbage: Int! = 30, limit_inbox: Int! = 30, persona_id: String!): FPersonaKanbanSubs!
   personas_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FPersonaSubs!
   threads_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FThreadSubs!
   tree_subscription(ws_id: String!): TreeUpdateSubs!
-}
-
-input TechSupportSettingsInput {
-  support_api_key: String!
-  support_channel_list: [String!]!
-  support_discord_key: String!
-  support_fgroup_id: String!
-  support_fuser_id: String!
-}
-
-type TechSupportSettingsOutput {
-  support_api_key: String!
-  support_channel_list: [String!]!
-  support_discord_key: String!
-  support_fgroup_id: String!
-  support_fuser_id: String!
 }
 
 type TreeUpdateSubs {

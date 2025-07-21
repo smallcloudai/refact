@@ -31,7 +31,7 @@ export const useModelsForExpert = () => {
 
   const options = useMemo(() => {
     if (!modelsForExpertRequest.data) return [];
-    return modelsForExpertRequest.data.expert_choice_consequences.map(
+    return modelsForExpertRequest.data.expert_choice_consequences.models.map(
       (model) => model.provm_name,
     );
   }, [modelsForExpertRequest.data]);

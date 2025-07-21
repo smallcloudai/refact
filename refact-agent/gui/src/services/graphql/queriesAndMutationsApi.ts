@@ -42,46 +42,46 @@ import { setThreadFtId } from "../../features/ThreadMessages";
 import { Tool } from "../refact/tools";
 import { IntegrationMeta } from "../../features/Chat";
 
-async function fetchAppSearchableId(apiKey: string, port: number) {
-  const appIdUrl = `http://127.0.0.1:${port}/v1/get-app-searchable-id`;
-  const appIdQuery = await fetch(appIdUrl, {
-    credentials: "same-origin",
-    redirect: "follow",
-    headers: { Authorization: `Bearer ${apiKey}` },
-  })
-    .then((res) => res.json())
-    .then((json) => {
-      if (!isGetAppSearchableResponse(json)) {
-        const message = `failed parse get_app_searchable_id response: ${JSON.stringify(
-          json,
-        )}`;
-        return {
-          data: null,
-          error: message,
-        };
-      }
-      return {
-        data: json,
-        error: null,
-      };
-    })
-    .catch((error: Error) => ({ error: error, data: null }));
+// async function fetchAppSearchableId(apiKey: string, port: number) {
+//   const appIdUrl = `http://127.0.0.1:${port}/v1/get-app-searchable-id`;
+//   const appIdQuery = await fetch(appIdUrl, {
+//     credentials: "same-origin",
+//     redirect: "follow",
+//     headers: { Authorization: `Bearer ${apiKey}` },
+//   })
+//     .then((res) => res.json())
+//     .then((json) => {
+//       if (!isGetAppSearchableResponse(json)) {
+//         const message = `failed parse get_app_searchable_id response: ${JSON.stringify(
+//           json,
+//         )}`;
+//         return {
+//           data: null,
+//           error: message,
+//         };
+//       }
+//       return {
+//         data: json,
+//         error: null,
+//       };
+//     })
+//     .catch((error: Error) => ({ error: error, data: null }));
 
-  return appIdQuery;
-}
+//   return appIdQuery;
+// }
 
-type GetAppSearchableIdResponse = {
-  app_searchable_id: string;
-};
+// type GetAppSearchableIdResponse = {
+//   app_searchable_id: string;
+// };
 
-function isGetAppSearchableResponse(
-  response: unknown,
-): response is GetAppSearchableIdResponse {
-  if (!response) return false;
-  if (typeof response !== "object") return false;
-  if (!("app_searchable_id" in response)) return false;
-  return typeof response.app_searchable_id === "string";
-}
+// function isGetAppSearchableResponse(
+//   response: unknown,
+// ): response is GetAppSearchableIdResponse {
+//   if (!response) return false;
+//   if (typeof response !== "object") return false;
+//   if (!("app_searchable_id" in response)) return false;
+//   return typeof response.app_searchable_id === "string";
+// }
 
 // TODO: add more queries and mutations and make a new file
 export const graphqlQueriesAndMutations = createApi({
@@ -194,13 +194,13 @@ export const graphqlQueriesAndMutations = createApi({
       async queryFn(args, api, _extraOptions, _baseQuery) {
         const state = api.getState() as RootState;
         const apiKey = state.config.apiKey ?? "";
-        const port = state.config.lspPort;
+        // const port = state.config.lspPort;
         // TODO: where is current workspace set?
         const workspace =
           state.teams.group?.id ?? state.config.currentWorkspaceName ?? "";
 
         const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
-        const appIdQuery = await fetchAppSearchableId(apiKey, port);
+        // const appIdQuery = await fetchAppSearchableId(apiKey, port);
 
         const client = createGraphqlClient(addressUrl, apiKey, api.signal);
 
@@ -209,7 +209,7 @@ export const graphqlQueriesAndMutations = createApi({
           ft_title: "",
           located_fgroup_id: workspace,
           owner_shared: false,
-          ft_app_searchable: appIdQuery.data?.app_searchable_id,
+          //          ft_app_searchable: appIdQuery.data?.app_searchable_id,
         };
         const threadQuery = await client.mutation<
           CreateThreadMutation,
@@ -238,9 +238,9 @@ export const graphqlQueriesAndMutations = createApi({
         const createMessageArgs: FThreadMessageInput[] = args.messages.map(
           (message, index) => {
             return {
-              ftm_app_specific: JSON.stringify(
-                appIdQuery.data?.app_searchable_id ?? "",
-              ),
+              // ftm_app_specific: JSON.stringify(
+              //   appIdQuery.data?.app_searchable_id ?? "",
+              // ),
               ftm_belongs_to_ft_id: threadQuery.data?.thread_create.ft_id ?? "",
               ftm_alt: 100,
               ftm_num: index + 1,
@@ -300,12 +300,12 @@ export const graphqlQueriesAndMutations = createApi({
       async queryFn(args, api, _extraOptions, _baseQuery) {
         const state = api.getState() as RootState;
         const apiKey = state.config.apiKey ?? "";
-        const port = state.config.lspPort;
+        // const port = state.config.lspPort;
         // TODO: where is current workspace set?
         const workspace =
           state.teams.group?.id ?? state.config.currentWorkspaceName ?? "";
 
-        const appIdQuery = await fetchAppSearchableId(apiKey, port);
+        // const appIdQuery = await fetchAppSearchableId(apiKey, port);
 
         const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
 
@@ -316,7 +316,7 @@ export const graphqlQueriesAndMutations = createApi({
           ft_title: "", // TODO: generate the title
           located_fgroup_id: workspace,
           owner_shared: false,
-          ft_app_searchable: appIdQuery.data?.app_searchable_id,
+          // ft_app_searchable: appIdQuery.data?.app_searchable_id,
         };
         const threadQuery = await client.mutation<
           CreateThreadMutation,
@@ -350,9 +350,9 @@ export const graphqlQueriesAndMutations = createApi({
 
         // Note: ftm_num, ftm_alt, and ftm_prev_alt are also hard coded for tracking waiting state
         const createMessageArgs: FThreadMessageInput = {
-          ftm_app_specific: JSON.stringify(
-            appIdQuery.data?.app_searchable_id ?? "",
-          ),
+          // ftm_app_specific: JSON.stringify(
+          //   appIdQuery.data?.app_searchable_id ?? "",
+          // ),
           ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
           ftm_alt: 100,
           ftm_num: 1,
