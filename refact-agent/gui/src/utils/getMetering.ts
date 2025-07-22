@@ -1,8 +1,18 @@
 import { isUsage, Usage } from "../services/refact/chat";
-import { AssistantMessage, isAssistantMessage } from "../services/refact/types";
+import {
+  AssistantMessage,
+  BaseMessage,
+  isAssistantMessage,
+} from "../services/refact/types";
+import { Override } from "./Override";
+
+type AssistantMessageWithUsage = Override<
+  AssistantMessage,
+  { ftm_usage: Usage }
+>;
 
 // TODO: cap cost should be in the messages and fix types
-export function getTotalCostMeteringForMessages(messages: unknown[]) {
+export function getTotalCostMeteringForMessages(messages: BaseMessage[]) {
   const assistantMessages = messages.filter(hasUsageAndPrice);
   if (assistantMessages.length === 0) return null;
 
@@ -14,6 +24,7 @@ export function getTotalCostMeteringForMessages(messages: unknown[]) {
   }>(
     (acc, message) => {
       // const metering_coins_prompt = message.ftm_usage.
+      message.ftm_usage;
       return {
         metering_coins_prompt:
           acc.metering_coins_prompt +
@@ -82,9 +93,9 @@ export function getTotalTokenMeteringForMessages(messages: unknown[]) {
     },
   );
 }
-function hasUsageAndPrice(message: unknown): message is AssistantMessage & {
-  ftm_usage: Usage;
-} {
+function hasUsageAndPrice(
+  message: unknown,
+): message is AssistantMessageWithUsage {
   if (!isAssistantMessage(message)) return false;
   if (!("ftm_usage" in message)) return false;
   if (!message.ftm_usage) return false;

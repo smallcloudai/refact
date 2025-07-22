@@ -57,7 +57,7 @@ type Message = NonNullable<
   MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"]
 >;
 
-type InitialState = {
+export type MessagesInitialState = {
   waitingBranches: number[]; // alt numbers
   streamingBranches: number[]; // alt number
   messages: Record<string, BaseMessage>;
@@ -68,7 +68,7 @@ type InitialState = {
   thread: Thread | null;
 };
 
-const initialState: InitialState = {
+const initialState: MessagesInitialState = {
   waitingBranches: [],
   streamingBranches: [],
   messages: {},
@@ -96,7 +96,7 @@ function getInfoFromId(id: string) {
 // https://github.com/reduxjs/redux-toolkit/discussions/4553 see this for creating memoized selectors
 
 const selectMessagesValues = createSelector(
-  (state: InitialState) => state.messages,
+  (state: MessagesInitialState) => state.messages,
   (messages) => Object.values(messages),
 );
 
@@ -264,7 +264,10 @@ export const threadMessagesSlice = createSlice({
     },
 
     // TODO: check where this is used
-    setThreadFtId: (state, action: PayloadAction<InitialState["ft_id"]>) => {
+    setThreadFtId: (
+      state,
+      action: PayloadAction<MessagesInitialState["ft_id"]>,
+    ) => {
       state.ft_id = action.payload;
     },
   },

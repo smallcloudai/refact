@@ -1,14 +1,5 @@
 // Careful with exports that include components, it'll cause this to compile to a large file.
 import type { FileInfo } from "../features/Chat/activeFile";
-// TODO: this cause more exports than needed :/
-export {
-  type ChatThread,
-  type Chat,
-  type ToolUse,
-} from "../features/Chat/Thread/types";
-// TODO: this may need to be re-created
-// export { newChatAction } from "../features/Chat/Thread/actions";
-import { type Chat } from "../features/Chat/Thread/types";
 import type { Snippet } from "../features/Chat/selectedSnippet";
 import type { Config } from "../features/Config/configSlice";
 import type { ErrorSliceState } from "../features/Errors/errorsSlice";
@@ -19,6 +10,7 @@ import type { TourState } from "../features/Tour";
 import type { FIMDebugState } from "../hooks";
 import { CurrentProjectInfo } from "../features/Chat/currentProject";
 import { TeamsSliceState } from "../features/Teams";
+import type { MessagesInitialState } from "../features/ThreadMessages";
 
 export { updateConfig, type Config } from "../features/Config/configSlice";
 export { type FileInfo, setFileInfo } from "../features/Chat/activeFile";
@@ -33,6 +25,7 @@ export {
   type CurrentProjectInfo,
 } from "../features/Chat/currentProject";
 export type { TextDocToolCall } from "../components/Tools/types";
+export type { BaseMessage as ThreadMessage } from "../services/refact";
 
 // here
 export type {
@@ -42,11 +35,6 @@ export type {
   DiffChunk,
   ToolEditResult,
 } from "../services/refact";
-
-import { MessagesSubscriptionSubscription } from "../../generated/documents";
-
-export type ThreadMessage =
-  MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"];
 
 export type {
   FThreadMultipleMessagesInput,
@@ -62,10 +50,10 @@ export type InitialState = {
   config: Config;
   active_file: FileInfo;
   selected_snippet: Snippet;
-  chat: Chat;
   error: ErrorSliceState;
   pages: PageSliceState;
   current_project: CurrentProjectInfo;
+  threadMessages: MessagesInitialState;
 };
 
 export {
@@ -75,7 +63,7 @@ export {
   ideNewFileAction,
   ideOpenHotKeys,
   ideOpenSettingsAction,
-  ideOpenChatInNewTab,
+  // ideOpenChatInNewTab,
   ideAnimateFileStart,
   ideAnimateFileStop,
   ideChatPageChange,
