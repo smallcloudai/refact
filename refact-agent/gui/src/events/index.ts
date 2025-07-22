@@ -10,7 +10,6 @@ import type { TourState } from "../features/Tour";
 import type { FIMDebugState } from "../hooks";
 import { CurrentProjectInfo } from "../features/Chat/currentProject";
 import { TeamsSliceState } from "../features/Teams";
-import type { MessagesInitialState } from "../features/ThreadMessages";
 
 export { updateConfig, type Config } from "../features/Config/configSlice";
 export { type FileInfo, setFileInfo } from "../features/Chat/activeFile";
@@ -53,7 +52,6 @@ export type InitialState = {
   error: ErrorSliceState;
   pages: PageSliceState;
   current_project: CurrentProjectInfo;
-  threadMessages: MessagesInitialState;
 };
 
 export {

@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 
 import { LspChatMessage } from "../services/refact/chat";
-import { formatMessagesForChat } from "../features/Chat/Thread/utils";
 import { useAppDispatch } from "./useAppDispatch";
 import { clearInformation } from "../features/Errors/informationSlice";
 
