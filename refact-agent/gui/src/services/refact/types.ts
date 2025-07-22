@@ -1,6 +1,4 @@
-// import { FThreadMessageOutput } from "../../../generated/documents";
 import type { MessagesSubscriptionSubscription } from "../../../generated/documents";
-import { LspChatMode } from "../../features/Chat";
 import { Checkpoint } from "../../features/Checkpoints/types";
 import { Override } from "../../utils/Override";
 import { GetChatTitleActionPayload, GetChatTitleResponse, Usage } from "./chat";
@@ -296,6 +294,13 @@ export function isChatMessage(message: unknown): message is ChatMessage {
 }
 
 export type ChatMessages = ChatMessage[];
+
+export type LspChatMode =
+  | "NO_TOOLS"
+  | "EXPLORE"
+  | "AGENT"
+  | "CONFIGURE"
+  | "PROJECT_SUMMARY";
 
 export type ChatMeta = {
   current_config_file?: string | undefined;

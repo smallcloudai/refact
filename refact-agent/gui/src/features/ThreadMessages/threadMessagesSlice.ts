@@ -15,11 +15,8 @@ import {
   ToolMessage,
   isToolMessage,
 } from "../../services/refact";
-import {
-  isMessageWithIntegrationMeta,
-  MessageWithIntegrationMeta,
-} from "../Chat";
-import { takeWhile } from "../../utils";
+
+import { Override, takeWhile } from "../../utils";
 
 // TODO: move this somewhere
 export type ToolConfirmationRequest = {
@@ -56,6 +53,43 @@ type Delta = NonNullable<
 type Message = NonNullable<
   MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"]
 >;
+
+export type IntegrationMeta = {
+  name?: string;
+  path?: string;
+  project?: string;
+  shouldIntermediatePageShowUp?: boolean;
+};
+
+export function isIntegrationMeta(json: unknown): json is IntegrationMeta {
+  if (!json || typeof json !== "object") return false;
+  if (!("name" in json) || !("path" in json) || !("project" in json)) {
+    return false;
+  }
+  return true;
+}
+
+export type MessageWithIntegrationMeta = Override<
+  Message,
+  {
+    ftm_user_preferences: { integration: IntegrationMeta };
+  }
+>;
+
+export function isMessageWithIntegrationMeta(
+  message: unknown,
+): message is MessageWithIntegrationMeta {
+  if (!message || typeof message !== "object") return false;
+  if (!("ftm_user_preferences" in message)) return false;
+  if (
+    !message.ftm_user_preferences ||
+    typeof message.ftm_user_preferences !== "object"
+  )
+    return false;
+  const preferences = message.ftm_user_preferences as Record<string, unknown>;
+  if (!("integration" in preferences)) return false;
+  return isIntegrationMeta(preferences.integration);
+}
 
 export type MessagesInitialState = {
   waitingBranches: number[]; // alt numbers
@@ -458,7 +492,7 @@ export const threadMessagesSlice = createSlice({
       const maybeIntegrationMeta = messages.find(isMessageWithIntegrationMeta);
       if (!maybeIntegrationMeta) return null;
       // TODO: any types are causing issues here
-      const message = maybeIntegrationMeta as MessageWithIntegrationMeta;
+      const message = maybeIntegrationMeta;
       return message.ftm_user_preferences.integration;
     }),
 
