@@ -16,6 +16,12 @@ export type LSPUserMessage = Pick<
   content: UserMessage["ftm_content"];
 };
 
+export type LSPToolMessage = {
+  role: "tool";
+  content: ToolMessage["ftm_content"];
+  tool_call_id: string;
+};
+
 export type LspChatMessage =
   | {
       role: ChatRole;
@@ -30,11 +36,8 @@ export type LspChatMessage =
       usage?: Usage | null;
     }
   | LSPUserMessage
-  | {
-      role: "tool";
-      content: ToolMessage["ftm_content"];
-      tool_call_id: string;
-    };
+  | LSPToolMessage
+  | { role: string; content: string };
 
 // could be more narrow.
 export function isLspChatMessage(json: unknown): json is LspChatMessage {

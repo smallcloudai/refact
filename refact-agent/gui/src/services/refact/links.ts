@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { RootState } from "../../app/store";
 import {
+  BaseMessage,
   ChatMessage,
   ChatMessages,
   isAssistantMessage,
@@ -11,7 +12,7 @@ import {
 } from "./types";
 import { CHAT_COMMIT_LINK_URL, CHAT_LINKS_URL } from "./consts";
 
-import { LspChatMessage, LSPUserMessage } from "./chat";
+import { LspChatMessage, LSPToolMessage, LSPUserMessage } from "./chat";
 
 // useful for forcing specific links
 // import { STUB_LINKS_FOR_CHAT_RESPONSE } from "../../__fixtures__";
@@ -237,7 +238,9 @@ function isCommitResponse(json: unknown): json is CommitResponse {
   return true;
 }
 
-export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
+export function formatMessagesForLsp(
+  messages: BaseMessage[],
+): LspChatMessage[] {
   return messages.reduce<LspChatMessage[]>((acc, message) => {
     if (isUserMessage(message)) {
       const { ftm_role, ftm_content, ...rest } = message;
@@ -246,30 +249,28 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
         role: ftm_role,
         content: ftm_content,
       };
-      return acc.concat([msg]);
+      return [...acc, msg];
     }
 
     if (isAssistantMessage(message)) {
-      return acc.concat([
-        {
-          role: message.ftm_role,
-          content: message.ftm_content,
-          tool_calls: message.ftm_tool_calls ?? undefined,
-          thinking_blocks: message.thinking_blocks ?? undefined,
-          finish_reason: message.finish_reason,
-          usage: message.usage,
-        },
-      ]);
+      const msg = {
+        role: message.ftm_role,
+        content: message.ftm_content,
+        tool_calls: message.ftm_tool_calls ?? undefined,
+        thinking_blocks: message.thinking_blocks ?? undefined,
+        finish_reason: message.finish_reason,
+        usage: message.usage,
+      };
+      return [...acc, msg];
     }
 
     if (isToolMessage(message)) {
-      return acc.concat([
-        {
-          role: "tool",
-          content: message.ftm_content,
-          tool_call_id: message.ftm_call_id,
-        },
-      ]);
+      const msg: LSPToolMessage = {
+        role: "tool",
+        content: message.ftm_content,
+        tool_call_id: message.ftm_call_id,
+      };
+      return [...acc, msg];
     }
 
     if (isDiffMessage(message)) {
@@ -278,7 +279,7 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
         content: JSON.stringify(message.ftm_content),
         tool_call_id: message.tool_call_id,
       };
-      return acc.concat([diff]);
+      return [...acc, diff];
     }
 
     const ftm_content =
