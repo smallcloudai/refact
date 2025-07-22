@@ -1,38 +1,9 @@
 import {
-  // AssistantMessage,
-  // ChatContextFile,
-  // ChatContextFileMessage,
-  // ChatMessage,
   ChatMessages,
-  // ChatResponse,
-  // DiffChunk,
-  // SubchatResponse,
-  // ToolMessage,
-  // UserMessage,
-  // isAssistantDelta,
   isAssistantMessage,
-  // isCDInstructionResponse,
-  // isChatContextFileDelta,
-  // isChatResponseChoice,
-  // isContextFileResponse,
-  // isDiffChunk,
   isDiffMessage,
-  // isDiffResponse,
-  // isLspUserMessage,
-  // isPlainTextResponse,
-  // isSubchatContextFileResponse,
-  // isSubchatResponse,
-  // isSystemResponse,
-  // isToolCallDelta,
-  // isThinkingBlocksDelta,
-  // isToolContent,
   isToolMessage,
-  // isToolResponse,
   isUserMessage,
-  // isUserResponse,
-  // ThinkingBlock,
-  // isToolCallMessage,
-  // Usage,
   LSPUserMessage,
 } from "../../../services/refact";
 import { type LspChatMessage } from "../../../services/refact";
@@ -87,88 +58,4 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
         : JSON.stringify(message.ftm_content);
     return [...acc, { role: message.ftm_role, content: ftm_content }];
   }, []);
-}
-
-export function formatMessagesForChat(
-  _messages: LspChatMessage[],
-): ChatMessages {
-  return [];
-  // return messages.reduce<ChatMessages>((acc, message) => {
-  //   if (isLspUserMessage(message) && typeof message.content === "string") {
-  //     const userMessage: UserMessage = {
-  //       ftm_role: message.role,
-  //       ftm_content: message.content,
-  //       checkpoints: message.checkpoints,
-  //     };
-  //     return acc.concat(userMessage);
-  //   }
-
-  //   if (message.role === "assistant") {
-  //     const { role, content, ...rest } = message;
-  //     return acc.concat({
-  //       ftm_role: role,
-  //       ftm_content: content,
-  //       ...rest,
-  //     });
-  //   }
-
-  //   if (
-  //     message.role === "context_file" &&
-  //     typeof message.content === "string"
-  //   ) {
-  //     const contextFileMessage: ChatContextFileMessage = {
-  //       ftm_role: message.role,
-  //       ftm_content: message.content,
-  //     };
-  //     return acc.concat(contextFileMessage);
-  //   }
-
-  //   if (message.role === "system" && typeof message.content === "string") {
-  //     return acc.concat({
-  //       ftm_role: message.role,
-  //       ftm_content: message.content,
-  //     });
-  //   }
-
-  //   if (message.role === "plain_text" && typeof message.content === "string") {
-  //     return acc.concat({
-  //       ftm_role: message.role,
-  //       ftm_content: message.content,
-  //     });
-  //   }
-
-  //   if (
-  //     message.role === "cd_instruction" &&
-  //     typeof message.content === "string"
-  //   ) {
-  //     return acc.concat({
-  //       ftm_role: message.role,
-  //       ftm_content: message.content,
-  //     });
-  //   }
-
-  //   if (
-  //     message.role === "tool" &&
-  //     (typeof message.content === "string" || isToolContent(message.content)) &&
-  //     typeof message.tool_call_id === "string"
-  //   ) {
-  //     // TODO: why type cast this
-  //     return acc.concat(message as unknown as ToolMessage);
-  //   }
-
-  //   if (
-  //     message.role === "diff" &&
-  //     Array.isArray(message.content) &&
-  //     message.content.every(isDiffChunk) &&
-  //     typeof message.tool_call_id === "string"
-  //   ) {
-  //     return acc.concat({
-  //       ftm_role: message.role,
-  //       ftm_content: message.content,
-  //       tool_call_id: message.tool_call_id,
-  //     });
-  //   }
-
-  //   return acc;
-  // }, []);
 }
