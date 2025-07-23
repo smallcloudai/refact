@@ -335,6 +335,12 @@ export type FPermissionSubs = {
   news_pubsub: Scalars['String']['output'];
 };
 
+export type FPersonaHistoryItemOutput = {
+  __typename?: 'FPersonaHistoryItemOutput';
+  ft_id: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+};
+
 export type FPersonaInput = {
   located_fgroup_id: Scalars['String']['input'];
   persona_discounts?: InputMaybe<Scalars['String']['input']>;
@@ -371,8 +377,11 @@ export type FPersonaKanbanTaskOutput = {
 
 export type FPersonaOutput = {
   __typename?: 'FPersonaOutput';
-  ft_id?: Maybe<Scalars['String']['output']>;
+  history?: Maybe<Array<FPersonaHistoryItemOutput>>;
+  latest_ft_id?: Maybe<Scalars['String']['output']>;
   located_fgroup_id: Scalars['String']['output'];
+  marketable_docker_image?: Maybe<Scalars['String']['output']>;
+  marketable_run_this?: Maybe<Scalars['String']['output']>;
   marketable_setup_default?: Maybe<Scalars['JSON']['output']>;
   owner_fuser_id: Scalars['String']['output'];
   persona_archived_ts: Scalars['Float']['output'];
@@ -969,7 +978,7 @@ export type MutationThread_Mass_Group_PatchArgs = {
 
 
 export type MutationThread_Messages_Create_MultipleArgs = {
-  delete_negative?: Scalars['Boolean']['input'];
+  delete_negative?: InputMaybe<Array<Scalars['Int']['input']>>;
   input: FThreadMultipleMessagesInput;
 };
 

@@ -298,6 +298,11 @@ type FPermissionSubs {
   news_pubsub: String!
 }
 
+type FPersonaHistoryItemOutput {
+  ft_id: String!
+  title: String!
+}
+
 input FPersonaInput {
   located_fgroup_id: String!
   persona_discounts: String = null
@@ -331,8 +336,11 @@ type FPersonaKanbanTaskOutput {
 }
 
 type FPersonaOutput {
-  ft_id: String
+  history: [FPersonaHistoryItemOutput!]
+  latest_ft_id: String
   located_fgroup_id: String!
+  marketable_docker_image: String
+  marketable_run_this: String
   marketable_setup_default: JSON
   owner_fuser_id: String!
   persona_archived_ts: Float!
@@ -608,7 +616,7 @@ type Mutation {
   thread_delete(id: String!): Boolean!
   thread_lock(ft_id: String!, worker_name: String!): Boolean!
   thread_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
-  thread_messages_create_multiple(delete_negative: Boolean! = false, input: FThreadMultipleMessagesInput!): Int!
+  thread_messages_create_multiple(delete_negative: [Int!] = null, input: FThreadMultipleMessagesInput!): Int!
   thread_patch(id: String!, patch: FThreadPatch!): FThreadOutput!
   thread_reset_error(ft_error: String!, ft_id: String!): Boolean!
   thread_reset_title(ft_id: String!, ft_title: String!): Boolean!
