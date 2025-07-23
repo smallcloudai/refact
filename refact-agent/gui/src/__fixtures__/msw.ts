@@ -258,26 +258,28 @@ export const Experts = graphql.query(ExpertsForGroupDocument, () => {
 export const ModelsForExpert = graphql.query(ModelsForExpertDocument, () => {
   return HttpResponse.json({
     data: {
-      expert_choice_consequences: [
-        {
-          provm_name: "claude-3-7-sonnet-20250219",
-        },
-        {
-          provm_name: "claude-sonnet-4-20250514",
-        },
-        {
-          provm_name: "gpt-4.1",
-        },
-        {
-          provm_name: "gpt-4.1-mini",
-        },
-        {
-          provm_name: "nebius/Qwen/Qwen3-235B-A22B",
-        },
-        {
-          provm_name: "o4-mini",
-        },
-      ],
+      expert_choice_consequences: {
+        models: [
+          {
+            provm_name: "claude-3-7-sonnet-20250219",
+          },
+          {
+            provm_name: "claude-sonnet-4-20250514",
+          },
+          {
+            provm_name: "gpt-4.1",
+          },
+          {
+            provm_name: "gpt-4.1-mini",
+          },
+          {
+            provm_name: "nebius/Qwen/Qwen3-235B-A22B",
+          },
+          {
+            provm_name: "o4-mini",
+          },
+        ],
+      },
     },
   });
 });

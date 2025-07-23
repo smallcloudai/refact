@@ -41,9 +41,8 @@ const ElementForNodeMessage: React.FC<{
   if (isAssistantMessage(message)) {
     // find the tool result for the tool cal
 
-    // TODO: why is this an error
+    // TODO: why is this an error?, could be FTMessageNode ?
     return (
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       <AssistantInput toolCalls={message.ftm_tool_calls}>
         {message.ftm_content}
       </AssistantInput>
@@ -55,11 +54,7 @@ const ElementForNodeMessage: React.FC<{
   }
 
   if (isChatContextFileMessage(message)) {
-    const files = parseOrElse<ChatContextFile[]>(
-      // TODO: narrow the types for messages.
-      message.ftm_content as string,
-      [],
-    );
+    const files = parseOrElse<ChatContextFile[]>(message.ftm_content, []);
     return <ContextFiles files={files} />;
   }
 

@@ -11,3 +11,4 @@ export * from "./fencedBackticks";
 export * from "./isAbsolutePath";
 export * from "./isDetailMessage";
 export * from "./hasProperty";
+export * from "./Override";

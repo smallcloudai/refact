@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 
 import { LspChatMessage } from "../services/refact/chat";
-import { formatMessagesForChat } from "../features/Chat/Thread/utils";
 import { useAppDispatch } from "./useAppDispatch";
 import { clearInformation } from "../features/Errors/informationSlice";
 
@@ -40,8 +39,11 @@ export function useSmartLinks() {
         .filter((tool) => tool.enabled)
         .map((tool) => tool.spec);
 
-      // TODO: change this to flexus format
-      const messages = formatMessagesForChat(sl_chat);
+      // TODO: change this to flexus format, when / if smart links are enabled
+      // const messages = formatMessagesForChat(sl_chat);
+      const messages = sl_chat.map((message) => {
+        return { ftm_role: message.role, ftm_content: message.content };
+      });
       dispatch(clearInformation());
       // TODO: when in an integration, we should enable all patch like tool requests
       void createThreadWitMultipleMessages({

@@ -1,6 +1,6 @@
-import { FTMMessage } from "../features/ThreadMessages/makeMessageTrie";
+import type { BaseMessage } from "../services/refact/types";
 
-export const STUB_ALICE_MESSAGES: FTMMessage[] = [
+export const STUB_ALICE_MESSAGES: BaseMessage[] = [
   {
     ftm_belongs_to_ft_id: "solarthread1",
     ftm_alt: 100,
@@ -44,7 +44,7 @@ export const STUB_ALICE_MESSAGES: FTMMessage[] = [
   },
 ];
 
-export const STUB_BRANCHED_MESSAGES: FTMMessage[] = [
+export const STUB_BRANCHED_MESSAGES: BaseMessage[] = [
   {
     ftm_belongs_to_ft_id: "solarthread1",
     ftm_alt: 100,

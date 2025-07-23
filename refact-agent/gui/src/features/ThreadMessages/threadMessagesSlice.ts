@@ -4,11 +4,8 @@ import {
   type PayloadAction,
 } from "@reduxjs/toolkit";
 import { MessagesSubscriptionSubscription } from "../../../generated/documents";
-import {
-  FTMMessage,
-  makeMessageTrie,
-  getAncestorsForNode,
-} from "./makeMessageTrie";
+import { makeMessageTrie, getAncestorsForNode } from "./makeMessageTrie";
+import type { BaseMessage } from "../../services/refact/types";
 import { pagesSlice } from "../Pages/pagesSlice";
 import { graphqlQueriesAndMutations } from "../../services/graphql";
 
@@ -18,11 +15,8 @@ import {
   ToolMessage,
   isToolMessage,
 } from "../../services/refact";
-import {
-  isMessageWithIntegrationMeta,
-  MessageWithIntegrationMeta,
-} from "../Chat";
-import { takeWhile } from "../../utils";
+
+import { Override, takeWhile } from "../../utils";
 
 // TODO: move this somewhere
 export type ToolConfirmationRequest = {
@@ -60,10 +54,47 @@ type Message = NonNullable<
   MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"]
 >;
 
-type InitialState = {
+export type IntegrationMeta = {
+  name?: string;
+  path?: string;
+  project?: string;
+  shouldIntermediatePageShowUp?: boolean;
+};
+
+export function isIntegrationMeta(json: unknown): json is IntegrationMeta {
+  if (!json || typeof json !== "object") return false;
+  if (!("name" in json) || !("path" in json) || !("project" in json)) {
+    return false;
+  }
+  return true;
+}
+
+export type MessageWithIntegrationMeta = Override<
+  Message,
+  {
+    ftm_user_preferences: { integration: IntegrationMeta };
+  }
+>;
+
+export function isMessageWithIntegrationMeta(
+  message: unknown,
+): message is MessageWithIntegrationMeta {
+  if (!message || typeof message !== "object") return false;
+  if (!("ftm_user_preferences" in message)) return false;
+  if (
+    !message.ftm_user_preferences ||
+    typeof message.ftm_user_preferences !== "object"
+  )
+    return false;
+  const preferences = message.ftm_user_preferences as Record<string, unknown>;
+  if (!("integration" in preferences)) return false;
+  return isIntegrationMeta(preferences.integration);
+}
+
+export type MessagesInitialState = {
   waitingBranches: number[]; // alt numbers
   streamingBranches: number[]; // alt number
-  messages: Record<string, FTMMessage>;
+  messages: Record<string, BaseMessage>;
   ft_id: string | null;
   endNumber: number;
   endAlt: number;
@@ -71,7 +102,7 @@ type InitialState = {
   thread: Thread | null;
 };
 
-const initialState: InitialState = {
+const initialState: MessagesInitialState = {
   waitingBranches: [],
   streamingBranches: [],
   messages: {},
@@ -99,7 +130,7 @@ function getInfoFromId(id: string) {
 // https://github.com/reduxjs/redux-toolkit/discussions/4553 see this for creating memoized selectors
 
 const selectMessagesValues = createSelector(
-  (state: InitialState) => state.messages,
+  (state: MessagesInitialState) => state.messages,
   (messages) => Object.values(messages),
 );
 
@@ -179,7 +210,7 @@ export const threadMessagesSlice = createSlice({
       const infoFromId = getInfoFromId(action.payload.news_payload_id);
       if (!infoFromId) return state;
       if (!(action.payload.news_payload_id in state.messages)) {
-        const msg: FTMMessage = {
+        const msg: BaseMessage = {
           ...infoFromId,
           ftm_role: action.payload.stream_delta.ftm_role,
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -267,7 +298,10 @@ export const threadMessagesSlice = createSlice({
     },
 
     // TODO: check where this is used
-    setThreadFtId: (state, action: PayloadAction<InitialState["ft_id"]>) => {
+    setThreadFtId: (
+      state,
+      action: PayloadAction<MessagesInitialState["ft_id"]>,
+    ) => {
       state.ft_id = action.payload;
     },
   },
@@ -458,11 +492,11 @@ export const threadMessagesSlice = createSlice({
       const maybeIntegrationMeta = messages.find(isMessageWithIntegrationMeta);
       if (!maybeIntegrationMeta) return null;
       // TODO: any types are causing issues here
-      const message = maybeIntegrationMeta as MessageWithIntegrationMeta;
+      const message = maybeIntegrationMeta;
       return message.ftm_user_preferences.integration;
     }),
 
-    selectMessageIsLastOfType: (state, message: FTMMessage) => {
+    selectMessageIsLastOfType: (state, message: BaseMessage) => {
       const { endNumber, endAlt, endPrevAlt, messages } = state;
       const currentBranch = getAncestorsForNode(
         endNumber,

@@ -70,9 +70,7 @@ subscription MessagesSubscription($ft_id: String!, $want_deltas: Boolean!) {
 }
 
 mutation MessageCreateMultiple($input: FThreadMultipleMessagesInput!) {
-  thread_messages_create_multiple(input: $input) {
-    count
-  }
+  thread_messages_create_multiple(input: $input)
 }
 
 mutation ThreadPatch($id: String!, $message: String!) {
@@ -93,7 +91,9 @@ query ModelsForExpert($fexp_id: String!, $inside_fgroup_id: String!) {
     fexp_id: $fexp_id
     inside_fgroup_id: $inside_fgroup_id
   ) {
-    provm_name
+    models {
+      provm_name
+    }
   }
 }
 

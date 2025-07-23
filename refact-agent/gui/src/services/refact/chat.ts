@@ -1,6 +1,3 @@
-import { IntegrationMeta, LspChatMode } from "../../features/Chat";
-import { CHAT_URL } from "./consts";
-// import { ToolCommand } from "./tools";
 import {
   ChatRole,
   ThinkingBlock,
@@ -19,6 +16,12 @@ export type LSPUserMessage = Pick<
   content: UserMessage["ftm_content"];
 };
 
+export type LSPToolMessage = {
+  role: "tool";
+  content: ToolMessage["ftm_content"];
+  tool_call_id: string;
+};
+
 export type LspChatMessage =
   | {
       role: ChatRole;
@@ -33,11 +36,8 @@ export type LspChatMessage =
       usage?: Usage | null;
     }
   | LSPUserMessage
-  | {
-      role: "tool";
-      content: ToolMessage["ftm_content"];
-      tool_call_id: string;
-    };
+  | LSPToolMessage
+  | { role: string; content: string };
 
 // could be more narrow.
 export function isLspChatMessage(json: unknown): json is LspChatMessage {
@@ -55,44 +55,6 @@ export function isLspUserMessage(
 ): message is LSPUserMessage {
   return message.role === "user";
 }
-
-type StreamArgs =
-  | {
-      stream: true;
-      abortSignal: AbortSignal;
-    }
-  | { stream: false; abortSignal?: undefined | AbortSignal };
-
-type SendChatArgs = {
-  messages: LspChatMessage[];
-  last_user_message_id?: string; // used for `refact-message-id` header
-  model: string;
-  lspUrl?: string;
-  takeNote?: boolean;
-  onlyDeterministicMessages?: boolean;
-  chatId?: string;
-  port?: number;
-  apiKey?: string | null;
-  // isConfig?: boolean;
-  toolsConfirmed?: boolean;
-  checkpointsEnabled?: boolean;
-  integration?: IntegrationMeta | null;
-  mode?: LspChatMode; // used for chat actions
-  boost_reasoning?: boolean;
-  increase_max_tokens?: boolean;
-} & StreamArgs;
-
-type GetChatTitleArgs = {
-  messages: LspChatMessage[];
-  model: string;
-  lspUrl?: string;
-  takeNote?: boolean;
-  onlyDeterministicMessages?: boolean;
-  chatId?: string;
-  port?: number;
-  apiKey?: string | null;
-  boost_reasoning?: boolean;
-} & StreamArgs;
 
 export type GetChatTitleResponse = {
   choices: Choice[];
@@ -141,6 +103,7 @@ export type PromptTokenDetails = {
   cached_tokens: number;
 };
 
+// TODO: check this
 export type Usage = {
   // completion_tokens: number;
   // prompt_tokens: number;
@@ -204,115 +167,4 @@ export function isUsage(usage: unknown): usage is Usage {
   }
 
   return true;
-}
-
-// TODO: add config url
-export async function sendChat({
-  messages,
-  model,
-  abortSignal,
-  stream,
-  // lspUrl,
-  // takeNote = false,
-  onlyDeterministicMessages: only_deterministic_messages,
-  chatId: chat_id,
-  port = 8001,
-  apiKey,
-  checkpointsEnabled = true,
-  // isConfig = false,
-  integration,
-  last_user_message_id = "",
-  mode,
-  boost_reasoning,
-  increase_max_tokens = false,
-}: SendChatArgs): Promise<Response> {
-  // const toolsResponse = await getAvailableTools();
-
-  // const tools = takeNote
-  //   ? toolsResponse.filter(
-  //       (tool) => tool.function.name === "remember_how_to_use_tools",
-  //     )
-  //   : toolsResponse.filter(
-  //       (tool) => tool.function.name !== "remember_how_to_use_tools",
-  //     );
-
-  const body = JSON.stringify({
-    messages,
-    model: model,
-    stream,
-    only_deterministic_messages,
-    checkpoints_enabled: checkpointsEnabled,
-    // chat_id,
-    parameters: boost_reasoning ? { boost_reasoning: true } : undefined,
-    increase_max_tokens: increase_max_tokens,
-    meta: {
-      chat_id,
-      request_attempt_id: last_user_message_id,
-      // chat_remote,
-      // TODO: pass this through
-      chat_mode: mode ?? "EXPLORE",
-      // chat_mode: "EXPLORE", // NOTOOLS, EXPLORE, AGENT, CONFIGURE, PROJECTSUMMARY,
-      // TODO: not clear, that if we set integration.path it's going to be set also in meta as current_config_file
-      ...(integration?.path ? { current_config_file: integration.path } : {}),
-    },
-  });
-
-  //   const apiKey = getApiKey();
-  const headers = {
-    "Content-Type": "application/json",
-    ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-  };
-
-  const url = `http://127.0.0.1:${port}${CHAT_URL}`;
-
-  return fetch(url, {
-    method: "POST",
-    headers,
-    body,
-    redirect: "follow",
-    cache: "no-cache",
-    // TODO: causes an error during tests :/
-    // referrer: "no-referrer",
-    signal: abortSignal,
-    credentials: "same-origin",
-  });
-}
-
-export async function generateChatTitle({
-  messages,
-  stream,
-  model,
-  onlyDeterministicMessages: only_deterministic_messages,
-  chatId: chat_id,
-  port = 8001,
-  apiKey,
-}: GetChatTitleArgs): Promise<Response> {
-  const body = JSON.stringify({
-    messages,
-    model,
-    stream,
-    max_tokens: 300,
-    only_deterministic_messages: only_deterministic_messages,
-    chat_id,
-    // NOTE: we don't want to use reasoning here, for example Anthropic requires at least max_tokens=1024 for thinking
-    // parameters: boost_reasoning ? { boost_reasoning: true } : undefined,
-  });
-
-  const headers = {
-    "Content-Type": "application/json",
-    ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-  };
-
-  const url = `http://127.0.0.1:${port}${CHAT_URL}`;
-
-  return fetch(url, {
-    method: "POST",
-    headers,
-    body,
-    redirect: "follow",
-    cache: "no-cache",
-    // TODO: causes an error during tests :/
-    // referrer: "no-referrer",
-    credentials: "same-origin",
-  });
 }

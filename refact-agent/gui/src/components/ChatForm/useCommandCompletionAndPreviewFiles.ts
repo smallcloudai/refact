@@ -7,6 +7,13 @@ import {
   commandsApi,
 } from "../../services/refact/commands";
 import { ChatContextFile } from "../../services/refact/types";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+  selectMessagesFromEndNode,
+} from "../../features/ThreadMessages";
+import { useAppSelector } from "../../hooks/useAppSelector";
+import { formatMessagesForLsp } from "../../services/refact/links";
 
 function useGetCommandCompletionQuery(
   query: string,
@@ -64,9 +71,22 @@ function useCommandCompletion() {
 
 // TODO: this needs migrated
 function useGetCommandPreviewQuery(
-  _query: string,
+  query: string,
 ): (ChatContextFile | string)[] {
-  return [];
+  const messages = useAppSelector(selectMessagesFromEndNode);
+  const messagesToSend = formatMessagesForLsp(messages);
+  const isWaiting = useAppSelector(selectIsWaiting);
+  const isStreaming = useAppSelector(selectIsStreaming);
+
+  // TODO: attach images
+  const { data } = commandsApi.useGetCommandPreviewQuery(
+    { messages: [...messagesToSend, { role: "user", content: query }] },
+    {
+      skip: isWaiting || isStreaming,
+    },
+  );
+  if (!data) return [];
+  return data.files;
 }
 
 function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {

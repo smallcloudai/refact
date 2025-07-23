@@ -11,7 +11,7 @@ type InitialState = {
     | ExpertsForGroupQuery["experts_effective_list"][number]["fexp_id"]
     | null;
   selectedModel:
-    | ModelsForExpertQuery["expert_choice_consequences"][number]["provm_name"]
+    | ModelsForExpertQuery["expert_choice_consequences"]["models"][number]["provm_name"]
     | null;
 };
 
@@ -64,7 +64,7 @@ export const expertsSlice = createSlice({
     builder.addMatcher(
       graphqlQueriesAndMutations.endpoints.modelsForExpert.matchFulfilled,
       (state, action) => {
-        const names = action.payload.expert_choice_consequences.map(
+        const names = action.payload.expert_choice_consequences.models.map(
           (model) => model.provm_name,
         );
         if (!state.selectedModel && names.length > 0) {

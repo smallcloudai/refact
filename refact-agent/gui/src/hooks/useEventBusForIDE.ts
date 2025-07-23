@@ -1,8 +1,6 @@
 import { useCallback } from "react";
 import { createAction } from "@reduxjs/toolkit";
 import { usePostMessage } from "./usePostMessage";
-// TODO: remove this
-import type { ChatThread } from "../features/Chat/Thread/types";
 import {
   EVENT_NAMES_FROM_SETUP,
   HostSettings,
@@ -31,10 +29,6 @@ export type OpenFilePayload = {
   line?: number;
 };
 export const ideOpenFile = createAction<OpenFilePayload>("ide/openFile");
-
-export const ideOpenChatInNewTab = createAction<ChatThread>(
-  "ide/openChatInNewTab",
-);
 
 export const ideAnimateFileStart = createAction<string>(
   "ide/animateFile/start",
@@ -91,7 +85,6 @@ export const ideClearActiveTeamsWorkspace = createAction<undefined>(
 
 export const useEventsBusForIDE = () => {
   const postMessage = usePostMessage();
-  // const canPaste = useAppSelector((state) => state.active_file.can_paste);
 
   const startFileAnimation = useCallback(
     (fileName: string) => {
@@ -167,14 +160,6 @@ export const useEventsBusForIDE = () => {
       postMessage(action);
     },
     [getFullPath, postMessage],
-  );
-
-  const openChatInNewTab = useCallback(
-    (thread: ChatThread) => {
-      const action = ideOpenChatInNewTab(thread);
-      postMessage(action);
-    },
-    [postMessage],
   );
 
   const chatPageChange = useCallback(
@@ -299,7 +284,6 @@ export const useEventsBusForIDE = () => {
     newFile,
     openHotKeys,
     openFile,
-    openChatInNewTab,
     setupHost,
     queryPathThenOpenFile,
     openCustomizationFile,

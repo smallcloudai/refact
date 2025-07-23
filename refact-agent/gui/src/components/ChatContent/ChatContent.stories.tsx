@@ -5,15 +5,14 @@ import { Provider } from "react-redux";
 import { RootState, setUpStore } from "../../app/store";
 import { Theme } from "../Theme";
 import { MarkdownMessage } from "../../__fixtures__/markdown";
-import type { ChatMessages } from "../../services/refact";
-import type { ChatThread } from "../../features/Chat/Thread";
+import type { BaseMessage } from "../../services/refact";
 // TODO: update fixtures
 import {
-  // CHAT_FUNCTIONS_MESSAGES,
-  // CHAT_WITH_DIFF_ACTIONS,
-  // CHAT_WITH_DIFFS,
-  // FROG_CHAT,
-  // LARGE_DIFF,
+  CHAT_FUNCTIONS_MESSAGES,
+  CHAT_WITH_DIFF_ACTIONS,
+  CHAT_WITH_DIFFS,
+  FROG_CHAT,
+  LARGE_DIFF,
   CHAT_WITH_MULTI_MODAL,
   CHAT_CONFIG_THREAD,
   STUB_LINKS_FOR_CHAT_RESPONSE,
@@ -794,11 +793,26 @@ const TEXT_DOC_UPDATE = {
 };
 
 const MockedStore: React.FC<{
-  messages?: ChatMessages;
-  thread?: ChatThread;
+  messages?: BaseMessage[];
   messageThread?: RootState["threadMessages"];
-}> = () => {
-  const store = setUpStore({});
+}> = ({ messages, messageThread }) => {
+  const store = setUpStore({
+    threadMessages: {
+      waitingBranches: [],
+      streamingBranches: [],
+      ft_id: null,
+      endNumber: 0,
+      endAlt: 0,
+      endPrevAlt: 0,
+      thread: null,
+      messages: messages
+        ? messages.reduce((acc, cur) => {
+            return { ...acc, [cur.ftm_call_id]: cur };
+          }, {})
+        : {},
+      ...(messageThread ? messageThread : {}),
+    },
+  });
 
   return (
     <Provider store={store}>
@@ -826,34 +840,31 @@ export const Primary: Story = {};
 export const WithFunctions: Story = {
   args: {
     ...meta.args,
-    // messages: CHAT_FUNCTIONS_MESSAGES,
-    messages: [],
+    messages: CHAT_FUNCTIONS_MESSAGES,
   },
 };
 
 export const Notes: Story = {
   args: {
-    messages: [], // FROG_CHAT.messages,
+    messages: FROG_CHAT,
   },
 };
 
 export const WithDiffs: Story = {
   args: {
-    messages: [], // CHAT_WITH_DIFFS,
+    messages: CHAT_WITH_DIFFS,
   },
 };
 
 export const WithDiffActions: Story = {
   args: {
-    messages: [], // CHAT_WITH_DIFF_ACTIONS.messages,
-    // getDiffByIndex: (key: string) => CHAT_WITH_DIFF_ACTIONS.applied_diffs[key],
+    messages: CHAT_WITH_DIFF_ACTIONS,
   },
 };
 
 export const LargeDiff: Story = {
   args: {
-    messages: [], // LARGE_DIFF.messages,
-    // getDiffByIndex: (key: string) => LARGE_DIFF.applied_diffs[key],
+    messages: LARGE_DIFF,
   },
 };
 
@@ -866,7 +877,18 @@ export const Empty: Story = {
 export const AssistantMarkdown: Story = {
   args: {
     ...meta.args,
-    messages: [{ ftm_role: "assistant", ftm_content: MarkdownMessage }],
+    messages: [
+      {
+        ftm_role: "assistant",
+        ftm_content: MarkdownMessage,
+        ftm_belongs_to_ft_id: "",
+        ftm_alt: 0,
+        ftm_num: 1,
+        ftm_prev_alt: 0,
+        ftm_call_id: "",
+        ftm_created_ts: 0,
+      },
+    ],
   },
 };
 
@@ -878,13 +900,13 @@ export const ToolImages: Story = {
 
 export const MultiModal: Story = {
   args: {
-    messages: CHAT_WITH_MULTI_MODAL.messages,
+    messages: CHAT_WITH_MULTI_MODAL,
   },
 };
 
 export const IntegrationChat: Story = {
   args: {
-    thread: CHAT_CONFIG_THREAD.thread,
+    messages: CHAT_CONFIG_THREAD,
   },
   parameters: {
     msw: {
@@ -899,7 +921,7 @@ export const IntegrationChat: Story = {
 
 export const TextDoc: Story = {
   args: {
-    thread: CHAT_WITH_TEXTDOC,
+    messages: CHAT_WITH_TEXTDOC,
   },
   parameters: {
     msw: {
@@ -919,7 +941,7 @@ export const TextDoc: Story = {
 
 export const MarkdownIssue: Story = {
   args: {
-    thread: MARKDOWN_ISSUE,
+    messages: MARKDOWN_ISSUE,
   },
   parameters: {
     msw: {
@@ -939,40 +961,43 @@ export const MarkdownIssue: Story = {
 
 export const ToolWaiting: Story = {
   args: {
-    thread: {
-      ...MARKDOWN_ISSUE,
-      messages: [
-        { ftm_role: "user", ftm_content: "call a tool and wait" },
-        {
-          ftm_role: "assistant",
-          ftm_content: "",
-          ftm_tool_calls: [
-            {
-              id: "toolu_01JbWarAwzjMyV6azDkd5skX",
-              function: {
-                arguments: '{"use_ast": true}',
-                name: "tree",
-              },
-              type: "function",
-              index: 0,
+    messages: [
+      {
+        ftm_role: "user",
+        ftm_content: "call a tool and wait",
+        ftm_belongs_to_ft_id: "",
+        ftm_alt: 0,
+        ftm_num: 1,
+        ftm_prev_alt: 0,
+        ftm_call_id: "",
+        ftm_created_ts: 0,
+      },
+      {
+        ftm_role: "assistant",
+        ftm_content: "",
+        ftm_tool_calls: [
+          {
+            id: "toolu_01JbWarAwzjMyV6azDkd5skX",
+            function: {
+              arguments: '{"use_ast": true}',
+              name: "tree",
             },
-          ],
-        },
-      ],
-    },
+            type: "function",
+            index: 0,
+          },
+        ],
+        ftm_belongs_to_ft_id: "",
+        ftm_alt: 0,
+        ftm_num: 2,
+        ftm_prev_alt: 0,
+        ftm_call_id: "",
+        ftm_created_ts: 0,
+      },
+    ],
   },
   parameters: {
     msw: {
-      handlers: [
-        goodPing,
-
-        goodUser,
-        // noChatLinks,
-        noTools,
-
-        noCompletions,
-        noCommandPreview,
-      ],
+      handlers: [goodPing, goodUser, noTools, noCompletions, noCommandPreview],
     },
   },
 };
@@ -983,16 +1008,7 @@ export const TextDocUpdate: Story = {
   },
   parameters: {
     msw: {
-      handlers: [
-        goodPing,
-
-        goodUser,
-        // noChatLinks,
-        noTools,
-
-        noCompletions,
-        noCommandPreview,
-      ],
+      handlers: [goodPing, goodUser, noTools, noCompletions, noCommandPreview],
     },
   },
 };

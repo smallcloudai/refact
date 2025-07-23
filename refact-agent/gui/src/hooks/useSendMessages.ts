@@ -11,11 +11,11 @@ import {
   selectCurrentModel,
 } from "../features/ExpertsAndModels/expertsSlice";
 import { Tool } from "../services/refact/tools";
-import { selectAllImages } from "../features/AttachedImages/imagesSlice";
-import {
-  UserMessage,
-  UserMessageContentWithImage,
-} from "../services/refact/types";
+// import { selectAllImages } from "../features/AttachedImages/imagesSlice";
+// import {
+//   UserMessage,
+//   UserMessageContentWithImage,
+// } from "../services/refact/types";
 import { useIdForThread } from "./useIdForThread";
 import { graphqlQueriesAndMutations } from "../services/graphql/queriesAndMutationsApi";
 
@@ -33,7 +33,7 @@ export function useSendMessages() {
 
   const selectedExpert = useAppSelector(selectCurrentExpert);
   const selectedModel = useAppSelector(selectCurrentModel);
-  const attachedImages = useAppSelector(selectAllImages);
+  // const attachedImages = useAppSelector(selectAllImages);
   const [sendMessages, _sendMessagesResult] =
     graphqlQueriesAndMutations.useSendMessagesMutation();
 
@@ -44,37 +44,38 @@ export function useSendMessages() {
 
   const [getTools, _getToolsResult] = useGetToolsLazyQuery();
 
-  const maybeAddImagesToQuestion = useCallback(
-    (question: string): UserMessage => {
-      if (attachedImages.length === 0)
-        return {
-          ftm_role: "user" as const,
-          ftm_content: question,
-          checkpoints: [],
-        };
+  // TODO: enable this
+  // const maybeAddImagesToQuestion = useCallback(
+  //   (question: string): UserMessage => {
+  //     if (attachedImages.length === 0)
+  //       return {
+  //         ftm_role: "user" as const,
+  //         ftm_content: question,
+  //         checkpoints: [],
+  //       };
 
-      const images = attachedImages.reduce<UserMessageContentWithImage[]>(
-        (acc, image) => {
-          if (typeof image.content !== "string") return acc;
-          return acc.concat({
-            type: "image_url",
-            image_url: { url: image.content },
-          });
-        },
-        [],
-      );
+  //     const images = attachedImages.reduce<UserMessageContentWithImage[]>(
+  //       (acc, image) => {
+  //         if (typeof image.content !== "string") return acc;
+  //         return acc.concat({
+  //           type: "image_url",
+  //           image_url: { url: image.content },
+  //         });
+  //       },
+  //       [],
+  //     );
 
-      if (images.length === 0)
-        return { ftm_role: "user", ftm_content: question, checkpoints: [] };
+  //     if (images.length === 0)
+  //       return { ftm_role: "user", ftm_content: question, checkpoints: [] };
 
-      return {
-        ftm_role: "user",
-        ftm_content: [...images, { type: "text", text: question }],
-        checkpoints: [],
-      };
-    },
-    [attachedImages],
-  );
+  //     return {
+  //       ftm_role: "user",
+  //       ftm_content: [...images, { type: "text", text: question }],
+  //       checkpoints: [],
+  //     };
+  //   },
+  //   [attachedImages],
+  // );
 
   const sendMultipleMessages = useCallback(
     async (messages: { ftm_role: string; ftm_content: unknown }[]) => {
@@ -196,5 +197,9 @@ export function useSendMessages() {
     ],
   );
 
-  return { sendMessage, sendMultipleMessages, maybeAddImagesToQuestion };
+  return {
+    sendMessage,
+    sendMultipleMessages,
+    // maybeAddImagesToQuestion
+  };
 }

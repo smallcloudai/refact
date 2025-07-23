@@ -40,7 +40,7 @@ import {
 import { type RootState } from "../../app/store";
 import { setThreadFtId } from "../../features/ThreadMessages";
 import { Tool } from "../refact/tools";
-import { IntegrationMeta } from "../../features/Chat";
+import type { IntegrationMeta } from "../../features/ThreadMessages";
 
 async function fetchAppSearchableId(apiKey: string, port: number) {
   const appIdUrl = `http://127.0.0.1:${port}/v1/get-app-searchable-id`;
@@ -195,7 +195,7 @@ export const graphqlQueriesAndMutations = createApi({
         const state = api.getState() as RootState;
         const apiKey = state.config.apiKey ?? "";
         const port = state.config.lspPort;
-        // TODO: where is current workspace set?
+
         const workspace =
           state.teams.group?.id ?? state.config.currentWorkspaceName ?? "";
 
@@ -301,7 +301,7 @@ export const graphqlQueriesAndMutations = createApi({
         const state = api.getState() as RootState;
         const apiKey = state.config.apiKey ?? "";
         const port = state.config.lspPort;
-        // TODO: where is current workspace set?
+
         const workspace =
           state.teams.group?.id ?? state.config.currentWorkspaceName ?? "";
 

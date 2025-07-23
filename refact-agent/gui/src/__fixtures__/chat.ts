@@ -1,5 +1,6 @@
 import type { RootState } from "../app/store";
-import { FTMMessage } from "../features/ThreadMessages/makeMessageTrie";
+import type { BaseMessage } from "../services/refact/types";
+// import { FTMMessage } from "../features/ThreadMessages/makeMessageTrie";
 
 export * from "./some_chrome_screenshots";
 
@@ -951,7 +952,7 @@ export const TOOL_IMAGE_STUB: ChatMessages = [
   };
 });
 
-export const CHAT_WITH_KNOWLEDGE_TOOL: FTMMessage[] = [
+export const CHAT_WITH_KNOWLEDGE_TOOL: BaseMessage[] = [
   {
     ftm_role: "system",
     ftm_content:
