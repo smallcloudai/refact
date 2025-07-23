@@ -14,7 +14,6 @@ import {
 } from "../../features/ThreadMessages";
 import { useAppSelector } from "../../hooks/useAppSelector";
 import { formatMessagesForLsp } from "../../services/refact/links";
-import { useIdForThread } from "../../hooks";
 
 function useGetCommandCompletionQuery(
   query: string,

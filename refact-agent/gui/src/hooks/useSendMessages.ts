@@ -18,7 +18,6 @@ import { Tool } from "../services/refact/tools";
 // } from "../services/refact/types";
 import { useIdForThread } from "./useIdForThread";
 import { graphqlQueriesAndMutations } from "../services/graphql/queriesAndMutationsApi";
-import { formatMessagesForLsp } from "../services/refact/links";
 
 // TODO: since this is called twice it opens two sockets :/ move sendMessage and sendMultipleMessage to their own hooks
 
