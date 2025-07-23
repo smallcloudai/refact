@@ -175,5 +175,8 @@
     "@rollup/rollup-win32-arm64-msvc": "^4.44.1",
     "@rollup/rollup-win32-ia32-msvc": "^4.44.1",
     "@rollup/rollup-win32-x64-msvc": "^4.44.1"
+  },
+  "overrides": {
+    "stylus": "github:stylus/stylus#0.59.0"
   }
 }
