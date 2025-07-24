@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 use crate::custom_error::ScratchError;
-use crate::global_context::GlobalContext;
+use crate::global_context::{get_app_capture_id, GlobalContext};
 
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -25,7 +25,7 @@ pub async fn handle_v1_set_active_group_id(
     info!("set active group id to {}", post.group_id);
     gcx.write().await.active_group_id = Some(post.group_id);
     crate::cloud::threads_sub::trigger_threads_subscription_restart(gcx.clone()).await;
-    
+
     Ok(Response::builder().status(StatusCode::OK).body(Body::from(
         serde_json::to_string(&serde_json::json!({ "success": true })).unwrap()
     )).unwrap())
@@ -37,6 +37,6 @@ pub async fn handle_v1_get_app_searchable_id(
     _body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     Ok(Response::builder().status(StatusCode::OK).body(Body::from(
-        serde_json::to_string(&serde_json::json!({ "app_searchable_id": gcx.read().await.app_searchable_id })).unwrap()
+        serde_json::to_string(&serde_json::json!({ "app_searchable_id": gcx.read().await.app_searchable_id, "app_capture_id": get_app_capture_id() })).unwrap()
     )).unwrap())
 }
