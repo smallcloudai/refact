@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 use crate::custom_error::ScratchError;
-use crate::global_context::{get_app_capture_id, GlobalContext};
+use crate::global_context::{APP_CAPTURE_ID, GlobalContext};
 
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -37,6 +37,6 @@ pub async fn handle_v1_get_app_searchable_id(
     _body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     Ok(Response::builder().status(StatusCode::OK).body(Body::from(
-        serde_json::to_string(&serde_json::json!({ "app_searchable_id": gcx.read().await.app_searchable_id, "app_capture_id": get_app_capture_id() })).unwrap()
+        serde_json::to_string(&serde_json::json!({ "app_searchable_id": gcx.read().await.app_searchable_id, "app_capture_id": APP_CAPTURE_ID })).unwrap()
     )).unwrap())
 }
