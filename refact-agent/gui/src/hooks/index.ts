@@ -32,3 +32,5 @@ export * from "./useBasicStuffQuery";
 export * from "./useSendMessages";
 export * from "./useIdForThread";
 export * from "./useToolsForGroup";
+export * from "./useAttachImages";
+export * from "./useCapabilitiesForModel";

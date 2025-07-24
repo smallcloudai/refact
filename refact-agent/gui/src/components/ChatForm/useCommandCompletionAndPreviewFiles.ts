@@ -12,8 +12,8 @@ import {
   selectIsWaiting,
   selectMessagesFromEndNode,
 } from "../../features/ThreadMessages";
-import { useAppSelector } from "../../hooks/useAppSelector";
 import { formatMessagesForLsp } from "../../services/refact/links";
+import { useAttachImages, useAppSelector } from "../../hooks";
 
 function useGetCommandCompletionQuery(
   query: string,
@@ -74,13 +74,22 @@ function useGetCommandPreviewQuery(
   query: string,
 ): (ChatContextFile | string)[] {
   const messages = useAppSelector(selectMessagesFromEndNode);
+  const { maybeAddImagesToContent } = useAttachImages();
+  const contentWithImages = useMemo(() => {
+    return maybeAddImagesToContent(query);
+  }, [maybeAddImagesToContent, query]);
   const messagesToSend = formatMessagesForLsp(messages);
   const isWaiting = useAppSelector(selectIsWaiting);
   const isStreaming = useAppSelector(selectIsStreaming);
 
   // TODO: attach images
   const { data } = commandsApi.useGetCommandPreviewQuery(
-    { messages: [...messagesToSend, { role: "user", content: query }] },
+    {
+      messages: [
+        ...messagesToSend,
+        { role: "user", content: contentWithImages },
+      ],
+    },
     {
       skip: isWaiting || isStreaming,
     },

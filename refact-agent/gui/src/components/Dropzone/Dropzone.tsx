@@ -4,9 +4,8 @@ import { Cross1Icon, ImageIcon } from "@radix-ui/react-icons";
 import { DropzoneInputProps, FileRejection, useDropzone } from "react-dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import { TruncateLeft } from "../Text";
-
-// import { useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "../ChatForm/useCheckBoxes";
+import { useCapabilitiesForModel } from "../../hooks";
 
 export const FileUploadContext = createContext<{
   open: () => void;
@@ -21,13 +20,11 @@ export const DropzoneProvider: React.FC<
   React.PropsWithChildren<{ asChild?: boolean }>
 > = ({ asChild, ...props }) => {
   const { setError, processAndInsertImages } = useAttachedImages();
-  // const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
-  const isMultimodalitySupportedForCurrentModel = false;
+  const capabilities = useCapabilitiesForModel();
 
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: FileRejection[]): void => {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (!isMultimodalitySupportedForCurrentModel) return;
+      if (!capabilities.multimodal) return;
       processAndInsertImages(acceptedFiles);
 
       if (fileRejections.length) {
@@ -40,7 +37,7 @@ export const DropzoneProvider: React.FC<
         setError(rejectedFileMessage.join("\n"));
       }
     },
-    [processAndInsertImages, setError, isMultimodalitySupportedForCurrentModel],
+    [capabilities.multimodal, processAndInsertImages, setError],
   );
 
   // TODO: disable when chat is busy

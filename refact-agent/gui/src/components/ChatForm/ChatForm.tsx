@@ -38,7 +38,7 @@ import {
   InformationCallout,
 } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
-import { FileList } from "../Dropzone";
+import { AttachImagesButton, FileList } from "../Dropzone";
 import {
   selectIsStreaming,
   selectIsWaiting,
@@ -46,11 +46,13 @@ import {
   selectToolConfirmationRequests,
 } from "../../features/ThreadMessages";
 import { AgentCapabilities } from "./AgentCapabilities/AgentCapabilities";
-import { TokensPreview } from "./TokensPreview";
+// import { TokensPreview } from "./TokensPreview";
 import classNames from "classnames";
 
 import { ExpertSelect } from "../../features/ExpertsAndModels/Experts";
 import { ModelsForExpert } from "../../features/ExpertsAndModels";
+import { useCapabilitiesForModel } from "../../hooks";
+import { useAttachedImages } from "../../hooks/useAttachedImages";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -67,6 +69,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
   // const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
+  const capabilities = useCapabilitiesForModel();
+
   const config = useConfig();
 
   const globalError = useAppSelector(getErrorMessage);
@@ -128,26 +132,26 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     messagesAreEmpty,
   ]);
 
-  // const { processAndInsertImages } = useAttachedImages();
+  const { processAndInsertImages } = useAttachedImages();
   // TODO: disable pasting file
-  // const handlePastingFile = useCallback(
-  //   (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-  //     if (!isMultimodalitySupportedForCurrentModel) return;
-  //     const files: File[] = [];
-  //     const items = event.clipboardData.items;
-  //     for (const item of items) {
-  //       if (item.kind === "file") {
-  //         const file = item.getAsFile();
-  //         file && files.push(file);
-  //       }
-  //     }
-  //     if (files.length > 0) {
-  //       event.preventDefault();
-  //       processAndInsertImages(files);
-  //     }
-  //   },
-  //   [processAndInsertImages, isMultimodalitySupportedForCurrentModel],
-  // );
+  const handlePastingFile = useCallback(
+    (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (!capabilities.multimodal) return;
+      const files: File[] = [];
+      const items = event.clipboardData.items;
+      for (const item of items) {
+        if (item.kind === "file") {
+          const file = item.getAsFile();
+          file && files.push(file);
+        }
+      }
+      if (files.length > 0) {
+        event.preventDefault();
+        processAndInsertImages(files);
+      }
+    },
+    [capabilities.multimodal, processAndInsertImages],
+  );
 
   const {
     checkboxes,
@@ -356,7 +360,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 {...props}
                 autoFocus={autoFocus}
                 style={{ boxShadow: "none", outline: "none" }}
-                // onPaste={handlePastingFile}
+                onPaste={handlePastingFile}
               />
             )}
           />
@@ -370,9 +374,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
               {/* <ThinkingButton /> */}
-              <TokensPreview
+              {/* <TokensPreview
                 currentMessageQuery={attachedFiles.addFilesToInput(value)}
-              />
+              /> */}
               <Flex gap="2" align="center" justify="center">
                 {/* <IconButton
                   size="1"
@@ -411,11 +415,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                     onClick={onClose}
                   />
                 )}
-                {/** TODO: multi modality */}
-                {/* {config.features?.images !== false &&
-                  isMultimodalitySupportedForCurrentModel && (
-                    <AttachImagesButton />
-                  )} */}
+
+                {capabilities.multimodal && <AttachImagesButton />}
                 {/* TODO: Reserved space for microphone button coming later on */}
                 <PaperPlaneButton
                   disabled={disableSend}
