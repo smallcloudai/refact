@@ -8,7 +8,7 @@ use crate::cloud::{threads_req, messages_req};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio_tungstenite::tungstenite::Message;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use crate::cloud::threads_sub::{initialize_connection, ThreadPayload};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -63,7 +63,7 @@ pub async fn subchat(
             ccx.lock().await.chat_id.clone(),
         )
     };
-    
+
     let model_name = crate::cloud::experts_req::expert_choice_consequences(&cmd_address_url, &api_key, ft_fexp_id, &located_fgroup_id).await?;
     let preferences = build_preferences(&model_name, temperature, max_new_tokens, 1, reasoning_effort);
     let existing_threads = crate::cloud::threads_req::get_threads_app_captured(
@@ -100,9 +100,9 @@ pub async fn subchat(
         ).await?;
         thread
     };
-    
+
     let thread_id = thread.ft_id.clone();
-    let connection_result = initialize_connection(&cmd_address_url, &api_key, &located_fgroup_id).await;
+    let connection_result = initialize_connection(&cmd_address_url, &api_key, &located_fgroup_id, &app_searchable_id).await;
     let mut connection = match connection_result {
         Ok(conn) => conn,
         Err(err) => return Err(format!("Failed to initialize WebSocket connection: {}", err)),
@@ -125,20 +125,31 @@ pub async fn subchat(
                     "data" => {
                         if let Some(payload) = response["payload"].as_object() {
                             let data = &payload["data"];
-                            let threads_in_group = &data["threads_in_group"];
-                            let news_action = threads_in_group["news_action"].as_str().unwrap_or("");
-                            if news_action != "INSERT" && news_action != "UPDATE" {
-                                continue;
-                            }
-                            if let Ok(payload) = serde_json::from_value::<ThreadPayload>(threads_in_group["news_payload"].clone()) {
-                                if payload.ft_id != thread_id {
+                            let threads_and_calls_subs = &data["bot_threads_and_calls_subs"];
+                            let news_action = threads_and_calls_subs["news_action"].as_str().unwrap_or("");
+                            let news_about = threads_and_calls_subs["news_about"].as_str().unwrap_or("");
+
+                            if news_about == "flexus_thread" {
+
+                                if news_action != "INSERT" && news_action != "UPDATE" {
                                     continue;
                                 }
-                                if payload.ft_error.is_some() {
-                                    break;
+
+                                if let Some(news_payload_thread) = threads_and_calls_subs["news_payload_thread"].as_object() {
+                                    if let Ok(payload) = serde_json::from_value::<ThreadPayload>(serde_json::Value::Object(news_payload_thread.clone())) {
+                                        if payload.ft_id != thread_id {
+                                            continue;
+                                        }
+                                        if payload.ft_error.is_some() {
+                                            break;
+                                        }
+                                    } else {
+                                        info!("failed to parse thread payload: {:?}", news_payload_thread);
+                                    }
+                                } else {
+                                    info!("received thread update but couldn't find news_payload_thread");
                                 }
-                            } else {
-                                info!("failed to parse thread payload: {:?}", threads_in_group);
+
                             }
                         } else {
                             info!("received data message but couldn't find payload");
@@ -151,7 +162,7 @@ pub async fn subchat(
                         error!("threads subscription complete: {}.\nRestarting it", text);
                     }
                     _ => {
-                        info!("received message with unknown type: {}", text);
+                        warn!("received message with unknown type: {}", text);
                     }
                 }
             }
@@ -175,7 +186,7 @@ pub async fn subchat(
             return Err(format!("Thread error: {:?}", error));
         }
     }
-    
+
     let all_thread_messages = messages_req::get_thread_messages(
         &cmd_address_url, &api_key, &thread_id, 100
     ).await?;
