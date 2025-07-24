@@ -70,7 +70,7 @@ pub fn get_cloud_url(cmd_address_url: &str) -> String {
 
 pub fn get_graphql_ws_url(cmd_address_url: &str) -> String {
     let final_address = if cmd_address_url.to_lowercase() == "refact" {
-        format!("ws://{}/v1/graphql", BASE_REFACT_URL)
+        format!("wss://{}/v1/graphql", BASE_REFACT_URL)
     } else {
         let base_part = extract_base_host(cmd_address_url);
         let protocol = if is_localhost(&base_part) { "ws" } else { "wss" };
