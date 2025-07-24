@@ -23,6 +23,7 @@ use crate::integrations::sessions::IntegrationSession;
 use crate::privacy::PrivacySettings;
 use crate::background_tasks::BackgroundTasksHolder;
 
+pub const APP_CAPTURE_ID: &str = "refact-agent";
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CommandLine {
@@ -317,10 +318,6 @@ pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
         .collect::<Vec<_>>()
         .join(";");
     format!("{}-{}", machine_guid, folders)
-}
-
-pub fn get_app_capture_id() -> String {
-    format!("refact-lsp:{}", crate::version::build::PKG_VERSION)
 }
 
 pub async fn try_load_caps_quickly_if_not_present(
