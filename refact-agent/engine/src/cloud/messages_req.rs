@@ -127,20 +127,7 @@ pub async fn create_thread_messages(
     });
     let mutation = r#"
     mutation ThreadMessagesCreateMultiple($input: FThreadMultipleMessagesInput!) {
-        thread_messages_create_multiple(input: $input) {
-            count
-            messages {
-                ftm_belongs_to_ft_id
-                ftm_alt
-                ftm_num
-                ftm_prev_alt
-                ftm_role
-                ftm_created_ts
-                ftm_call_id
-                ftm_provenance
-                ftm_user_preferences
-            }
-        }
+        thread_messages_create_multiple(input: $input)
     }
     "#;
 
