@@ -366,6 +366,28 @@ input FPersonaPatch {
   persona_setup: String = null
 }
 
+type FPersonaScheduleListOutput {
+  scheds: [FPersonaScheduleOutput!]!
+  ws_timezone: String!
+}
+
+type FPersonaScheduleOutput {
+  sched_first_question: String!
+  sched_id: String!
+  sched_last_run_ts: Float!
+  sched_persona_id: String!
+  sched_rrule: String!
+  sched_start_ts: Float!
+}
+
+input FPersonaScheduleUpsertInput {
+  sched_first_question: String!
+  sched_id: String = null
+  sched_persona_id: String!
+  sched_rrule: String!
+  sched_start_ts: Float!
+}
+
 type FPersonaSubs {
   news_action: String!
   news_payload: FPersonaOutput
@@ -606,6 +628,8 @@ type Mutation {
   persona_create(input: FPersonaInput!): FPersonaOutput!
   persona_delete(id: String!): Boolean!
   persona_patch(id: String!, patch: FPersonaPatch!): FPersonaOutput!
+  persona_schedule_delete(sched_id: String!): FPersonaScheduleOutput!
+  persona_schedule_upsert(input: FPersonaScheduleUpsertInput!): FPersonaScheduleOutput!
   reset_password_execute(new_password: String!, token: String!): Boolean!
   reset_password_start(username: String!): Boolean!
   session_open(password: String!, username: String!): String!
@@ -617,7 +641,7 @@ type Mutation {
   thread_delete(id: String!): Boolean!
   thread_lock(ft_id: String!, worker_name: String!): Boolean!
   thread_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
-  thread_messages_create_multiple(delete_negative: [Int!] = null, input: FThreadMultipleMessagesInput!): Int!
+  thread_messages_create_multiple(delete_negative: [Int!] = null, input: FThreadMultipleMessagesInput!, mission_accomplished_adv_worker: String = null): Int!
   thread_patch(id: String!, patch: FThreadPatch!): FThreadOutput!
   thread_reset_error(ft_error: String!, ft_id: String!): Boolean!
   thread_reset_title(ft_id: String!, ft_title: String!): Boolean!
@@ -662,6 +686,7 @@ type Query {
   persona_get(id: String!): FPersonaOutput!
   persona_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FPersonaOutput!]!
   persona_opened_in_ui(persona_id: String!): FPersonaOutput!
+  persona_schedule_list(persona_id: String!): FPersonaScheduleListOutput!
   query_basic_stuff(want_invitations: Boolean! = false): BasicStuffResult!
   reset_password_token_info(token: String!): PasswordResetTokenInfo!
   stats_query(breakdown_fexp_name: [String!]!, breakdown_fuser_id: [String!]!, breakdown_model: [String!]!, fgroup_id: String! = "", filter_fexp_id: [String!]! = [], filter_fuser_id: [String!]! = [], filter_model: [String!]! = [], filter_thing: [String!]! = [], st_chart: Int!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String! = ""): [FStatsOutput!]!

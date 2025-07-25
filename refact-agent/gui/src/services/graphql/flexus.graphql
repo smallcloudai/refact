@@ -65,6 +65,8 @@ subscription MessagesSubscription($ft_id: String!, $want_deltas: Boolean!) {
       ft_confirmation_request
       ft_confirmation_response
       ft_title
+      ft_toolset
+      ft_need_tool_calls ## This might be useful for tool confirmation?
     }
   }
 }

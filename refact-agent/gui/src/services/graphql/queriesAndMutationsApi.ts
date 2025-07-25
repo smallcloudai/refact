@@ -211,6 +211,7 @@ export const graphqlQueriesAndMutations = createApi({
           located_fgroup_id: workspace,
           owner_shared: false,
           ft_app_searchable: appIdQuery.data?.app_searchable_id,
+          ft_toolset: JSON.stringify(args.tools),
         };
         const threadQuery = await client.mutation<
           CreateThreadMutation,
@@ -254,7 +255,6 @@ export const graphqlQueriesAndMutations = createApi({
               ftm_usage: "null", // optional
               ftm_user_preferences: JSON.stringify({
                 model: args.model,
-                tools: args.tools,
                 ...(args.integration ? { integration: args.integration } : {}),
               }),
             };
@@ -318,6 +318,7 @@ export const graphqlQueriesAndMutations = createApi({
           located_fgroup_id: workspace,
           owner_shared: false,
           ft_app_searchable: appIdQuery.data?.app_searchable_id,
+          ft_toolset: JSON.stringify(args.tools),
         };
         const threadQuery = await client.mutation<
           CreateThreadMutation,
@@ -366,7 +367,6 @@ export const graphqlQueriesAndMutations = createApi({
           ftm_usage: "null", // optional
           ftm_user_preferences: JSON.stringify({
             model: args.model,
-            tools: args.tools,
           }),
         };
 
