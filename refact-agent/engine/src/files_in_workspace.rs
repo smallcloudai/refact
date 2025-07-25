@@ -696,11 +696,18 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
 {
     // Called from lsp and lsp_like
     // Not called from main.rs as part of initialization
-    let folders = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
-    let old_app_searchable_id = gcx.read().await.app_searchable_id.clone();
-    let new_app_searchable_id = get_app_searchable_id(&folders);
+    let (folders, old_app_searchable_id, cmdline_app_searchable_id) = {
+        let gcx_locked = gcx.read().await;
+        let folders = gcx_locked.documents_state.workspace_folders.lock().unwrap().clone();
+        (
+            folders,
+            gcx_locked.app_searchable_id.clone(),
+            gcx_locked.cmdline.app_searchable_id.clone(),
+        )
+    };
+    let new_app_searchable_id = get_app_searchable_id(&folders, &cmdline_app_searchable_id);
     if old_app_searchable_id != new_app_searchable_id {
-        gcx.write().await.app_searchable_id = get_app_searchable_id(&folders);
+        gcx.write().await.app_searchable_id = new_app_searchable_id;
         crate::cloud::threads_sub::trigger_threads_subscription_restart(gcx.clone()).await;
     }
     watcher_init(gcx.clone()).await;
