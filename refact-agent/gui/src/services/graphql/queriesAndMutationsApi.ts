@@ -41,7 +41,7 @@ import { type RootState } from "../../app/store";
 import { setThreadFtId } from "../../features/ThreadMessages";
 import { Tool } from "../refact/tools";
 import type { IntegrationMeta } from "../../features/ThreadMessages";
-import { UserMessage } from "../refact";
+import { UserMessage } from "../refact/types";
 
 async function fetchAppSearchableId(apiKey: string, port: number) {
   const appIdUrl = `http://127.0.0.1:${port}/v1/get-app-searchable-id`;
