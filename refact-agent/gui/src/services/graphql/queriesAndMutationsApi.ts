@@ -240,9 +240,6 @@ export const graphqlQueriesAndMutations = createApi({
         const createMessageArgs: FThreadMessageInput[] = args.messages.map(
           (message, index) => {
             return {
-              ftm_app_specific: JSON.stringify(
-                appIdQuery.data?.app_searchable_id ?? "",
-              ),
               ftm_belongs_to_ft_id: threadQuery.data?.thread_create.ft_id ?? "",
               ftm_alt: 100,
               ftm_num: index + 1,
@@ -352,9 +349,6 @@ export const graphqlQueriesAndMutations = createApi({
 
         // Note: ftm_num, ftm_alt, and ftm_prev_alt are also hard coded for tracking waiting state
         const createMessageArgs: FThreadMessageInput = {
-          ftm_app_specific: JSON.stringify(
-            appIdQuery.data?.app_searchable_id ?? "",
-          ),
           ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
           ftm_alt: 100,
           ftm_num: 1,

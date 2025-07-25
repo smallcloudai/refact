@@ -2,10 +2,7 @@ import { useCallback } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { useGetToolsLazyQuery } from "./useGetToolGroupsQuery";
 import { FThreadMessageInput } from "../../generated/documents";
-import {
-  selectThreadEnd,
-  selectAppSpecific,
-} from "../features/ThreadMessages/threadMessagesSlice";
+import { selectThreadEnd } from "../features/ThreadMessages/threadMessagesSlice";
 import {
   selectCurrentExpert,
   selectCurrentModel,
@@ -23,13 +20,9 @@ export function useSendMessages() {
   });
 
   const maybeFtId = useIdForThread();
-  const appSpecific = useAppSelector(selectAppSpecific, {
-    devModeChecks: { stabilityCheck: "never" },
-  });
 
   const selectedExpert = useAppSelector(selectCurrentExpert);
   const selectedModel = useAppSelector(selectCurrentModel);
-  // const attachedImages = useAppSelector(selectAllImages);
   const [sendMessages, _sendMessagesResult] =
     graphqlQueriesAndMutations.useSendMessagesMutation();
 
@@ -67,7 +60,6 @@ export function useSendMessages() {
       const inputMessages = maybeMessageWithImages.map((message, index) => {
         return {
           ftm_alt: leafMessage.endAlt,
-          ftm_app_specific: JSON.stringify(appSpecific),
           ftm_belongs_to_ft_id: maybeFtId ?? "", // ftId.ft_id,
           ftm_call_id: "",
           ftm_content: JSON.stringify(message.ftm_content),
@@ -79,7 +71,6 @@ export function useSendMessages() {
           ftm_usage: "null", // optional
           ftm_user_preferences: JSON.stringify({
             model: selectedModel ?? "",
-            tools: specs,
           }),
         };
       });
@@ -92,7 +83,6 @@ export function useSendMessages() {
       });
     },
     [
-      appSpecific,
       createThreadWitMultipleMessages,
       getTools,
       leafMessage.endAlt,
@@ -128,7 +118,6 @@ export function useSendMessages() {
       }
       const input: FThreadMessageInput = {
         ftm_alt: leafMessage.endAlt,
-        ftm_app_specific: JSON.stringify(appSpecific),
         ftm_belongs_to_ft_id: maybeFtId ?? "", // ftId.ft_id,
         ftm_call_id: "",
         ftm_content: JSON.stringify(contentWithImage),
@@ -140,7 +129,6 @@ export function useSendMessages() {
         ftm_usage: "null", // optional
         ftm_user_preferences: JSON.stringify({
           model: selectedModel ?? "",
-          tools: specs,
         }),
       };
       // TODO: this will need more info
@@ -152,7 +140,6 @@ export function useSendMessages() {
       });
     },
     [
-      appSpecific,
       createThreadWithMessage,
       getTools,
       leafMessage.endAlt,
@@ -169,6 +156,5 @@ export function useSendMessages() {
   return {
     sendMessage,
     sendMultipleMessages,
-    // maybeAddImagesToQuestion
   };
 }
