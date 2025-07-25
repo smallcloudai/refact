@@ -329,13 +329,11 @@ async fn actual_subscription_loop(
                                 if let Some(news_payload_thread_message) = threads_and_calls_subs["news_payload_thread_message"].as_object() {
                                     if let Ok(payload) = serde_json::from_value::<ThreadMessagePayload>(serde_json::Value::Object(news_payload_thread_message.clone())) {
                                         let gcx_clone = gcx.clone();
-                                        let basic_info_clone = basic_info.clone();
                                         let cmd_address_url_clone = cmd_address_url.to_string();
                                         let api_key_clone = api_key.to_string();
-                                        let located_fgroup_id_clone = located_fgroup_id.to_string();
                                         tokio::spawn(async move {
                                             crate::cloud::threads_processing::process_thread_message_event(
-                                                gcx_clone, payload, basic_info_clone, cmd_address_url_clone, api_key_clone, located_fgroup_id_clone
+                                                gcx_clone, payload, cmd_address_url_clone, api_key_clone
                                             ).await
                                         });
                                     } else {
