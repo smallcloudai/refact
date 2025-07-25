@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use futures::StreamExt;
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::global_context::APP_CAPTURE_ID;
 use tokio::sync::Mutex as AMutex;
 use crate::call_validation::{ChatMessage, ReasoningEffort};
 use crate::cloud::{threads_req, messages_req};
@@ -71,7 +72,8 @@ pub async fn subchat(
         &api_key,
         &located_fgroup_id,
         &app_searchable_id,
-        tool_call_id
+        APP_CAPTURE_ID,
+        Some(tool_call_id),
     ).await?;
     let thread = if !existing_threads.is_empty() {
         info!("There are already existing threads for this tool_id: {:?}", existing_threads);
@@ -83,14 +85,13 @@ pub async fn subchat(
             &located_fgroup_id,
             ft_fexp_id,
             &format!("subchat_{}", ft_fexp_id),
-            &tool_call_id,
+            APP_CAPTURE_ID,
             &app_searchable_id,
             serde_json::json!({
-            "tool_call_id": tool_call_id,
-            "ft_fexp_id": ft_fexp_id,
-        }),
+                "tool_call_id": tool_call_id,
+                "ft_fexp_id": ft_fexp_id,
+            }),
             None,
-            Some(parent_thread_id)
         ).await?;
         let thread_messages = messages_req::convert_messages_to_thread_messages(
             messages, 100, 100, 1, &thread.ft_id, Some(preferences)
