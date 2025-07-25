@@ -104,10 +104,13 @@ export const MessageNode: React.FC<MessageNodeProps> = ({
   return (
     <>
       {/**TODO: this could be put at the end of the assistant message */}
+      {/**TODO: has to resize on some changes */}
       {!isWaiting &&
         !isStreaming &&
         children.value.ftm_role === "user" &&
-        isLastOfRole && <ScrollAreaWithAnchor.ScrollAnchor />}
+        isLastOfRole && (
+          <ScrollAreaWithAnchor.ScrollAnchor behavior="smooth" block="start" />
+        )}
       <ElementForNodeMessage branch={branch} message={children.value} />
       <MessageNodeChildren>{children.children}</MessageNodeChildren>
     </>
