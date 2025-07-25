@@ -1,9 +1,20 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  // useMemo,
+  useState,
+} from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex } from "@radix-ui/themes";
-import { useAppDispatch, useAppSelector, useSendMessages } from "../../hooks";
-import { selectConfig, type Config } from "../../features/Config/configSlice";
+import {
+  // useAppDispatch,
+  useAppSelector,
+  useSendMessages,
+} from "../../hooks";
+import {
+  // selectConfig,
+  type Config,
+} from "../../features/Config/configSlice";
 
 import { DropzoneProvider } from "../Dropzone";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
@@ -11,13 +22,13 @@ import { Checkpoints } from "../../features/Checkpoints";
 
 import { useMessageSubscription } from "./useMessageSubscription";
 import {
-  selectIsStreaming,
-  selectIsWaiting,
+  // selectIsStreaming,
+  // selectIsWaiting,
   selectThreadId,
-  selectTotalMessagesInThread,
+  // selectTotalMessagesInThread,
 } from "../../features/ThreadMessages";
-import { ThreadHistoryButton } from "../Buttons";
-import { push } from "../../features/Pages/pagesSlice";
+// import { ThreadHistoryButton } from "../Buttons";
+// import { push } from "../../features/Pages/pagesSlice";
 
 export type ChatProps = {
   host: Config["host"];
@@ -29,31 +40,31 @@ export type ChatProps = {
 };
 
 export const Chat: React.FC<ChatProps> = ({ style, maybeSendToSidebar }) => {
-  const dispatch = useAppDispatch();
+  // const dispatch = useAppDispatch();
   // const unCalledTools = useAppSelector(selectBranchHasUncalledTools);
 
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
-  const isStreaming = useAppSelector(selectIsStreaming);
-  const isWaiting = useAppSelector(selectIsWaiting);
+  // const isStreaming = useAppSelector(selectIsStreaming);
+  // const isWaiting = useAppSelector(selectIsWaiting);
   useMessageSubscription();
   const { sendMessage } = useSendMessages();
-  const totalMessages = useAppSelector(selectTotalMessagesInThread, {
-    devModeChecks: { stabilityCheck: "never" },
-  });
+  // const totalMessages = useAppSelector(selectTotalMessagesInThread, {
+  //   devModeChecks: { stabilityCheck: "never" },
+  // });
 
-  const config = useAppSelector(selectConfig);
+  // const config = useAppSelector(selectConfig);
 
-  const canShowDebugButton = useMemo(() => {
-    if (config.host === "web") return true;
-    if (config.features?.connections) return true;
-    return !isWaiting && !isStreaming && totalMessages > 0;
-  }, [
-    config.features?.connections,
-    config.host,
-    isStreaming,
-    isWaiting,
-    totalMessages,
-  ]);
+  // const canShowDebugButton = useMemo(() => {
+  //   if (config.host === "web") return true;
+  //   if (!config.features?.connections) return false;
+  //   return !isWaiting && !isStreaming && totalMessages > 0;
+  // }, [
+  //   config.features?.connections,
+  //   config.host,
+  //   isStreaming,
+  //   isWaiting,
+  //   totalMessages,
+  // ]);
 
   const chatId = useAppSelector(selectThreadId);
 
@@ -71,9 +82,9 @@ export const Chat: React.FC<ChatProps> = ({ style, maybeSendToSidebar }) => {
   );
 
   // TODO: this
-  const handleThreadHistoryPage = useCallback(() => {
-    dispatch(push({ name: "thread history page", chatId: chatId ?? "" }));
-  }, [chatId, dispatch]);
+  // const handleThreadHistoryPage = useCallback(() => {
+  //   dispatch(push({ name: "thread history page", chatId: chatId ?? "" }));
+  // }, [chatId, dispatch]);
 
   return (
     <DropzoneProvider asChild>
@@ -98,7 +109,8 @@ export const Chat: React.FC<ChatProps> = ({ style, maybeSendToSidebar }) => {
 
         <Flex justify="between" pl="1" pr="1" pt="1">
           {/* Two flexboxes are left for the future UI element on the right side */}
-          {canShowDebugButton && (
+          {/* TODO: move this  */}
+          {/* {canShowDebugButton && (
             <Flex align="center" justify="end" width="100%">
               <ThreadHistoryButton
                 title="View history of current thread"
@@ -106,7 +118,7 @@ export const Chat: React.FC<ChatProps> = ({ style, maybeSendToSidebar }) => {
                 onClick={handleThreadHistoryPage}
               />
             </Flex>
-          )}
+          )} */}
         </Flex>
       </Flex>
     </DropzoneProvider>

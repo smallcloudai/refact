@@ -128,8 +128,6 @@ export const ChatContent: React.FC = () => {
         direction="column"
         className={styles.content}
         data-element="ChatContent"
-        p="2"
-        gap="1"
       >
         {isEmptyNode(threadMessageTrie) ? (
           <Container>

@@ -79,7 +79,7 @@ export const ThreadList: React.FC = () => {
           gap="1"
         >
           {threads.map((thread) => (
-            <ThreadLustItem
+            <ThreadListItem
               key={thread.ft_id}
               thread={thread}
               onOpen={onOpen}
@@ -113,12 +113,12 @@ type ThreadItemProps = {
   onOpen: (id: string) => void;
 };
 
-const ThreadLustItem: React.FC<ThreadItemProps> = ({ thread, onOpen }) => {
+const ThreadListItem: React.FC<ThreadItemProps> = ({ thread, onOpen }) => {
   // TODO: handel updating state
   // TODO: handle read state
   // TODO: change this to created at
 
-  const dateCreated = new Date(thread.ft_created_ts);
+  const dateCreated = new Date(thread.ft_created_ts * 1000);
   const dateTimeString = dateCreated.toLocaleString();
   const [deleteThread, deleteThreadRequest] =
     graphqlQueriesAndMutations.useDeleteThreadMutation();
