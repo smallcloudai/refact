@@ -278,7 +278,7 @@ type FMcpServerSubs {
 }
 
 type FModelItem {
-  provm_caps: ProvmCaps!
+  provm_caps: JSON!
   provm_name: String!
 }
 
@@ -634,11 +634,6 @@ type Mutation {
 type PasswordResetTokenInfo {
   freset_used: Boolean!
   fuser_id: String!
-}
-
-type ProvmCaps {
-  input_images: Boolean!
-  reasoning_effort: Boolean!
 }
 
 type Query {

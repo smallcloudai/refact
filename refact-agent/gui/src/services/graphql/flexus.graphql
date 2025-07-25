@@ -93,10 +93,7 @@ query ModelsForExpert($fexp_id: String!, $inside_fgroup_id: String!) {
   ) {
     models {
       provm_name
-      provm_caps {
-        input_images
-        reasoning_effort
-      }
+      provm_caps
     }
   }
 }

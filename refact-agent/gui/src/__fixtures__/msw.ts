@@ -262,21 +262,42 @@ export const ModelsForExpert = graphql.query(ModelsForExpertDocument, () => {
         models: [
           {
             provm_name: "claude-3-7-sonnet-20250219",
+            provm_caps: {
+              modelcap_input_images: true,
+              modelcap_reasoning_effort: true,
+            },
           },
           {
             provm_name: "claude-sonnet-4-20250514",
+            provm_caps: {
+              modelcap_input_images: true,
+              modelcap_reasoning_effort: true,
+            },
           },
           {
             provm_name: "gpt-4.1",
+            provm_caps: {
+              modelcap_input_images: true,
+            },
           },
           {
             provm_name: "gpt-4.1-mini",
+            provm_caps: {
+              modelcap_input_images: true,
+            },
           },
           {
             provm_name: "nebius/Qwen/Qwen3-235B-A22B",
+            provm_caps: {
+              modelcap_input_images: false,
+            },
           },
           {
             provm_name: "o4-mini",
+            provm_caps: {
+              modelcap_input_images: true,
+              modelcap_reasoning_effort: true,
+            },
           },
         ],
       },
