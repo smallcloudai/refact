@@ -1,4 +1,4 @@
-use crate::global_context::GlobalContext;
+use crate::global_context::{GlobalContext, APP_CAPTURE_ID};
 use futures::{SinkExt, StreamExt};
 use crate::cloud::graphql_client::{execute_graphql, GraphQLRequestConfig, graphql_error_to_string};
 use serde::{Deserialize, Serialize};
@@ -31,19 +31,45 @@ pub struct ThreadPayload {
     pub ft_confirmation_response: Option<Value>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThreadMessagePayload {
+    pub ftm_belongs_to_ft_id: String,
+    pub ftm_alt: i64,
+    pub ftm_num: i64,
+    pub ftm_role: String,
+    pub ftm_app_specific: Option<Value>,
+    pub ftm_created_ts: f64,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BasicStuff {
     pub fuser_id: String,
     pub workspaces: Vec<Value>,
 }
 
-// XXX use xxx_subs::filter for ft_app_capture
 const THREADS_SUBSCRIPTION_QUERY: &str = r#"
-    subscription ThreadsPageSubs($located_fgroup_id: String!) {
-      threads_in_group(located_fgroup_id: $located_fgroup_id) {
+    subscription ThreadsAndCallsSubs(
+        $fgroup_id: String,
+        $marketable_name: String!,
+        $ft_app_searchable: String!,
+        $inprocess_tool_names: [String!]!,
+        $max_threads: Int!,
+    ) {
+      bot_threads_and_calls_subs(
+        fgroup_id: $fgroup_id,
+        marketable_name: $marketable_name,
+        marketable_version: "",
+        ft_app_searchable: $ft_app_searchable,
+        inprocess_tool_names: $inprocess_tool_names,
+        max_threads: $max_threads,
+        want_personas: false,
+        want_threads: true,
+        want_messages: true,
+      ) {
         news_action
+        news_about
         news_payload_id
-        news_payload {
+        news_payload_thread {
           owner_fuser_id
           ft_id
           ft_error
@@ -56,6 +82,14 @@ const THREADS_SUBSCRIPTION_QUERY: &str = r#"
           ft_app_searchable
           ft_app_capture
           ft_app_specific
+        }
+        news_payload_thread_message {
+          ftm_belongs_to_ft_id
+          ftm_num
+          ftm_alt
+          ftm_role
+          ftm_app_specific
+          ftm_created_ts
         }
       }
     }
@@ -86,11 +120,13 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
             continue;
         };
 
+        let app_searchable_id = gcx.read().await.app_searchable_id.clone();
+
         info!(
-            "starting subscription for threads_in_group with fgroup_id=\"{}\"",
-            located_fgroup_id
+            "starting subscription for bot_threads_and_calls_subs with fgroup_id=\"{}\" and app_searchable_id=\"{}\"",
+            located_fgroup_id, app_searchable_id
         );
-        let connection_result = initialize_connection(&address_url, &api_key, &located_fgroup_id).await;
+        let connection_result = initialize_connection(&address_url, &api_key, &located_fgroup_id, &app_searchable_id).await;
         let mut connection = match connection_result {
             Ok(conn) => conn,
             Err(err) => {
@@ -129,6 +165,7 @@ pub async fn initialize_connection(
     cmd_address_url: &str,
     api_key: &str,
     located_fgroup_id: &str,
+    app_searchable_id: &str,
 ) -> Result<
     futures::stream::SplitStream<
         tokio_tungstenite::WebSocketStream<
@@ -208,7 +245,11 @@ pub async fn initialize_connection(
         "payload": {
             "query": THREADS_SUBSCRIPTION_QUERY,
             "variables": {
-                "located_fgroup_id": located_fgroup_id
+                "fgroup_id": located_fgroup_id,
+                "marketable_name": APP_CAPTURE_ID,
+                "ft_app_searchable": app_searchable_id,
+                "inprocess_tool_names": [],
+                "max_threads": 100,
             }
         }
     });
@@ -231,7 +272,6 @@ async fn actual_subscription_loop(
     located_fgroup_id: &str,
 ) -> Result<(), String> {
     info!("cloud threads subscription started, waiting for events...");
-    let app_searchable_id = gcx.read().await.app_searchable_id.clone();
     let basic_info = get_basic_info(cmd_address_url, api_key).await?;
     while let Some(msg) = connection.next().await {
         if gcx.clone().read().await.shutdown_flag.load(Ordering::SeqCst) {
@@ -255,27 +295,55 @@ async fn actual_subscription_loop(
                     "data" => {
                         if let Some(payload) = response["payload"].as_object() {
                             let data = &payload["data"];
-                            let threads_in_group = &data["threads_in_group"];
-                            let news_action = threads_in_group["news_action"].as_str().unwrap_or("");
+                            let threads_and_calls_subs = &data["bot_threads_and_calls_subs"];
+                            let news_action = threads_and_calls_subs["news_action"].as_str().unwrap_or("");
+                            let news_about = threads_and_calls_subs["news_about"].as_str().unwrap_or("");
+
                             if news_action != "INSERT" && news_action != "UPDATE" {
                                 continue;
                             }
-                            if let Ok(payload) = serde_json::from_value::<ThreadPayload>(threads_in_group["news_payload"].clone()) {
-                                let gcx_clone = gcx.clone();
-                                let payload_clone = payload.clone();
-                                let basic_info_clone = basic_info.clone();
-                                let cmd_address_url_clone = cmd_address_url.to_string();
-                                let api_key_clone = api_key.to_string();
-                                let app_searchable_id_clone = app_searchable_id.clone();
-                                let located_fgroup_id_clone = located_fgroup_id.to_string();
-                                tokio::spawn(async move {
-                                    crate::cloud::threads_processing::process_thread_event(
-                                        gcx_clone, payload_clone, basic_info_clone, cmd_address_url_clone, api_key_clone, app_searchable_id_clone, located_fgroup_id_clone
-                                    ).await
-                                });
-                            } else {
-                                info!("failed to parse thread payload: {:?}", threads_in_group);
+
+                            if news_about == "flexus_thread" {
+                                if let Some(news_payload_thread) = threads_and_calls_subs["news_payload_thread"].as_object() {
+                                    if let Ok(payload) = serde_json::from_value::<ThreadPayload>(serde_json::Value::Object(news_payload_thread.clone())) {
+                                        let gcx_clone = gcx.clone();
+                                        let payload_clone = payload.clone();
+                                        let basic_info_clone = basic_info.clone();
+                                        let cmd_address_url_clone = cmd_address_url.to_string();
+                                        let api_key_clone = api_key.to_string();
+                                        let located_fgroup_id_clone = located_fgroup_id.to_string();
+                                        tokio::spawn(async move {
+                                            crate::cloud::threads_processing::process_thread_event(
+                                                gcx_clone, payload_clone, basic_info_clone, cmd_address_url_clone, api_key_clone, located_fgroup_id_clone
+                                            ).await
+                                        });
+                                    } else {
+                                        info!("failed to parse thread payload: {:?}", news_payload_thread);
+                                    }
+                                } else {
+                                    info!("received thread update but couldn't find news_payload_thread");
+                                }
                             }
+
+                            if news_about == "flexus_thread_message" {
+                                if let Some(news_payload_thread_message) = threads_and_calls_subs["news_payload_thread_message"].as_object() {
+                                    if let Ok(payload) = serde_json::from_value::<ThreadMessagePayload>(serde_json::Value::Object(news_payload_thread_message.clone())) {
+                                        let gcx_clone = gcx.clone();
+                                        let cmd_address_url_clone = cmd_address_url.to_string();
+                                        let api_key_clone = api_key.to_string();
+                                        tokio::spawn(async move {
+                                            crate::cloud::threads_processing::process_thread_message_event(
+                                                gcx_clone, payload, cmd_address_url_clone, api_key_clone
+                                            ).await
+                                        });
+                                    } else {
+                                        info!("failed to parse thread message payload: {:?}", news_payload_thread_message);
+                                    }
+                                } else {
+                                    info!("received thread message update but couldn't find news_payload_thread_message");
+                                }
+                            }
+
                         } else {
                             info!("received data message but couldn't find payload");
                         }
