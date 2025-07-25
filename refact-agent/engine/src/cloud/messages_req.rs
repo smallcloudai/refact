@@ -303,3 +303,48 @@ pub async fn get_tool_names_from_openai_format(
     }
     Ok(tool_names)
 }
+
+pub async fn thread_message_patch_app_specific(
+    cmd_address_url: &str,
+    api_key: &str,
+    ftm_belongs_to_ft_id: &str,
+    ftm_alt: i64,
+    ftm_num: i64,
+    ftm_app_specific: Value,
+) -> Result<(), String> {
+    let mutation = r#"
+    mutation ThreadMessagePatch($input: FThreadMessagePatch!) {
+        thread_message_patch(input: $input)
+    }
+    "#;
+
+    let variables = json!({
+        "input": {
+            "ftm_belongs_to_ft_id": ftm_belongs_to_ft_id,
+            "ftm_alt": ftm_alt,
+            "ftm_num": ftm_num,
+            "ftm_app_specific": serde_json::to_string(&ftm_app_specific).unwrap()
+        }
+    });
+
+    let config = GraphQLRequestConfig {
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
+        user_agent: Some("refact-lsp".to_string()),
+        additional_headers: None,
+    };
+
+    tracing::info!(
+        "thread_message_patch_app_specific: address={}, ftm_belongs_to_ft_id={}, ftm_alt={}, ftm_num={}",
+        config.address, ftm_belongs_to_ft_id, ftm_alt, ftm_num
+    );
+
+    execute_graphql_no_result(
+        config,
+        mutation,
+        variables,
+        "thread_message_update"
+    )
+    .await
+    .map_err(graphql_error_to_string)
+}
