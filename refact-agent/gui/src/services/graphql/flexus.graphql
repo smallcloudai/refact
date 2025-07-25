@@ -93,6 +93,7 @@ query ModelsForExpert($fexp_id: String!, $inside_fgroup_id: String!) {
   ) {
     models {
       provm_name
+      provm_caps
     }
   }
 }

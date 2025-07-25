@@ -278,6 +278,7 @@ type FMcpServerSubs {
 }
 
 type FModelItem {
+  provm_caps: JSON!
   provm_name: String!
 }
 

@@ -11,13 +11,9 @@ import {
   selectCurrentModel,
 } from "../features/ExpertsAndModels/expertsSlice";
 import { Tool } from "../services/refact/tools";
-// import { selectAllImages } from "../features/AttachedImages/imagesSlice";
-// import {
-//   UserMessage,
-//   UserMessageContentWithImage,
-// } from "../services/refact/types";
 import { useIdForThread } from "./useIdForThread";
 import { graphqlQueriesAndMutations } from "../services/graphql/queriesAndMutationsApi";
+import { useAttachImages } from "./useAttachImages";
 
 // TODO: since this is called twice it opens two sockets :/ move sendMessage and sendMultipleMessage to their own hooks
 
@@ -44,38 +40,8 @@ export function useSendMessages() {
 
   const [getTools, _getToolsResult] = useGetToolsLazyQuery();
 
-  // TODO: enable this
-  // const maybeAddImagesToQuestion = useCallback(
-  //   (question: string): UserMessage => {
-  //     if (attachedImages.length === 0)
-  //       return {
-  //         ftm_role: "user" as const,
-  //         ftm_content: question,
-  //         checkpoints: [],
-  //       };
-
-  //     const images = attachedImages.reduce<UserMessageContentWithImage[]>(
-  //       (acc, image) => {
-  //         if (typeof image.content !== "string") return acc;
-  //         return acc.concat({
-  //           type: "image_url",
-  //           image_url: { url: image.content },
-  //         });
-  //       },
-  //       [],
-  //     );
-
-  //     if (images.length === 0)
-  //       return { ftm_role: "user", ftm_content: question, checkpoints: [] };
-
-  //     return {
-  //       ftm_role: "user",
-  //       ftm_content: [...images, { type: "text", text: question }],
-  //       checkpoints: [],
-  //     };
-  //   },
-  //   [attachedImages],
-  // );
+  const { maybeAddImagesToMessages, maybeAddImagesToContent } =
+    useAttachImages();
 
   const sendMultipleMessages = useCallback(
     async (messages: { ftm_role: string; ftm_content: unknown }[]) => {
@@ -85,10 +51,11 @@ export function useSendMessages() {
       }, []);
       const enabledTools = allTools.filter((tool) => tool.enabled);
       const specs = enabledTools.map((tool) => tool.spec);
+      const maybeMessageWithImages = maybeAddImagesToMessages(messages);
 
       if (leafMessage.endAlt === 0 && leafMessage.endNumber === 0) {
         void createThreadWitMultipleMessages({
-          messages,
+          messages: maybeMessageWithImages,
           expertId: selectedExpert ?? "",
           model: selectedModel ?? "",
           tools: specs,
@@ -97,7 +64,7 @@ export function useSendMessages() {
         return;
       }
 
-      const inputMessages = messages.map((message, index) => {
+      const inputMessages = maybeMessageWithImages.map((message, index) => {
         return {
           ftm_alt: leafMessage.endAlt,
           ftm_app_specific: JSON.stringify(appSpecific),
@@ -131,6 +98,7 @@ export function useSendMessages() {
       leafMessage.endAlt,
       leafMessage.endNumber,
       leafMessage.endPrevAlt,
+      maybeAddImagesToMessages,
       maybeFtId,
       selectedExpert,
       selectedModel,
@@ -147,11 +115,11 @@ export function useSendMessages() {
       const enabledTools = allTools.filter((tool) => tool.enabled);
       const specs = enabledTools.map((tool) => tool.spec);
 
-      // TODO: add images
+      const contentWithImage = maybeAddImagesToContent(content);
 
       if (leafMessage.endAlt === 0 && leafMessage.endNumber === 0) {
         void createThreadWithMessage({
-          content,
+          content: contentWithImage,
           expertId: selectedExpert ?? "",
           model: selectedModel ?? "",
           tools: specs,
@@ -163,7 +131,7 @@ export function useSendMessages() {
         ftm_app_specific: JSON.stringify(appSpecific),
         ftm_belongs_to_ft_id: maybeFtId ?? "", // ftId.ft_id,
         ftm_call_id: "",
-        ftm_content: JSON.stringify(content),
+        ftm_content: JSON.stringify(contentWithImage),
         ftm_num: leafMessage.endNumber + 1,
         ftm_prev_alt: leafMessage.endPrevAlt,
         ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
@@ -190,6 +158,7 @@ export function useSendMessages() {
       leafMessage.endAlt,
       leafMessage.endNumber,
       leafMessage.endPrevAlt,
+      maybeAddImagesToContent,
       maybeFtId,
       selectedExpert,
       selectedModel,
