@@ -112,7 +112,9 @@ pub async fn expert_choice_consequences(
     let query = r#"
     query GetExpertModel($fexp_id: String!, $inside_fgroup_id: String!) {
         expert_choice_consequences(fexp_id: $fexp_id, inside_fgroup_id: $inside_fgroup_id) {
-            provm_name
+            models {
+                provm_name
+            }
         }
     }
     "#;
@@ -129,7 +131,11 @@ pub async fn expert_choice_consequences(
     });
 
     info!("expert_choice_consequences: address={}, fexp_id={}, inside_fgroup_id={}", config.address, fexp_id, fgroup_id);
-    let result: Vec<ModelInfo> = execute_graphql(
+    #[derive(Deserialize, Debug)]
+    struct Consequences {
+        models: Vec<ModelInfo>,
+    }
+    let result: Consequences = execute_graphql(
         config,
         query,
         variables,
@@ -138,9 +144,9 @@ pub async fn expert_choice_consequences(
     .await
     .map_err(|e| e.to_string())?;
     
-    if result.is_empty() {
+    if result.models.is_empty() {
         return Err(format!("No models found for the expert with name {}", fexp_id));
     }
     
-    Ok(result[0].provm_name.clone())
+    Ok(result.models[0].provm_name.clone())
 }
