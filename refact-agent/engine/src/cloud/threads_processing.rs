@@ -379,10 +379,8 @@ pub async fn process_thread_event(
 pub async fn process_thread_message_event(
     gcx: Arc<ARwLock<GlobalContext>>,
     mut thread_message_payload: ThreadMessagePayload,
-    basic_info: BasicStuff,
     cmd_address_url: String,
     api_key: String,
-    located_fgroup_id: String,
 ) -> Result<(), String> {
     let old_message_cutoff = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() - 300;
     if thread_message_payload.ftm_role != "user" || thread_message_payload.ftm_created_ts < old_message_cutoff as f64 {
@@ -391,15 +389,25 @@ pub async fn process_thread_message_event(
     if thread_message_payload.ftm_app_specific.as_ref().is_some_and(|a| a.get("checkpoints").is_some()) {
         return Ok(());
     }
+
     let (checkpoints, _) = create_workspace_checkpoint(gcx.clone(), None, &thread_message_payload.ftm_belongs_to_ft_id).await?;
 
     let mut app_specific = thread_message_payload.ftm_app_specific.as_ref()
         .and_then(|v| v.as_object().cloned())
         .unwrap_or_else(|| serde_json::Map::new());
     app_specific.insert("checkpoints".to_string(), serde_json::json!(checkpoints));
-    thread_message_payload.ftm_app_specific = Some(Value::Object(app_specific));
+    thread_message_payload.ftm_app_specific = Some(Value::Object(app_specific.clone()));
 
-    tracing::info!("Created checkpoints: {:#?}", checkpoints);
+    crate::cloud::messages_req::thread_message_patch_app_specific(
+        &cmd_address_url,
+        &api_key,
+        &thread_message_payload.ftm_belongs_to_ft_id,
+        thread_message_payload.ftm_alt,
+        thread_message_payload.ftm_num,
+        Value::Object(app_specific),
+    ).await?;
+
+    tracing::info!("Created and stored checkpoints: {:#?}", checkpoints);
 
     Ok(())
 }
