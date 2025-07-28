@@ -20,6 +20,7 @@ import {
   receiveThread,
   receiveThreadMessages,
   removeMessage,
+  setLoading,
 } from "../../features/ThreadMessages";
 
 import { receiveWorkspace, receiveWorkspaceError } from "../../features/Groups";
@@ -152,6 +153,14 @@ export const messagesSub = createAsyncThunk<
               result.data.comprehensive_thread_subs.news_payload_thread_message,
           }),
         );
+      }
+
+      if (
+        result.data?.comprehensive_thread_subs.news_action ===
+        "INITIAL_UPDATES_OVER"
+      ) {
+        const action = setLoading({ ft_id: args.ft_id, loading: false });
+        thunkApi.dispatch(action);
       }
     },
     {
