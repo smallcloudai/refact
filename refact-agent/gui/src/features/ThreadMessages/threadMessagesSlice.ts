@@ -20,7 +20,6 @@ import {
 } from "../../services/refact";
 
 import { Override, takeWhile } from "../../utils";
-import { string } from "zod";
 
 // TODO: move this somewhere
 export type ToolConfirmationRequest = {

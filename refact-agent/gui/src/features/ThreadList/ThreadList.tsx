@@ -5,7 +5,7 @@ import {
   selectThreadList,
   selectThreadListError,
   selectThreadListLoading,
-  ThreadListItem,
+  type ThreadListItem,
 } from "./threadListSlice";
 import {
   graphqlQueriesAndMutations,
