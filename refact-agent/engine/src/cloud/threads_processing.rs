@@ -337,23 +337,11 @@ pub async fn process_thread_event(
     basic_info: BasicStuff,
     cmd_address_url: String,
     api_key: String,
-    app_searchable_id: String,
     located_fgroup_id: String,
 ) -> Result<(), String> {
     if thread_payload.ft_need_tool_calls == -1
         || thread_payload.owner_fuser_id != basic_info.fuser_id
         || !thread_payload.ft_locked_by.is_empty() {
-        return Ok(());
-    }
-    if let Some(ft_app_searchable) = thread_payload.ft_app_searchable.clone() {
-        if ft_app_searchable != app_searchable_id {
-            info!("thread `{}` has different `app_searchable` id, skipping it: {} != {}",
-                thread_payload.ft_id, app_searchable_id, ft_app_searchable
-            );
-            return Ok(());
-        }
-    } else {
-        info!("thread `{}` doesn't have the `app_searchable` id, skipping it", thread_payload.ft_id);
         return Ok(());
     }
     if let Some(error) = thread_payload.ft_error.as_ref() {

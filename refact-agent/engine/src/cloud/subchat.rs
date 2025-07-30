@@ -102,7 +102,7 @@ pub async fn subchat(
     };
     
     let thread_id = thread.ft_id.clone();
-    let connection_result = initialize_connection(&cmd_address_url, &api_key, &located_fgroup_id).await;
+    let connection_result = initialize_connection(&cmd_address_url, &api_key, &located_fgroup_id, &app_searchable_id).await;
     let mut connection = match connection_result {
         Ok(conn) => conn,
         Err(err) => return Err(format!("Failed to initialize WebSocket connection: {}", err)),
