@@ -32,6 +32,7 @@ import {
 const TEXT_DOC_UPDATE = {
   waitingBranches: [],
   streamingBranches: [],
+  loading: false,
   messages: {
     "J7CJxOiP5F:100:1:100": {
       ft_app_specific: null,
@@ -805,6 +806,7 @@ const MockedStore: React.FC<{
       endAlt: 0,
       endPrevAlt: 0,
       thread: null,
+      loading: false,
       messages: messages
         ? messages.reduce((acc, cur) => {
             return { ...acc, [cur.ftm_call_id]: cur };

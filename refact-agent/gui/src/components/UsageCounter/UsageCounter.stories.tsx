@@ -30,6 +30,7 @@ const MockedStore: React.FC<{
       lspPort: 8001,
     },
     threadMessages: {
+      loading: false,
       thread: {
         ft_id: "foo",
         ft_need_user: -1,

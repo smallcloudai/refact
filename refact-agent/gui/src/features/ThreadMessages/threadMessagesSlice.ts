@@ -7,7 +7,10 @@ import { MessagesSubscriptionSubscription } from "../../../generated/documents";
 import { makeMessageTrie, getAncestorsForNode } from "./makeMessageTrie";
 import type { BaseMessage } from "../../services/refact/types";
 import { pagesSlice } from "../Pages/pagesSlice";
-import { graphqlQueriesAndMutations } from "../../services/graphql";
+import {
+  graphqlQueriesAndMutations,
+  messagesSub,
+} from "../../services/graphql";
 
 import {
   isDiffMessage,
@@ -100,6 +103,7 @@ export type MessagesInitialState = {
   endAlt: number;
   endPrevAlt: number;
   thread: Thread | null;
+  loading: boolean;
 };
 
 const initialState: MessagesInitialState = {
@@ -111,6 +115,7 @@ const initialState: MessagesInitialState = {
   endAlt: 0,
   endPrevAlt: 0,
   thread: null,
+  loading: false,
 };
 
 const ID_REGEXP = /^(.*):(\d+):(\d+):(\d+)$/;
@@ -304,6 +309,14 @@ export const threadMessagesSlice = createSlice({
     ) => {
       state.ft_id = action.payload;
     },
+
+    setLoading: (
+      state,
+      action: PayloadAction<{ ft_id: string; loading: boolean }>,
+    ) => {
+      if (action.payload.ft_id !== state.ft_id) return;
+      state.loading = action.payload.loading;
+    },
   },
   selectors: {
     selectThreadMessages: (state) => Object.values(state.messages),
@@ -322,6 +335,7 @@ export const threadMessagesSlice = createSlice({
       );
       return !!maybeBranch;
     },
+    selectLoading: (state) => state.loading,
     selectThreadMessageTrie: createSelector(selectMessagesValues, (messages) =>
       makeMessageTrie(messages),
     ),
@@ -581,6 +595,12 @@ export const threadMessagesSlice = createSlice({
         );
       },
     );
+
+    builder.addMatcher(messagesSub.pending.match, (state, action) => {
+      if (action.meta.arg.ft_id === state.ft_id) {
+        state.loading = true;
+      }
+    });
   },
 });
 
@@ -592,6 +612,7 @@ export const {
   setThreadEnd,
   resetThread,
   setThreadFtId,
+  setLoading,
 } = threadMessagesSlice.actions;
 export const {
   selectThreadMessages,
@@ -619,4 +640,5 @@ export const {
   selectManyDiffMessageByIds,
   selectIntegrationMeta,
   selectMessageIsLastOfType,
+  selectLoading,
 } = threadMessagesSlice.selectors;

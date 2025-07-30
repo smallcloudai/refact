@@ -16,8 +16,7 @@ import { GroupedDiffs } from "../ChatContent/DiffContent";
 
 import { FTMMessageNode as FTMessageNode } from "../../features/ThreadMessages/makeMessageTrie";
 import {
-  selectIsStreaming,
-  selectIsWaiting,
+  selectLoading,
   selectMessageIsLastOfType,
   selectThreadMessageTopAltNumber,
   setThreadEnd,
@@ -81,8 +80,8 @@ export const MessageNode: React.FC<MessageNodeProps> = ({
   const isLastOfRole = useAppSelector((state) =>
     selectMessageIsLastOfType(state, children.value),
   );
-  const isWaiting = useAppSelector(selectIsWaiting);
-  const isStreaming = useAppSelector(selectIsStreaming);
+
+  const isLoading = useAppSelector(selectLoading);
 
   useEffect(() => {
     if (children.children.length === 0) {
@@ -104,57 +103,14 @@ export const MessageNode: React.FC<MessageNodeProps> = ({
   return (
     <>
       {/**TODO: this could be put at the end of the assistant message */}
-      {!isWaiting &&
-        !isStreaming &&
-        children.value.ftm_role === "user" &&
-        isLastOfRole && <ScrollAreaWithAnchor.ScrollAnchor />}
+      {!isLoading && children.value.ftm_role === "user" && isLastOfRole && (
+        <ScrollAreaWithAnchor.ScrollAnchor behavior="smooth" block="start" />
+      )}
       <ElementForNodeMessage branch={branch} message={children.value} />
       <MessageNodeChildren>{children.children}</MessageNodeChildren>
     </>
   );
 };
-
-// type NodeSelectButtonsProps = {
-//   onForward: () => void;
-//   onBackward: () => void;
-//   currentNode: number;
-//   totalNodes: number;
-// };
-
-// const NodeSelectButtons: React.FC<NodeSelectButtonsProps> = ({
-//   onForward,
-//   onBackward,
-//   currentNode,
-//   totalNodes,
-// }) => {
-//   return (
-//     <Container my="2">
-//       <Flex gap="2" justify="start">
-//         <IconButton
-//           variant="ghost"
-//           size="1"
-//           disabled={currentNode === 0}
-//           radius="large"
-//           onClick={onBackward}
-//         >
-//           <ArrowLeftIcon />
-//         </IconButton>
-//         <Text size="1">
-//           {currentNode + 1} / {totalNodes}
-//         </Text>
-//         <IconButton
-//           variant="ghost"
-//           size="1"
-//           disabled={currentNode === totalNodes}
-//           onClick={onForward}
-//           radius="large"
-//         >
-//           <ArrowRightIcon />
-//         </IconButton>
-//       </Flex>
-//     </Container>
-//   );
-// };
 
 function makeDummyNode(
   ft_id?: string,

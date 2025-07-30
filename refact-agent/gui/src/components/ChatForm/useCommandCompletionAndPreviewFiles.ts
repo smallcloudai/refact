@@ -10,6 +10,7 @@ import { ChatContextFile } from "../../services/refact/types";
 import {
   selectIsStreaming,
   selectIsWaiting,
+  selectLoading,
   selectMessagesFromEndNode,
 } from "../../features/ThreadMessages";
 import { formatMessagesForLsp } from "../../services/refact/links";
@@ -81,6 +82,7 @@ function useGetCommandPreviewQuery(
   const messagesToSend = formatMessagesForLsp(messages);
   const isWaiting = useAppSelector(selectIsWaiting);
   const isStreaming = useAppSelector(selectIsStreaming);
+  const isLoading = useAppSelector(selectLoading);
 
   // TODO: attach images
   const { data } = commandsApi.useGetCommandPreviewQuery(
@@ -91,7 +93,7 @@ function useGetCommandPreviewQuery(
       ],
     },
     {
-      skip: isWaiting || isStreaming,
+      skip: isLoading || isWaiting || isStreaming || query.trim().length === 0,
     },
   );
   if (!data) return [];

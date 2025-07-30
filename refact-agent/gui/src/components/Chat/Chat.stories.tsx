@@ -39,6 +39,7 @@ const Template: React.FC<{
       endAlt: 0,
       endPrevAlt: 0,
       thread: null,
+      loading: false,
       messages: messages.reduce((acc, message) => {
         return {
           ...acc,
