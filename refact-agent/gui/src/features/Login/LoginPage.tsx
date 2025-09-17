@@ -162,6 +162,7 @@ export const LoginPage: React.FC = () => {
               {/** TODO: handle these changes */}
               <form
                 onSubmit={(event) => {
+                  event.preventDefault();
                   const formData = new FormData(event.currentTarget);
                   const endpoint = formData.get("endpoint");
                   const apiKey = formData.get("api-key");
