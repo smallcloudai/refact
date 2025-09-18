@@ -28,6 +28,10 @@ export const errorSlice = createSlice({
       state.message = null;
       state.type = null;
     },
+    setBallanceError: (state, action: PayloadAction<string>) => {
+      state.type = "balance";
+      state.message = action.payload;
+    },
   },
   selectors: {
     getErrorMessage: (state) => state.message,
@@ -36,7 +40,8 @@ export const errorSlice = createSlice({
   },
 });
 
-export const { setError, setIsAuthError, clearError } = errorSlice.actions;
+export const { setError, setIsAuthError, clearError, setBallanceError } =
+  errorSlice.actions;
 export const { getErrorMessage, getIsAuthError, getErrorType } =
   errorSlice.selectors;
 

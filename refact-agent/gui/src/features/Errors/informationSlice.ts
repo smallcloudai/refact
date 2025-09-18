@@ -31,6 +31,10 @@ export const informationSlice = createSlice({
       state.type = null;
       state.message = null;
     },
+    setBallanceInformation: (state) => {
+      if (state.dismissed) return state;
+      state.type = "balance";
+    },
   },
   selectors: {
     getInformationMessage: (state) => state.message,
@@ -83,7 +87,11 @@ export const informationSlice = createSlice({
   },
 });
 
-export const { setInformation, clearInformation, dismissBalanceLowCallout } =
-  informationSlice.actions;
+export const {
+  setInformation,
+  clearInformation,
+  dismissBalanceLowCallout,
+  setBallanceInformation,
+} = informationSlice.actions;
 export const { getInformationMessage, showBalanceLowCallout } =
   informationSlice.selectors;

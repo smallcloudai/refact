@@ -14,6 +14,7 @@ import { pathApi } from "../services/refact/path";
 import { pingApi } from "../services/refact/ping";
 import {
   clearError,
+  setBallanceError,
   setError,
   setIsAuthError,
 } from "../features/Errors/errorsSlice";
@@ -41,6 +42,7 @@ import {
 } from "../services/graphql";
 import { push } from "../features/Pages/pagesSlice";
 import { setExpert, setModel } from "../features/ExpertsAndModels/expertsSlice";
+import { setBallanceInformation } from "../features/Errors/informationSlice";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -489,3 +491,27 @@ function getModel(preferences: unknown): string | null {
   }
   return preferences.model;
 }
+
+startListening({
+  matcher: graphqlQueriesAndMutations.endpoints.getBasicStuff.matchFulfilled,
+  effect: (action, listenerApi) => {
+    const state = listenerApi.getState();
+    const currentWorkspace = state.teams.workspace;
+    if (!currentWorkspace) return;
+
+    const workspaceInfo = action.payload.query_basic_stuff.workspaces.find(
+      (ws) => ws.ws_id === currentWorkspace.ws_id,
+    );
+    if (!workspaceInfo) return;
+
+    if (!workspaceInfo.have_coins_enough) {
+      // dispatch global error about not having enough coins
+      listenerApi.dispatch(setBallanceError("Your balance is exhausted!"));
+    } else if (
+      workspaceInfo.have_coins_exactly <= 2000 &&
+      !state.information.dismissed
+    ) {
+      listenerApi.dispatch(setBallanceInformation());
+    }
+  },
+});
