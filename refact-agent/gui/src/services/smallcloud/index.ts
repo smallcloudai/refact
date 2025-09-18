@@ -8,9 +8,7 @@ import {
   isApiKeyResponse,
   isEmailLinkResponse,
   isSurveyQuestions,
-  isUser,
   SurveyQuestions,
-  User,
 } from "./types";
 
 export const smallCloudApi = createApi({
@@ -76,36 +74,6 @@ export const smallCloudApi = createApi({
           }, 5000);
         });
       },
-    }),
-    getUser: builder.query<
-      User,
-      {
-        apiKey: string;
-        addressURL?: string;
-      }
-    >({
-      query: (args) => {
-        const { apiKey } = args;
-        return {
-          url: "login",
-          method: "GET",
-          redirect: "follow",
-          cache: "no-cache",
-          // referrer: "no-referrer",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + apiKey,
-          },
-        };
-      },
-      transformResponse(response: unknown) {
-        if (!isUser(response)) {
-          throw new Error("Invalid response from server");
-        }
-
-        return response;
-      },
-      providesTags: ["User"],
     }),
 
     getSurvey: builder.query<SurveyQuestions, undefined>({
