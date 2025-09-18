@@ -45,10 +45,8 @@ import { currentProjectInfoReducer } from "../features/Chat/currentProject";
 import { checkpointsSlice } from "../features/Checkpoints/checkpointsSlice";
 import { checkpointsApi } from "../services/refact/checkpoints";
 import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/patchesAndDiffsTrackerSlice";
-import { coinBallanceSlice } from "../features/CoinBalance/coinBalanceSlice";
 import { threadListSlice } from "../features/ThreadList/threadListSlice";
 import { threadMessagesSlice } from "../features/ThreadMessages/threadMessagesSlice";
-// import { expertsAndModelsMiddleWare } from "../features/ExpertsAndModels/middleware";
 import { expertsSlice } from "../features/ExpertsAndModels/expertsSlice";
 import { graphqlQueriesAndMutations } from "../services/graphql/queriesAndMutationsApi";
 import { groupsSlice } from "../features/Groups/groupsSlice";
@@ -103,7 +101,6 @@ const rootReducer = combineSlices(
   integrationsSlice,
   checkpointsSlice,
   patchesAndDiffsTrackerSlice,
-  coinBallanceSlice,
   threadListSlice,
   threadMessagesSlice,
   expertsSlice,
@@ -193,25 +190,9 @@ export const store = setUpStore();
 export type Store = typeof store;
 
 export const persistor = persistStore(store);
-// TODO: sync storage across windows (was buggy when deleting).
-// window.onstorage = (event) => {
-//   if (!event.key || !event.key.endsWith(persistConfig.key)) {
-//     return;
-//   }
 
-//   if (event.oldValue === event.newValue) {
-//     return;
-//   }
-//   if (event.newValue === null) {
-//     return;
-//   }
-
-// Infer the `RootState` and `AppDispatch` types from the store itself
-// export type RootState = ReturnType<typeof store.getState>;
-// Inferred type: {posts: PostsState, comments: CommentsState, users: UsersState}
 export type AppDispatch = typeof store.dispatch;
 
-// Infer the type of `store`
 export type AppStore = typeof store;
 
 declare global {

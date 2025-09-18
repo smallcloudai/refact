@@ -24,7 +24,6 @@ import {
   useOpenUrl,
 } from "../../hooks";
 import { getIsAuthError } from "../../features/Errors/errorsSlice";
-import { selectBalance } from "../../features/CoinBalance";
 import { dismissBalanceLowCallout } from "../../features/Errors/informationSlice";
 
 type RadixCalloutProps = React.ComponentProps<typeof RadixCallout.Root>;
