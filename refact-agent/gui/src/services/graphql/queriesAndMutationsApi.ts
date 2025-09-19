@@ -73,6 +73,7 @@ async function fetchAppSearchableId(apiKey: string, port: number) {
 
 type GetAppSearchableIdResponse = {
   app_searchable_id: string;
+  app_capture_id: string;
 };
 
 function isGetAppSearchableResponse(
@@ -81,6 +82,7 @@ function isGetAppSearchableResponse(
   if (!response) return false;
   if (typeof response !== "object") return false;
   if (!("app_searchable_id" in response)) return false;
+  if (!("app_capture_id" in response)) return false;
   return typeof response.app_searchable_id === "string";
 }
 
@@ -211,6 +213,7 @@ export const graphqlQueriesAndMutations = createApi({
           located_fgroup_id: workspace,
           owner_shared: false,
           ft_app_searchable: appIdQuery.data?.app_searchable_id,
+          ft_app_capture: appIdQuery.data?.app_capture_id,
           ft_toolset: JSON.stringify(args.tools),
         };
         const threadQuery = await client.mutation<
@@ -315,6 +318,7 @@ export const graphqlQueriesAndMutations = createApi({
           located_fgroup_id: workspace,
           owner_shared: false,
           ft_app_searchable: appIdQuery.data?.app_searchable_id,
+          ft_app_capture: appIdQuery.data?.app_capture_id,
           ft_toolset: JSON.stringify(args.tools),
         };
         const threadQuery = await client.mutation<
