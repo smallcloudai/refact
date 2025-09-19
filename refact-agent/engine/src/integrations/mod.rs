@@ -11,6 +11,7 @@
 pub mod integr_abstract;
 pub mod integr_github;
 pub mod integr_gitlab;
+pub mod integr_bitbucket;
 pub mod integr_pdb;
 pub mod integr_chrome;
 pub mod integr_postgres;
@@ -38,6 +39,7 @@ pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send 
     match n {
         "github" => Ok(Box::new(integr_github::ToolGithub { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         "gitlab" => Ok(Box::new(integr_gitlab::ToolGitlab { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
+        "bitbucket" => Ok(Box::new(integr_bitbucket::ToolBitbucket { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         "pdb" => Ok(Box::new(integr_pdb::ToolPdb { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         "chrome" => Ok(Box::new(integr_chrome::ToolChrome { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         "postgres" => Ok(Box::new(integr_postgres::ToolPostgres { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
@@ -67,6 +69,7 @@ pub fn integrations_list(allow_experimental: bool) -> Vec<&'static str> {
     let mut integrations = vec![
         "github",
         "gitlab",
+        "bitbucket",
         "pdb",
         "chrome",
         "postgres",
