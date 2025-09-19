@@ -298,7 +298,10 @@ export const BallanceLowInformation: React.FC<Omit<CalloutProps, "type">> = (
       onClick={handleClose}
       {...props}
     >
-      💸 <Strong>Your balance is {ballance?.have_coins_exactly ?? 0}</Strong>
+      💸{" "}
+      <Strong>
+        Your balance is {ballance?.have_coins_exactly ?? "running low"}
+      </Strong>
       <br />
       Please{" "}
       <Link
