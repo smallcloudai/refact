@@ -90,10 +90,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const host = useAppSelector(selectHost);
   const dispatch = useAppDispatch();
   const ballance = useCoinBallance();
-
   const coinBallance = ballance?.have_coins_exactly ?? 0;
-  // TODO: check how much of this is still used.
-  // const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
 
   const isWorkspaceSelectionSkipped = useAppSelector(
     selectIsSkippedWorkspaceSelection,
