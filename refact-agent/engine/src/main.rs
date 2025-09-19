@@ -189,6 +189,12 @@ async fn main() {
             background_tasks.push_back(spawn_lsp_task(gcx.clone(), cmdline.clone()).await.unwrap())
         }
     }
+    if main_handle.is_none() {
+        main_handle = Some(tokio::spawn(crate::cloud::threads_sub::watch_threads_subscription(gcx.clone())));
+    } else {
+        background_tasks.push_back(tokio::spawn(crate::cloud::threads_sub::watch_threads_subscription(gcx.clone())));
+    }
+
     if main_handle.is_some() {
         let _ = main_handle.unwrap().await;
     }
