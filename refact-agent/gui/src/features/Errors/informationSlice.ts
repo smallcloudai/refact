@@ -1,5 +1,4 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import { smallCloudApi } from "../../services/smallcloud";
 import { threadMessagesSlice } from "../ThreadMessages";
 import { isUsage } from "../../services/refact/chat";
 
@@ -30,6 +29,10 @@ export const informationSlice = createSlice({
       state.dismissed = true;
       state.type = null;
       state.message = null;
+    },
+    setBallanceInformation: (state) => {
+      if (state.dismissed) return state;
+      state.type = "balance";
     },
   },
   selectors: {
@@ -66,24 +69,14 @@ export const informationSlice = createSlice({
         return state;
       },
     );
-
-    builder.addMatcher(
-      smallCloudApi.endpoints.getUser.matchFulfilled,
-      (state, action) => {
-        if (state.dismissed) return state;
-        if (state.message) return state;
-        if (action.payload.metering_balance <= 2000) {
-          state.type = "balance";
-          state.message =
-            "Your account is running low on credits. Please top up your account to continue using the service.";
-        }
-        return state;
-      },
-    );
   },
 });
 
-export const { setInformation, clearInformation, dismissBalanceLowCallout } =
-  informationSlice.actions;
+export const {
+  setInformation,
+  clearInformation,
+  dismissBalanceLowCallout,
+  setBallanceInformation,
+} = informationSlice.actions;
 export const { getInformationMessage, showBalanceLowCallout } =
   informationSlice.selectors;

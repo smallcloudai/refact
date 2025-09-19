@@ -8,6 +8,7 @@ import {
   // useStartPollingForUser,
   useEventsBusForIDE,
   useBasicStuffQuery,
+  useCoinBallance,
 } from "../../hooks";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
 import {
@@ -88,6 +89,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const user = useBasicStuffQuery();
   const host = useAppSelector(selectHost);
   const dispatch = useAppDispatch();
+  const ballance = useCoinBallance();
+
+  const coinBallance = ballance?.have_coins_exactly ?? 0;
   // TODO: check how much of this is still used.
   // const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
 
@@ -96,17 +100,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
   );
   const activeWorkspace = useAppSelector(selectActiveWorkspace);
   const activeGroup = useAppSelector(selectActiveGroup);
-
-  const coinBalance = useMemo(() => {
-    const maybeWorkspaceWithCoins =
-      user.data?.query_basic_stuff.workspaces.find(
-        (w) => w.ws_id === activeWorkspace?.ws_id,
-      );
-    if (!maybeWorkspaceWithCoins) return null;
-    if (!maybeWorkspaceWithCoins.have_admin) return null;
-    if (maybeWorkspaceWithCoins.have_coins_exactly === 0) return null;
-    return Math.round(maybeWorkspaceWithCoins.have_coins_exactly / 1000);
-  }, [user.data, activeWorkspace?.ws_id]);
 
   const isActiveRootGroup = useMemo(() => {
     if (!activeWorkspace || !activeGroup) return false;
@@ -197,11 +190,11 @@ export const Dropdown: React.FC<DropdownProps> = ({
           </DropdownMenu.Item>
         )}
 
-        {user.data && activeWorkspace && coinBalance && (
+        {user.data && activeWorkspace && coinBallance && (
           <DropdownMenu.Label>
             <Flex align="center" gap="1">
               {/**TODO: there could be multiple source for this */}
-              {coinBalance} <Coin />
+              {coinBallance / 100000} <Coin />
               <HoverCard.Root>
                 <HoverCard.Trigger>
                   <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />

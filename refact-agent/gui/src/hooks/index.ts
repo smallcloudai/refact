@@ -34,3 +34,4 @@ export * from "./useIdForThread";
 export * from "./useToolsForGroup";
 export * from "./useAttachImages";
 export * from "./useCapabilitiesForModel";
+export * from "./useCoinBalance";

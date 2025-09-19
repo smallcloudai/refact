@@ -18,12 +18,12 @@ import classNames from "classnames";
 import {
   useAppDispatch,
   useAppSelector,
+  useCoinBallance,
   useConfig,
   useLogout,
   useOpenUrl,
 } from "../../hooks";
 import { getIsAuthError } from "../../features/Errors/errorsSlice";
-import { selectBalance } from "../../features/CoinBalance";
 import { dismissBalanceLowCallout } from "../../features/Errors/informationSlice";
 
 type RadixCalloutProps = React.ComponentProps<typeof RadixCallout.Root>;
@@ -272,7 +272,7 @@ export const BallanceCallOut: React.FC<
 export const BallanceLowInformation: React.FC<Omit<CalloutProps, "type">> = (
   props,
 ) => {
-  const balance = useAppSelector(selectBalance);
+  const ballance = useCoinBallance();
   const dispatch = useAppDispatch();
   const handleClose = useCallback(() => {
     dispatch(dismissBalanceLowCallout());
@@ -298,7 +298,10 @@ export const BallanceLowInformation: React.FC<Omit<CalloutProps, "type">> = (
       onClick={handleClose}
       {...props}
     >
-      💸 <Strong>Your balance is {balance}</Strong>
+      💸{" "}
+      <Strong>
+        Your balance is {ballance?.have_coins_exactly ?? "running low"}
+      </Strong>
       <br />
       Please{" "}
       <Link
