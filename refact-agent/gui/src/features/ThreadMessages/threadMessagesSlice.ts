@@ -424,30 +424,34 @@ export const threadMessagesSlice = createSlice({
       },
     ),
 
+    // TODO: fix this once the lsp is working again :/
     selectToolConfirmationRequests: (state) => {
       if (!state.thread) return [];
-      if (
-        Array.isArray(state.thread.ft_confirmation_response) &&
-        state.thread.ft_confirmation_response.includes("*")
-      ) {
-        return [];
-      }
+      // if (
+      //   Array.isArray(state.thread.ft_confirmation_response) &&
+      //   state.thread.ft_confirmation_response.includes("*")
+      // ) {
+      //   return [];
+      // }
       const messages = Object.values(state.messages);
       if (messages.length === 0) return [];
       if (!state.thread.ft_confirmation_request) return [];
       if (!Array.isArray(state.thread.ft_confirmation_request)) return [];
-      const responses = Array.isArray(state.thread.ft_confirmation_response)
-        ? state.thread.ft_confirmation_response
-        : [];
+      // const responses = Array.isArray(state.thread.ft_confirmation_response)
+      //   ? state.thread.ft_confirmation_response
+      //   : [];
       const toolRequests = state.thread.ft_confirmation_request.filter(
         isToolConfirmationRequest,
       );
 
       const messageIds = messages.map((message) => message.ftm_call_id);
+      // const unresolved = toolRequests.filter(
+      //   (req) =>
+      //     !responses.includes(req.tool_call_id) &&
+      //     !messageIds.includes(req.tool_call_id),
+      // );
       const unresolved = toolRequests.filter(
-        (req) =>
-          !responses.includes(req.tool_call_id) &&
-          !messageIds.includes(req.tool_call_id),
+        (req) => !messageIds.includes(req.tool_call_id),
       );
 
       return unresolved;
@@ -455,20 +459,23 @@ export const threadMessagesSlice = createSlice({
 
     selectToolConfirmationResponses: (state) => {
       if (!state.thread) return [];
-      if (!Array.isArray(state.thread.ft_confirmation_response)) {
-        return [];
-      }
+      return [];
+      // if (!Array.isArray(state.thread.ft_confirmation_response)) {
+      //   return [];
+      // }
 
-      return state.thread.ft_confirmation_response.filter(
-        (s) => typeof s === "string",
-      );
+      // return state.thread.ft_confirmation_response.filter(
+      //   (s) => typeof s === "string",
+      // );
     },
+    // TODO: figure this out
     selectPatchIsAutomatic: (state) => {
       if (!state.thread) return false;
-      return (
-        Array.isArray(state.thread.ft_confirmation_response) &&
-        state.thread.ft_confirmation_response.includes("*")
-      );
+      return false;
+      // return (
+      //   Array.isArray(state.thread.ft_confirmation_response) &&
+      //   state.thread.ft_confirmation_response.includes("*")
+      // );
     },
     selectMessageByToolCallId: createSelector(
       [selectMessagesValues, (_messages, id: string) => id],

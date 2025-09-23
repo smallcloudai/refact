@@ -31,15 +31,10 @@ import { isToolMessage, modelsApi, providersApi } from "../services/refact";
 import {
   receiveThread,
   receiveThreadMessages,
-  selectLastMessageForAlt,
-  selectMessageByToolCallId,
   selectToolConfirmationRequests,
   threadMessagesSlice,
 } from "../features/ThreadMessages";
-import {
-  graphqlQueriesAndMutations,
-  rejectToolUsageAction,
-} from "../services/graphql";
+import { graphqlQueriesAndMutations } from "../services/graphql";
 import { push } from "../features/Pages/pagesSlice";
 import { setExpert, setModel } from "../features/ExpertsAndModels/expertsSlice";
 import { setBallanceInformation } from "../features/Errors/informationSlice";
@@ -368,7 +363,6 @@ startListening({
 });
 
 // TODO: this should let flexus know that the user accepted the tool
-// Tool Call results from ide.
 startListening({
   actionCreator: ideToolCallResponse,
   effect: (action, listenerApi) => {
@@ -384,30 +378,14 @@ startListening({
     );
     if (!maybePendingToolCall) return;
 
-    if (action.payload.accepted) {
-      const thunk =
-        graphqlQueriesAndMutations.endpoints.toolConfirmation.initiate({
-          ft_id: action.payload.chatId,
-          confirmation_response: JSON.stringify([action.payload.toolCallId]),
-        });
-      void listenerApi.dispatch(thunk);
-      return;
-    }
-
-    // rejection creates a new message at the end of the thread
-    // find the parent, then find the end point
-    const message = selectMessageByToolCallId(state, action.payload.toolCallId);
-    if (!message) return;
-    const lastMessage = selectLastMessageForAlt(state, message.ftm_alt);
-    if (!lastMessage) return;
-    const rejectAction = rejectToolUsageAction(
-      [action.payload.toolCallId],
-      action.payload.chatId,
-      lastMessage.ftm_num,
-      lastMessage.ftm_alt,
-      lastMessage.ftm_prev_alt,
-    );
-    void listenerApi.dispatch(rejectAction);
+    const thunk =
+      graphqlQueriesAndMutations.endpoints.toolConfirmation.initiate({
+        ft_id: action.payload.chatId,
+        fcall_id: action.payload.toolCallId,
+        positive: action.payload.accepted,
+      });
+    void listenerApi.dispatch(thunk);
+    return;
   },
 });
 

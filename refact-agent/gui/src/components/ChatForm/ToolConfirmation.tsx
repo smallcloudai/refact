@@ -1,10 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import {
-  useAppDispatch,
-  useAppSelector,
-  // useSendChatRequest,
-  // useEventsBusForIDE
-} from "../../hooks";
+import { useAppSelector } from "../../hooks";
 import { Card, Button, Text, Flex } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import styles from "./ToolConfirmation.module.css";
@@ -22,29 +17,27 @@ const PATCH_LIKE_FUNCTIONS = [
 import {
   selectThreadMessages,
   selectThreadMeta,
-  selectThreadEnd,
   ToolConfirmationRequest,
 } from "../../features/ThreadMessages";
-import {
-  graphqlQueriesAndMutations,
-  rejectToolUsageAction,
-} from "../../services/graphql";
+import { graphqlQueriesAndMutations } from "../../services/graphql";
 import { parseOrElse } from "../../utils/parseOrElse";
 
 function useToolConfirmation() {
-  const dispatch = useAppDispatch();
   const threadMeta = useAppSelector(selectThreadMeta);
-  const threadEnd = useAppSelector(selectThreadEnd);
   const [toolConfirmation, _toolConfirmationResult] =
     graphqlQueriesAndMutations.useToolConfirmationMutation();
 
   const confirmToolUsage = useCallback(
     (ids: string[]) => {
       if (!threadMeta?.ft_id) return;
-      void toolConfirmation({
-        ft_id: threadMeta.ft_id,
-        confirmation_response: JSON.stringify(ids),
-      });
+      const requests = ids.map((id) =>
+        toolConfirmation({
+          ft_id: threadMeta.ft_id,
+          fcall_id: id,
+          positive: true,
+        }),
+      );
+      void Promise.all(requests);
     },
     [threadMeta?.ft_id, toolConfirmation],
   );
@@ -53,32 +46,22 @@ function useToolConfirmation() {
     (ids: string[]) => {
       // TODO: find the message with the tool call
       if (!threadMeta?.ft_id) return;
-      const action = rejectToolUsageAction(
-        ids,
-        threadMeta.ft_id,
-        threadEnd.endNumber,
-        threadEnd.endAlt,
-        threadEnd.endPrevAlt,
+      const requests = ids.map((id) =>
+        toolConfirmation({
+          ft_id: threadMeta.ft_id,
+          fcall_id: id,
+          positive: false,
+        }),
       );
-      void dispatch(action);
+      void Promise.all(requests);
     },
-    [
-      dispatch,
-      threadEnd.endAlt,
-      threadEnd.endNumber,
-      threadEnd.endPrevAlt,
-      threadMeta?.ft_id,
-    ],
+    [threadMeta?.ft_id, toolConfirmation],
   );
 
+  // TBD: how to allow all ?
   const allowAll = useCallback(() => {
-    if (!threadMeta?.ft_id) return;
-
-    void toolConfirmation({
-      ft_id: threadMeta.ft_id,
-      confirmation_response: JSON.stringify(["*"]),
-    });
-  }, [threadMeta?.ft_id, toolConfirmation]);
+    confirmToolUsage(["*"]);
+  }, [confirmToolUsage]);
 
   return { confirmToolUsage, rejectToolUsage, allowAll };
 }
@@ -120,7 +103,6 @@ const getConfirmationMessage = (
   }
 };
 
-// here
 export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
   toolConfirmationRequests,
 }) => {
