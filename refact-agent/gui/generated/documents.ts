@@ -16,12 +16,15 @@ export type Scalars = {
   Float: { input: number; output: number; }
   JSON: { input: any; output: any; }
   Union: { input: any; output: any; }
+  Void: { input: any; output: any; }
 };
 
 export type BasicStuffResult = {
   __typename?: 'BasicStuffResult';
+  fuser_avatar: Scalars['String']['output'];
   fuser_id: Scalars['String']['output'];
   fuser_psystem?: Maybe<Scalars['JSON']['output']>;
+  fuser_questionnaire?: Maybe<Scalars['JSON']['output']>;
   invitations?: Maybe<Array<FWorkspaceInvitationOutput>>;
   is_oauth: Scalars['Boolean']['output'];
   my_own_ws_id?: Maybe<Scalars['String']['output']>;
@@ -31,6 +34,7 @@ export type BasicStuffResult = {
 export type CloudtoolResultInput = {
   dollars?: Scalars['Float']['input'];
   fcall_id: Scalars['String']['input'];
+  fcall_untrusted_key: Scalars['String']['input'];
   ftm_content: Scalars['String']['input'];
   ftm_provenance: Scalars['String']['input'];
 };
@@ -68,6 +72,14 @@ export type FBotInstallOutput = {
   __typename?: 'FBotInstallOutput';
   marketable_name: Scalars['String']['output'];
   marketable_version: Scalars['String']['output'];
+};
+
+export type FBotVersionsSubs = {
+  __typename?: 'FBotVersionsSubs';
+  news_action: Scalars['String']['output'];
+  news_payload_id: Scalars['String']['output'];
+  news_payload_marketplace?: Maybe<FMarketplaceVersionInfo>;
+  news_pubsub: Scalars['String']['output'];
 };
 
 export type FCloudTool = {
@@ -148,8 +160,13 @@ export type FExpertSubs = {
   news_pubsub: Scalars['String']['output'];
 };
 
+export type FExternalAuthOAuthStartInput = {
+  ws_id: Scalars['String']['input'];
+};
+
 export type FExternalDataSourceInput = {
   eds_json: Scalars['String']['input'];
+  eds_last_successful_scan_ts?: Scalars['Float']['input'];
   eds_name: Scalars['String']['input'];
   eds_type: Scalars['String']['input'];
   located_fgroup_id: Scalars['String']['input'];
@@ -181,6 +198,13 @@ export type FExternalDataSourceSubs = {
   news_action: Scalars['String']['output'];
   news_payload?: Maybe<FExternalDataSourceOutput>;
   news_payload_id: Scalars['String']['output'];
+};
+
+export type FGitHubMintTokenOutput = {
+  __typename?: 'FGitHubMintTokenOutput';
+  expires_at: Scalars['String']['output'];
+  installation_id: Scalars['String']['output'];
+  token: Scalars['String']['output'];
 };
 
 export type FKanbanTaskInput = {
@@ -232,6 +256,24 @@ export type FKnowledgeItemSubs = {
   news_pubsub: Scalars['String']['output'];
 };
 
+export type FMarketplaceBuildCheckResult = {
+  __typename?: 'FMarketplaceBuildCheckResult';
+  can_build: Scalars['Boolean']['output'];
+  error_message?: Maybe<Scalars['String']['output']>;
+  github_app_install_url?: Maybe<Scalars['String']['output']>;
+  is_private_repo: Scalars['Boolean']['output'];
+  needs_credentials: Scalars['Boolean']['output'];
+};
+
+export type FMarketplaceDetails = {
+  __typename?: 'FMarketplaceDetails';
+  dev_personas: Array<FPersonaOutput>;
+  dev_version_details?: Maybe<FMarketplaceOutput>;
+  personas: Array<FPersonaOutput>;
+  showcased_version_details?: Maybe<FMarketplaceOutput>;
+  versions: Array<FMarketplaceVersionInfo>;
+};
+
 export type FMarketplaceExpertInput = {
   fexp_allow_tools: Scalars['String']['input'];
   fexp_app_capture_tools?: Scalars['String']['input'];
@@ -241,26 +283,42 @@ export type FMarketplaceExpertInput = {
   fexp_system_prompt: Scalars['String']['input'];
 };
 
-export type FMarketplaceInstallOutput = {
-  __typename?: 'FMarketplaceInstallOutput';
-  persona_id: Scalars['String']['output'];
-};
-
 export type FMarketplaceOutput = {
   __typename?: 'FMarketplaceOutput';
   available_ws_id?: Maybe<Scalars['String']['output']>;
+  fuser_is_owner?: Maybe<Scalars['Boolean']['output']>;
+  marketable_author: Scalars['String']['output'];
   marketable_description: Scalars['String']['output'];
+  marketable_docker_image_built_ts: Scalars['Float']['output'];
+  marketable_github_repo: Scalars['String']['output'];
   marketable_name: Scalars['String']['output'];
+  marketable_occupation: Scalars['String']['output'];
   marketable_picture_big?: Maybe<Scalars['String']['output']>;
   marketable_picture_small?: Maybe<Scalars['String']['output']>;
   marketable_popularity_counter: Scalars['Int']['output'];
   marketable_price: Scalars['Int']['output'];
+  marketable_stage: Scalars['String']['output'];
   marketable_star_event: Scalars['Int']['output'];
   marketable_star_sum: Scalars['Int']['output'];
+  marketable_tags: Array<Scalars['String']['output']>;
   marketable_title1: Scalars['String']['output'];
   marketable_title2: Scalars['String']['output'];
-  marketable_version: Scalars['String']['output'];
+  marketable_typical_group: Scalars['String']['output'];
+  marketable_version: Scalars['Int']['output'];
+  popularity_counter_all_versions?: Maybe<Scalars['Int']['output']>;
   seller_fuser_id?: Maybe<Scalars['String']['output']>;
+  stars_avg_all_versions?: Maybe<Scalars['Float']['output']>;
+  stars_count_all_versions?: Maybe<Scalars['Int']['output']>;
+  stars_event_all_versions?: Maybe<Scalars['Int']['output']>;
+};
+
+export type FMarketplaceVersionInfo = {
+  __typename?: 'FMarketplaceVersionInfo';
+  marketable_current_persona_count: Scalars['Int']['output'];
+  marketable_docker_image_error_msg?: Maybe<Scalars['String']['output']>;
+  marketable_docker_image_status?: Maybe<Scalars['String']['output']>;
+  marketable_stage: Scalars['String']['output'];
+  marketable_version: Scalars['Int']['output'];
 };
 
 export type FMassInvitationOutput = {
@@ -276,6 +334,8 @@ export type FMcpServerInput = {
   mcp_enabled?: Scalars['Boolean']['input'];
   mcp_env_vars?: InputMaybe<Scalars['JSON']['input']>;
   mcp_name: Scalars['String']['input'];
+  mcp_preinstall_script?: Scalars['String']['input'];
+  owner_shared?: Scalars['Boolean']['input'];
 };
 
 export type FMcpServerOutput = {
@@ -289,6 +349,7 @@ export type FMcpServerOutput = {
   mcp_id: Scalars['String']['output'];
   mcp_modified_ts: Scalars['Float']['output'];
   mcp_name: Scalars['String']['output'];
+  mcp_preinstall_script: Scalars['String']['output'];
   owner_fuser_id: Scalars['String']['output'];
   owner_shared: Scalars['Boolean']['output'];
 };
@@ -300,6 +361,7 @@ export type FMcpServerPatch = {
   mcp_enabled?: InputMaybe<Scalars['Boolean']['input']>;
   mcp_env_vars?: InputMaybe<Scalars['JSON']['input']>;
   mcp_name?: InputMaybe<Scalars['String']['input']>;
+  mcp_preinstall_script?: InputMaybe<Scalars['String']['input']>;
   owner_shared?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
@@ -309,6 +371,20 @@ export type FMcpServerSubs = {
   news_payload?: Maybe<FMcpServerOutput>;
   news_payload_id: Scalars['String']['output'];
   news_pubsub: Scalars['String']['output'];
+};
+
+export type FMeteringOutput = {
+  __typename?: 'FMeteringOutput';
+  fgroup_id: Scalars['String']['output'];
+  met_coins: Scalars['Int']['output'];
+  met_details: Scalars['JSON']['output'];
+  met_involved_ft_id: Scalars['String']['output'];
+  met_involved_fuser_id: Scalars['String']['output'];
+  met_involved_model: Scalars['String']['output'];
+  met_serial: Scalars['Int']['output'];
+  met_ts: Scalars['Float']['output'];
+  met_type: Scalars['String']['output'];
+  ws_id: Scalars['String']['output'];
 };
 
 export type FModelItem = {
@@ -336,19 +412,13 @@ export type FPermissionSubs = {
   news_pubsub: Scalars['String']['output'];
 };
 
-export type FPersonaHistoryItemOutput = {
-  __typename?: 'FPersonaHistoryItemOutput';
-  ft_id: Scalars['String']['output'];
-  title: Scalars['String']['output'];
-};
-
-export type FPersonaInput = {
-  located_fgroup_id: Scalars['String']['input'];
-  persona_discounts?: InputMaybe<Scalars['String']['input']>;
-  persona_marketable_name: Scalars['String']['input'];
-  persona_marketable_version: Scalars['String']['input'];
-  persona_name: Scalars['String']['input'];
-  persona_setup: Scalars['String']['input'];
+export type FPersonaDocOutput = {
+  __typename?: 'FPersonaDocOutput';
+  ctime: Scalars['Float']['output'];
+  mime_type: Scalars['String']['output'];
+  mtime: Scalars['Float']['output'];
+  path: Scalars['String']['output'];
+  size_bytes: Scalars['Int']['output'];
 };
 
 export type FPersonaKanbanSubs = {
@@ -363,14 +433,18 @@ export type FPersonaKanbanTaskOutput = {
   __typename?: 'FPersonaKanbanTaskOutput';
   ktask_blocks_ktask_id?: Maybe<Scalars['String']['output']>;
   ktask_budget: Scalars['Int']['output'];
+  ktask_coins: Scalars['Int']['output'];
+  ktask_daily_timekey: Scalars['String']['output'];
   ktask_details: Scalars['JSON']['output'];
   ktask_done_ts: Scalars['Float']['output'];
-  ktask_failed_ts: Scalars['Float']['output'];
   ktask_id: Scalars['String']['output'];
   ktask_inbox_provenance: Scalars['JSON']['output'];
   ktask_inbox_ts: Scalars['Float']['output'];
-  ktask_inprogress_ft_id: Scalars['String']['output'];
+  ktask_inprogress_activity_ts: Scalars['Float']['output'];
+  ktask_inprogress_ft_id?: Maybe<Scalars['String']['output']>;
   ktask_inprogress_ts: Scalars['Float']['output'];
+  ktask_resolution_code?: Maybe<Scalars['String']['output']>;
+  ktask_resolution_summary?: Maybe<Scalars['String']['output']>;
   ktask_title: Scalars['String']['output'];
   ktask_todo_ts: Scalars['Float']['output'];
   persona_id: Scalars['String']['output'];
@@ -378,32 +452,54 @@ export type FPersonaKanbanTaskOutput = {
 
 export type FPersonaOutput = {
   __typename?: 'FPersonaOutput';
-  history?: Maybe<Array<FPersonaHistoryItemOutput>>;
   latest_ft_id?: Maybe<Scalars['String']['output']>;
   located_fgroup_id: Scalars['String']['output'];
+  marketable_author?: Maybe<Scalars['String']['output']>;
   marketable_docker_image?: Maybe<Scalars['String']['output']>;
+  marketable_occupation?: Maybe<Scalars['String']['output']>;
   marketable_run_this?: Maybe<Scalars['String']['output']>;
   marketable_setup_default?: Maybe<Scalars['JSON']['output']>;
+  marketable_stage?: Maybe<Scalars['String']['output']>;
   owner_fuser_id: Scalars['String']['output'];
-  persona_archived_ts: Scalars['Float']['output'];
+  persona_auto_upgrade: Scalars['Boolean']['output'];
   persona_created_ts: Scalars['Float']['output'];
+  persona_daily_budget: Scalars['Int']['output'];
+  persona_daily_coins: Scalars['Int']['output'];
+  persona_daily_timekey: Scalars['String']['output'];
   persona_discounts?: Maybe<Scalars['JSON']['output']>;
   persona_enabled: Scalars['Boolean']['output'];
   persona_id: Scalars['String']['output'];
+  persona_inbox_budget: Scalars['Int']['output'];
   persona_marketable_name: Scalars['String']['output'];
-  persona_marketable_version: Scalars['String']['output'];
+  persona_marketable_version: Scalars['Int']['output'];
   persona_name: Scalars['String']['output'];
   persona_picture_big?: Maybe<Scalars['String']['output']>;
   persona_picture_small?: Maybe<Scalars['String']['output']>;
+  persona_preferred_model: Scalars['String']['output'];
+  persona_prerelease: Scalars['Boolean']['output'];
   persona_setup: Scalars['JSON']['output'];
+  pstat_fail: Scalars['Int']['output'];
+  pstat_humanhours: Scalars['Float']['output'];
+  pstat_inbox: Scalars['Int']['output'];
+  pstat_inconclusive: Scalars['Int']['output'];
+  pstat_irrelevant: Scalars['Int']['output'];
+  pstat_prioritize: Scalars['Int']['output'];
+  pstat_reopened: Scalars['Int']['output'];
+  pstat_success: Scalars['Int']['output'];
+  pstat_week_base?: Maybe<Scalars['JSON']['output']>;
+  ws_id?: Maybe<Scalars['String']['output']>;
+  ws_timezone?: Maybe<Scalars['String']['output']>;
 };
 
 export type FPersonaPatch = {
   located_fgroup_id?: InputMaybe<Scalars['String']['input']>;
-  persona_archived_ts?: InputMaybe<Scalars['Float']['input']>;
+  persona_auto_upgrade?: InputMaybe<Scalars['Boolean']['input']>;
+  persona_daily_budget?: InputMaybe<Scalars['Int']['input']>;
   persona_enabled?: InputMaybe<Scalars['Boolean']['input']>;
-  persona_marketable_version?: InputMaybe<Scalars['String']['input']>;
+  persona_inbox_budget?: InputMaybe<Scalars['Int']['input']>;
   persona_name?: InputMaybe<Scalars['String']['input']>;
+  persona_preferred_model?: InputMaybe<Scalars['String']['input']>;
+  persona_prerelease?: InputMaybe<Scalars['Boolean']['input']>;
   persona_setup?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -415,20 +511,25 @@ export type FPersonaScheduleListOutput = {
 
 export type FPersonaScheduleOutput = {
   __typename?: 'FPersonaScheduleOutput';
+  sched_enable: Scalars['Boolean']['output'];
   sched_first_question: Scalars['String']['output'];
   sched_id: Scalars['String']['output'];
+  sched_last_ft_id?: Maybe<Scalars['String']['output']>;
   sched_last_run_ts: Scalars['Float']['output'];
+  sched_marketplace: Scalars['Boolean']['output'];
   sched_persona_id: Scalars['String']['output'];
-  sched_rrule: Scalars['String']['output'];
-  sched_start_ts: Scalars['Float']['output'];
+  sched_type: Scalars['String']['output'];
+  sched_when: Scalars['String']['output'];
 };
 
 export type FPersonaScheduleUpsertInput = {
+  sched_enable: Scalars['Boolean']['input'];
   sched_first_question: Scalars['String']['input'];
   sched_id?: InputMaybe<Scalars['String']['input']>;
+  sched_marketplace: Scalars['Boolean']['input'];
   sched_persona_id: Scalars['String']['input'];
-  sched_rrule: Scalars['String']['input'];
-  sched_start_ts: Scalars['Float']['input'];
+  sched_type: Scalars['String']['input'];
+  sched_when: Scalars['String']['input'];
 };
 
 export type FPersonaSubs = {
@@ -441,9 +542,10 @@ export type FPersonaSubs = {
 
 export type FStatsAddInput = {
   fgroup_id?: Scalars['String']['input'];
+  ft_id?: Scalars['String']['input'];
   st_chart: Scalars['Int']['input'];
   st_how_many: Scalars['Union']['input'];
-  st_involved_fexp_id?: Scalars['String']['input'];
+  st_involved_expert?: Scalars['String']['input'];
   st_involved_fuser_id?: Scalars['String']['input'];
   st_involved_model?: Scalars['String']['input'];
   st_thing: Scalars['String']['input'];
@@ -454,11 +556,27 @@ export type FStatsOutput = {
   __typename?: 'FStatsOutput';
   fgroup_id?: Maybe<Scalars['String']['output']>;
   st_how_many: Scalars['Union']['output'];
-  st_involved_fexp_id?: Maybe<Scalars['String']['output']>;
+  st_involved_expert?: Maybe<Scalars['String']['output']>;
   st_involved_fuser_id?: Maybe<Scalars['String']['output']>;
   st_involved_model?: Maybe<Scalars['String']['output']>;
+  st_thing?: Maybe<Scalars['String']['output']>;
   st_timekey: Scalars['String']['output'];
   ws_id?: Maybe<Scalars['String']['output']>;
+};
+
+export type FSubchatProgress = {
+  __typename?: 'FSubchatProgress';
+  subchat_progress_completed: Scalars['Int']['output'];
+  subchat_progress_total: Scalars['Int']['output'];
+};
+
+export type FTamagotchiSubs = {
+  __typename?: 'FTamagotchiSubs';
+  news_action: Scalars['String']['output'];
+  news_payload_id: Scalars['String']['output'];
+  news_payload_persona?: Maybe<FPersonaOutput>;
+  news_payload_wishes?: Maybe<TamagotchiWishes>;
+  news_pubsub: Scalars['String']['output'];
 };
 
 export type FThreadDelta = {
@@ -471,10 +589,11 @@ export type FThreadInput = {
   ft_app_capture?: Scalars['String']['input'];
   ft_app_searchable?: Scalars['String']['input'];
   ft_app_specific?: Scalars['String']['input'];
+  ft_archived_ts?: Scalars['Float']['input'];
+  ft_budget?: Scalars['Int']['input'];
   ft_error?: Scalars['String']['input'];
   ft_fexp_id: Scalars['String']['input'];
   ft_persona_id?: InputMaybe<Scalars['String']['input']>;
-  ft_subchat_dest_ft_id?: InputMaybe<Scalars['String']['input']>;
   ft_title: Scalars['String']['input'];
   ft_toolset?: Scalars['String']['input'];
   located_fgroup_id: Scalars['String']['input'];
@@ -483,17 +602,17 @@ export type FThreadInput = {
 
 export type FThreadMessageInput = {
   ftm_alt: Scalars['Int']['input'];
-  ftm_app_specific?: InputMaybe<Scalars['String']['input']>;
+  ftm_app_specific?: Scalars['String']['input'];
   ftm_belongs_to_ft_id: Scalars['String']['input'];
   ftm_call_id: Scalars['String']['input'];
-  ftm_content?: InputMaybe<Scalars['String']['input']>;
+  ftm_content?: Scalars['String']['input'];
   ftm_num: Scalars['Int']['input'];
   ftm_prev_alt: Scalars['Int']['input'];
   ftm_provenance: Scalars['String']['input'];
   ftm_role: Scalars['String']['input'];
-  ftm_tool_calls?: InputMaybe<Scalars['String']['input']>;
-  ftm_usage?: InputMaybe<Scalars['String']['input']>;
-  ftm_user_preferences?: InputMaybe<Scalars['String']['input']>;
+  ftm_tool_calls?: Scalars['String']['input'];
+  ftm_usage?: Scalars['String']['input'];
+  ftm_user_preferences?: Scalars['String']['input'];
 };
 
 export type FThreadMessageOutput = {
@@ -523,6 +642,7 @@ export type FThreadMessageSubs = {
   news_payload_thread?: Maybe<FThreadOutput>;
   news_payload_thread_message?: Maybe<FThreadMessageOutput>;
   stream_delta?: Maybe<FThreadDelta>;
+  subchat_progress?: Maybe<FSubchatProgress>;
 };
 
 export type FThreadMultipleMessagesInput = {
@@ -536,8 +656,9 @@ export type FThreadOutput = {
   ft_app_searchable: Scalars['String']['output'];
   ft_app_specific?: Maybe<Scalars['JSON']['output']>;
   ft_archived_ts: Scalars['Float']['output'];
+  ft_budget: Scalars['Int']['output'];
+  ft_coins: Scalars['Int']['output'];
   ft_confirmation_request?: Maybe<Scalars['JSON']['output']>;
-  ft_confirmation_response?: Maybe<Scalars['JSON']['output']>;
   ft_created_ts: Scalars['Float']['output'];
   ft_error?: Maybe<Scalars['JSON']['output']>;
   ft_fexp_id: Scalars['String']['output'];
@@ -547,7 +668,6 @@ export type FThreadOutput = {
   ft_need_tool_calls: Scalars['Int']['output'];
   ft_need_user: Scalars['Int']['output'];
   ft_persona_id?: Maybe<Scalars['String']['output']>;
-  ft_subchat_dest_ft_id?: Maybe<Scalars['String']['output']>;
   ft_title: Scalars['String']['output'];
   ft_toolset?: Maybe<Scalars['JSON']['output']>;
   ft_updated_ts: Scalars['Float']['output'];
@@ -560,10 +680,8 @@ export type FThreadPatch = {
   ft_app_searchable?: InputMaybe<Scalars['String']['input']>;
   ft_app_specific?: InputMaybe<Scalars['String']['input']>;
   ft_archived_ts?: InputMaybe<Scalars['Float']['input']>;
-  ft_confirmation_request?: InputMaybe<Scalars['String']['input']>;
-  ft_confirmation_response?: InputMaybe<Scalars['String']['input']>;
+  ft_budget?: InputMaybe<Scalars['Int']['input']>;
   ft_error?: InputMaybe<Scalars['String']['input']>;
-  ft_subchat_dest_ft_id?: InputMaybe<Scalars['String']['input']>;
   ft_title?: InputMaybe<Scalars['String']['input']>;
   ft_toolset?: InputMaybe<Scalars['String']['input']>;
   located_fgroup_id?: InputMaybe<Scalars['String']['input']>;
@@ -580,14 +698,20 @@ export type FThreadSubs = {
 
 export type FUserProfileOutput = {
   __typename?: 'FUserProfileOutput';
+  fuser_avatar?: Maybe<Scalars['String']['output']>;
   fuser_experimental: Scalars['Boolean']['output'];
   fuser_fullname: Scalars['String']['output'];
   fuser_id: Scalars['String']['output'];
+  fuser_nickname: Scalars['String']['output'];
+  fuser_questionnaire?: Maybe<Scalars['JSON']['output']>;
 };
 
 export type FUserProfilePatch = {
+  fuser_avatar?: InputMaybe<Scalars['String']['input']>;
   fuser_experimental?: InputMaybe<Scalars['Boolean']['input']>;
   fuser_fullname?: InputMaybe<Scalars['String']['input']>;
+  fuser_nickname?: InputMaybe<Scalars['String']['input']>;
+  fuser_questionnaire?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type FWorkspaceCreateInput = {
@@ -607,14 +731,69 @@ export type FWorkspaceInvitationOutput = {
 export type FWorkspaceOutput = {
   __typename?: 'FWorkspaceOutput';
   have_admin: Scalars['Boolean']['output'];
+  have_billing: Scalars['Boolean']['output'];
   have_coins_enough: Scalars['Boolean']['output'];
   have_coins_exactly: Scalars['Union']['output'];
   root_group_name: Scalars['String']['output'];
   ws_archived_ts: Scalars['Float']['output'];
+  ws_auto_recharge_amount?: Maybe<Scalars['Int']['output']>;
+  ws_auto_recharge_enabled?: Maybe<Scalars['Boolean']['output']>;
+  ws_auto_recharge_threshold?: Maybe<Scalars['Int']['output']>;
+  ws_company_logo: Scalars['String']['output'];
   ws_created_ts: Scalars['Float']['output'];
   ws_id: Scalars['String']['output'];
+  ws_monthly_spending_alert?: Maybe<Scalars['Int']['output']>;
+  ws_monthly_spending_limit?: Maybe<Scalars['Int']['output']>;
   ws_owner_fuser_id: Scalars['String']['output'];
+  ws_payment_method?: Maybe<Scalars['String']['output']>;
   ws_root_group_id: Scalars['String']['output'];
+  ws_timezone: Scalars['String']['output'];
+};
+
+export type FWorkspacePatch = {
+  new_workspace_name?: InputMaybe<Scalars['String']['input']>;
+  ws_auto_recharge_amount?: InputMaybe<Scalars['Int']['input']>;
+  ws_auto_recharge_enabled?: InputMaybe<Scalars['Boolean']['input']>;
+  ws_auto_recharge_threshold?: InputMaybe<Scalars['Int']['input']>;
+  ws_monthly_spending_alert?: InputMaybe<Scalars['Int']['input']>;
+  ws_monthly_spending_limit?: InputMaybe<Scalars['Int']['input']>;
+  ws_payment_method?: InputMaybe<Scalars['String']['input']>;
+  ws_timezone?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type FeedbackInput = {
+  active_ws_id?: InputMaybe<Scalars['String']['input']>;
+  feedback_ft_id?: InputMaybe<Scalars['String']['input']>;
+  feedback_guest_email?: InputMaybe<Scalars['String']['input']>;
+  feedback_guest_nickname?: InputMaybe<Scalars['String']['input']>;
+  feedback_public: Scalars['Boolean']['input'];
+  feedback_stars?: InputMaybe<Scalars['Int']['input']>;
+  feedback_text: Scalars['String']['input'];
+  feedback_type: Scalars['String']['input'];
+  persona_marketable_name: Scalars['String']['input'];
+  persona_marketable_version: Scalars['Int']['input'];
+};
+
+export type FeedbackOutput = {
+  __typename?: 'FeedbackOutput';
+  author_nickname?: Maybe<Scalars['String']['output']>;
+  feedback_created_ts: Scalars['Float']['output'];
+  feedback_ft_id?: Maybe<Scalars['String']['output']>;
+  feedback_fuser_id?: Maybe<Scalars['String']['output']>;
+  feedback_guest_email?: Maybe<Scalars['String']['output']>;
+  feedback_guest_nickname?: Maybe<Scalars['String']['output']>;
+  feedback_id: Scalars['String']['output'];
+  feedback_marketable_name: Scalars['String']['output'];
+  feedback_marketable_version: Scalars['Int']['output'];
+  feedback_stars?: Maybe<Scalars['Int']['output']>;
+  feedback_text: Scalars['String']['output'];
+  feedback_type: Scalars['String']['output'];
+};
+
+export type FeedbackPatch = {
+  feedback_public?: InputMaybe<Scalars['Boolean']['input']>;
+  feedback_stars?: InputMaybe<Scalars['Int']['input']>;
+  feedback_text?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type FlexusGroup = {
@@ -637,20 +816,45 @@ export type FlexusGroupPatch = {
   fgroup_parent_id?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type InstallationResult = {
+  __typename?: 'InstallationResult';
+  fgroup_id: Scalars['String']['output'];
+  persona_id: Scalars['String']['output'];
+};
+
+export type MarketplaceFeedbackOutput = {
+  __typename?: 'MarketplaceFeedbackOutput';
+  feedbacks: Array<FeedbackOutput>;
+  marketplace: FMarketplaceOutput;
+};
+
+export type McpRuntimeInfoDelta = {
+  __typename?: 'McpRuntimeInfoDelta';
+  logs: Array<Scalars['JSON']['output']>;
+  mcp_id: Scalars['String']['output'];
+  status: Scalars['JSON']['output'];
+  usage: Scalars['JSON']['output'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   api_key_delete: Scalars['Boolean']['output'];
   api_key_generate: FApiKeyOutput;
   bot_activate: FThreadOutput;
   bot_arrange_kanban_situation: Scalars['Boolean']['output'];
-  bot_install_from_marketplace: Scalars['Boolean']['output'];
+  bot_install_from_marketplace: InstallationResult;
   bot_kanban_post_into_inbox: Scalars['Boolean']['output'];
+  bot_subchat_create_multiple?: Maybe<Scalars['Void']['output']>;
+  bot_upgrade: Scalars['Int']['output'];
+  cloudtool_confirmation_request: Scalars['Boolean']['output'];
   cloudtool_post_result: Scalars['Boolean']['output'];
   create_captured_thread: FThreadOutput;
   email_confirm: EmailConfirmResult;
   expert_create: FExpertOutput;
   expert_delete: Scalars['Boolean']['output'];
   expert_patch: FExpertOutput;
+  external_auth_mint_github_token: FGitHubMintTokenOutput;
+  external_auth_start_github_oauth: Scalars['String']['output'];
   external_data_source_create: FExternalDataSourceOutput;
   external_data_source_delete: Scalars['Boolean']['output'];
   external_data_source_patch: FExternalDataSourceOutput;
@@ -666,8 +870,12 @@ export type Mutation = {
   knowledge_item_mass_group_patch: Scalars['Int']['output'];
   knowledge_item_patch: FKnowledgeItemOutput;
   make_sure_have_expert: Scalars['String']['output'];
-  marketplace_install: FMarketplaceInstallOutput;
-  marketplace_upgrade: Scalars['Boolean']['output'];
+  marketplace_change_stage: Scalars['Boolean']['output'];
+  marketplace_check_build_requirements: FMarketplaceBuildCheckResult;
+  marketplace_delete_version: Scalars['Boolean']['output'];
+  marketplace_feedback_delete: Scalars['Boolean']['output'];
+  marketplace_feedback_patch: FeedbackOutput;
+  marketplace_feedback_submit: FeedbackOutput;
   marketplace_upsert_dev_bot: FBotInstallOutput;
   mcp_server_create: FMcpServerOutput;
   mcp_server_delete: Scalars['Boolean']['output'];
@@ -675,7 +883,6 @@ export type Mutation = {
   password_change: Scalars['Boolean']['output'];
   permission_delete: Scalars['Boolean']['output'];
   permission_patch: FPermissionOutput;
-  persona_create: FPersonaOutput;
   persona_delete: Scalars['Boolean']['output'];
   persona_patch: FPersonaOutput;
   persona_schedule_delete: FPersonaScheduleOutput;
@@ -686,7 +893,7 @@ export type Mutation = {
   session_renew: Scalars['String']['output'];
   stats_add: Scalars['Boolean']['output'];
   thread_app_capture_patch: Scalars['Boolean']['output'];
-  thread_clear_confirmation: Scalars['Boolean']['output'];
+  thread_confirmation_resolve: Scalars['Boolean']['output'];
   thread_create: FThreadOutput;
   thread_delete: Scalars['Boolean']['output'];
   thread_lock: Scalars['Boolean']['output'];
@@ -695,14 +902,16 @@ export type Mutation = {
   thread_patch: FThreadOutput;
   thread_reset_error: Scalars['Boolean']['output'];
   thread_reset_title: Scalars['Boolean']['output'];
-  thread_set_confirmation_request: Scalars['Boolean']['output'];
-  thread_set_confirmation_response: Scalars['Boolean']['output'];
   thread_unlock: Scalars['Boolean']['output'];
+  user_avatar_upload: FUserProfileOutput;
   user_profile_patch: FUserProfileOutput;
   user_register: Scalars['Boolean']['output'];
   workspace_create: Scalars['String']['output'];
   workspace_delete: Scalars['String']['output'];
   workspace_leave: Scalars['String']['output'];
+  workspace_logo_upload: Scalars['Boolean']['output'];
+  workspace_patch: Scalars['Boolean']['output'];
+  workspace_undelete: Scalars['String']['output'];
 };
 
 
@@ -712,11 +921,12 @@ export type MutationApi_Key_DeleteArgs = {
 
 
 export type MutationBot_ActivateArgs = {
-  activation_type: Scalars['String']['input'];
+  activation_type?: Scalars['String']['input'];
+  fexp_id?: Scalars['String']['input'];
   first_calls: Scalars['String']['input'];
   first_question: Scalars['String']['input'];
-  localtools: Scalars['String']['input'];
   persona_id: Scalars['String']['input'];
+  sched_id?: Scalars['String']['input'];
   title: Scalars['String']['input'];
   who_is_asking: Scalars['String']['input'];
 };
@@ -730,20 +940,48 @@ export type MutationBot_Arrange_Kanban_SituationArgs = {
 
 
 export type MutationBot_Install_From_MarketplaceArgs = {
-  inside_fgroup_id: Scalars['String']['input'];
+  inside_fgroup_id?: InputMaybe<Scalars['String']['input']>;
+  install_dev_version?: Scalars['Boolean']['input'];
   new_setup: Scalars['String']['input'];
-  persona_id: Scalars['String']['input'];
+  persona_id?: InputMaybe<Scalars['String']['input']>;
   persona_marketable_name: Scalars['String']['input'];
-  persona_marketable_version: Scalars['String']['input'];
   persona_name: Scalars['String']['input'];
+  specific_version?: InputMaybe<Scalars['Int']['input']>;
+  ws_id: Scalars['String']['input'];
 };
 
 
 export type MutationBot_Kanban_Post_Into_InboxArgs = {
-  budget: Scalars['Int']['input'];
   details_json: Scalars['String']['input'];
   persona_id: Scalars['String']['input'];
   title: Scalars['String']['input'];
+};
+
+
+export type MutationBot_Subchat_Create_MultipleArgs = {
+  fcall_id: Scalars['String']['input'];
+  first_calls: Array<Scalars['String']['input']>;
+  first_question: Array<Scalars['String']['input']>;
+  persona_id: Scalars['String']['input'];
+  title: Array<Scalars['String']['input']>;
+  who_is_asking: Scalars['String']['input'];
+};
+
+
+export type MutationBot_UpgradeArgs = {
+  auto_upgrade?: InputMaybe<Scalars['Boolean']['input']>;
+  marketable_name: Scalars['String']['input'];
+  prerelease?: InputMaybe<Scalars['Boolean']['input']>;
+  specific_version?: InputMaybe<Scalars['Int']['input']>;
+  ws_id: Scalars['String']['input'];
+};
+
+
+export type MutationCloudtool_Confirmation_RequestArgs = {
+  confirm_command: Scalars['String']['input'];
+  confirm_explanation: Scalars['String']['input'];
+  confirm_setup_key: Scalars['String']['input'];
+  fcall_id: Scalars['String']['input'];
 };
 
 
@@ -776,6 +1014,16 @@ export type MutationExpert_DeleteArgs = {
 export type MutationExpert_PatchArgs = {
   id: Scalars['String']['input'];
   patch: FExpertPatch;
+};
+
+
+export type MutationExternal_Auth_Mint_Github_TokenArgs = {
+  ws_id: Scalars['String']['input'];
+};
+
+
+export type MutationExternal_Auth_Start_Github_OauthArgs = {
+  input: FExternalAuthOAuthStartInput;
 };
 
 
@@ -865,20 +1113,48 @@ export type MutationMake_Sure_Have_ExpertArgs = {
 };
 
 
-export type MutationMarketplace_InstallArgs = {
-  fgroup_id: Scalars['String']['input'];
+export type MutationMarketplace_Change_StageArgs = {
   marketable_name: Scalars['String']['input'];
+  marketable_version: Scalars['Int']['input'];
+  move_to_stage: Scalars['String']['input'];
+  ws_id: Scalars['String']['input'];
 };
 
 
-export type MutationMarketplace_UpgradeArgs = {
-  fgroup_id: Scalars['String']['input'];
+export type MutationMarketplace_Check_Build_RequirementsArgs = {
   marketable_name: Scalars['String']['input'];
-  specific_version: Scalars['String']['input'];
+  marketable_version: Scalars['Int']['input'];
+  ws_id: Scalars['String']['input'];
+};
+
+
+export type MutationMarketplace_Delete_VersionArgs = {
+  marketable_name: Scalars['String']['input'];
+  marketable_version: Scalars['Int']['input'];
+  ws_id: Scalars['String']['input'];
+};
+
+
+export type MutationMarketplace_Feedback_DeleteArgs = {
+  feedback_id: Scalars['String']['input'];
+};
+
+
+export type MutationMarketplace_Feedback_PatchArgs = {
+  feedback_id: Scalars['String']['input'];
+  patch: FeedbackPatch;
+};
+
+
+export type MutationMarketplace_Feedback_SubmitArgs = {
+  input: FeedbackInput;
 };
 
 
 export type MutationMarketplace_Upsert_Dev_BotArgs = {
+  marketable_author: Scalars['String']['input'];
+  marketable_daily_budget_default: Scalars['Int']['input'];
+  marketable_default_inbox_default: Scalars['Int']['input'];
   marketable_description: Scalars['String']['input'];
   marketable_expert_default: FMarketplaceExpertInput;
   marketable_expert_setup?: InputMaybe<FMarketplaceExpertInput>;
@@ -886,12 +1162,18 @@ export type MutationMarketplace_Upsert_Dev_BotArgs = {
   marketable_expert_todo?: InputMaybe<FMarketplaceExpertInput>;
   marketable_github_repo: Scalars['String']['input'];
   marketable_name: Scalars['String']['input'];
-  marketable_picture_big_b64?: InputMaybe<Scalars['String']['input']>;
-  marketable_picture_small_b64?: InputMaybe<Scalars['String']['input']>;
+  marketable_occupation: Scalars['String']['input'];
+  marketable_picture_big_b64: Scalars['String']['input'];
+  marketable_picture_small_b64: Scalars['String']['input'];
+  marketable_preferred_model_default: Scalars['String']['input'];
   marketable_run_this: Scalars['String']['input'];
+  marketable_schedule: Scalars['String']['input'];
   marketable_setup_default: Scalars['String']['input'];
+  marketable_stage?: Scalars['String']['input'];
+  marketable_tags: Array<Scalars['String']['input']>;
   marketable_title1: Scalars['String']['input'];
   marketable_title2: Scalars['String']['input'];
+  marketable_typical_group: Scalars['String']['input'];
   marketable_version: Scalars['String']['input'];
   ws_id: Scalars['String']['input'];
 };
@@ -929,11 +1211,6 @@ export type MutationPermission_PatchArgs = {
   fgroup_id: Scalars['String']['input'];
   fuser_id: Scalars['String']['input'];
   patch: FPermissionPatch;
-};
-
-
-export type MutationPersona_CreateArgs = {
-  input: FPersonaInput;
 };
 
 
@@ -987,8 +1264,10 @@ export type MutationThread_App_Capture_PatchArgs = {
 };
 
 
-export type MutationThread_Clear_ConfirmationArgs = {
+export type MutationThread_Confirmation_ResolveArgs = {
+  fcall_id: Scalars['String']['input'];
   ft_id: Scalars['String']['input'];
+  positive: Scalars['Boolean']['input'];
 };
 
 
@@ -1018,6 +1297,7 @@ export type MutationThread_Messages_Create_MultipleArgs = {
   delete_negative?: InputMaybe<Array<Scalars['Int']['input']>>;
   input: FThreadMultipleMessagesInput;
   mission_accomplished_adv_worker?: InputMaybe<Scalars['String']['input']>;
+  mission_accomplished_with_err?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1039,21 +1319,14 @@ export type MutationThread_Reset_TitleArgs = {
 };
 
 
-export type MutationThread_Set_Confirmation_RequestArgs = {
-  confirmation_request: Scalars['String']['input'];
-  ft_id: Scalars['String']['input'];
-};
-
-
-export type MutationThread_Set_Confirmation_ResponseArgs = {
-  confirmation_response: Scalars['String']['input'];
-  ft_id: Scalars['String']['input'];
-};
-
-
 export type MutationThread_UnlockArgs = {
   ft_id: Scalars['String']['input'];
   worker_name: Scalars['String']['input'];
+};
+
+
+export type MutationUser_Avatar_UploadArgs = {
+  avatar_b64: Scalars['String']['input'];
 };
 
 
@@ -1073,12 +1346,28 @@ export type MutationWorkspace_CreateArgs = {
 
 
 export type MutationWorkspace_DeleteArgs = {
-  dry_run?: Scalars['Boolean']['input'];
   ws_id: Scalars['String']['input'];
 };
 
 
 export type MutationWorkspace_LeaveArgs = {
+  ws_id: Scalars['String']['input'];
+};
+
+
+export type MutationWorkspace_Logo_UploadArgs = {
+  logo_b64: Scalars['String']['input'];
+  ws_id: Scalars['String']['input'];
+};
+
+
+export type MutationWorkspace_PatchArgs = {
+  input: FWorkspacePatch;
+  ws_id: Scalars['String']['input'];
+};
+
+
+export type MutationWorkspace_UndeleteArgs = {
   ws_id: Scalars['String']['input'];
 };
 
@@ -1106,14 +1395,17 @@ export type Query = {
   knowledge_item_get: FKnowledgeItemOutput;
   knowledge_item_list: Array<FKnowledgeItemOutput>;
   knowledge_vecdb_search: Array<FKnowledgeItemOutput>;
-  marketplace_details: Array<FMarketplaceOutput>;
+  marketplace_details: FMarketplaceDetails;
+  marketplace_feedback_list: Array<MarketplaceFeedbackOutput>;
   marketplace_list: Array<FMarketplaceOutput>;
   marketplace_search: Array<FMarketplaceOutput>;
   mcp_server_get: FMcpServerOutput;
   mcp_server_list: Array<FMcpServerOutput>;
+  metering_list: Array<FMeteringOutput>;
   permission_list: Array<FPermissionOutput>;
   persona_get: FPersonaOutput;
   persona_list: Array<FPersonaOutput>;
+  persona_mongo_docs_list: Array<FPersonaDocOutput>;
   persona_opened_in_ui: FPersonaOutput;
   persona_schedule_list: FPersonaScheduleListOutput;
   query_basic_stuff: BasicStuffResult;
@@ -1221,21 +1513,35 @@ export type QueryKnowledge_Vecdb_SearchArgs = {
 
 
 export type QueryMarketplace_DetailsArgs = {
-  fgroup_id: Scalars['String']['input'];
   marketable_name: Scalars['String']['input'];
+  ws_id: Scalars['String']['input'];
+};
+
+
+export type QueryMarketplace_Feedback_ListArgs = {
+  active_ws_id: Scalars['String']['input'];
+  feedback_type?: InputMaybe<Scalars['String']['input']>;
+  limit_marketplaces?: Scalars['Int']['input'];
+  limit_per_marketplace?: Scalars['Int']['input'];
+  only_my_feedback?: Scalars['Boolean']['input'];
+  persona_marketable_name?: InputMaybe<Scalars['String']['input']>;
+  persona_marketable_version?: InputMaybe<Scalars['Int']['input']>;
+  skip_marketplaces?: Scalars['Int']['input'];
+  skip_per_marketplace?: Scalars['Int']['input'];
 };
 
 
 export type QueryMarketplace_ListArgs = {
-  fgroup_id: Scalars['String']['input'];
   take?: Scalars['Int']['input'];
+  ws_id: Scalars['String']['input'];
 };
 
 
 export type QueryMarketplace_SearchArgs = {
-  fgroup_id: Scalars['String']['input'];
   query: Scalars['String']['input'];
+  tags?: Array<Scalars['String']['input']>;
   take?: Scalars['Int']['input'];
+  ws_id: Scalars['String']['input'];
 };
 
 
@@ -1249,6 +1555,19 @@ export type QueryMcp_Server_ListArgs = {
   located_fgroup_id: Scalars['String']['input'];
   skip: Scalars['Int']['input'];
   sort_by?: Scalars['String']['input'];
+};
+
+
+export type QueryMetering_ListArgs = {
+  date_from?: InputMaybe<Scalars['Int']['input']>;
+  date_to?: InputMaybe<Scalars['Int']['input']>;
+  fgroup_id?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  met_type_exclude?: InputMaybe<Array<Scalars['String']['input']>>;
+  met_type_include?: InputMaybe<Array<Scalars['String']['input']>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  ws_id: Scalars['String']['input'];
 };
 
 
@@ -1267,6 +1586,12 @@ export type QueryPersona_ListArgs = {
   located_fgroup_id: Scalars['String']['input'];
   skip: Scalars['Int']['input'];
   sort_by?: Scalars['String']['input'];
+};
+
+
+export type QueryPersona_Mongo_Docs_ListArgs = {
+  path: Scalars['String']['input'];
+  persona_id: Scalars['String']['input'];
 };
 
 
@@ -1291,11 +1616,12 @@ export type QueryReset_Password_Token_InfoArgs = {
 
 
 export type QueryStats_QueryArgs = {
-  breakdown_fexp_name: Array<Scalars['String']['input']>;
+  breakdown_expert: Array<Scalars['String']['input']>;
   breakdown_fuser_id: Array<Scalars['String']['input']>;
   breakdown_model: Array<Scalars['String']['input']>;
+  breakdown_thing: Array<Scalars['String']['input']>;
   fgroup_id?: Scalars['String']['input'];
-  filter_fexp_id?: Array<Scalars['String']['input']>;
+  filter_expert?: Array<Scalars['String']['input']>;
   filter_fuser_id?: Array<Scalars['String']['input']>;
   filter_model?: Array<Scalars['String']['input']>;
   filter_thing?: Array<Scalars['String']['input']>;
@@ -1309,9 +1635,10 @@ export type QueryStats_QueryArgs = {
 
 export type QueryStats_Query_DistinctArgs = {
   fgroup_id: Scalars['String']['input'];
-  filter_fexp_id: Array<Scalars['String']['input']>;
+  filter_expert: Array<Scalars['String']['input']>;
   filter_fuser_id: Array<Scalars['String']['input']>;
   filter_model: Array<Scalars['String']['input']>;
+  filter_thing: Array<Scalars['String']['input']>;
   st_chart: Scalars['Int']['input'];
   st_span: Scalars['String']['input'];
   timekey_from: Scalars['String']['input'];
@@ -1363,7 +1690,7 @@ export type RegisterInput = {
 
 export type StatsDistinctOutput = {
   __typename?: 'StatsDistinctOutput';
-  st_involved_fexp_id: Scalars['JSON']['output'];
+  st_involved_expert: Scalars['JSON']['output'];
   st_involved_fuser_id: Scalars['JSON']['output'];
   st_involved_model: Scalars['JSON']['output'];
   st_thing: Array<Scalars['String']['output']>;
@@ -1372,17 +1699,26 @@ export type StatsDistinctOutput = {
 
 export type Subscription = {
   __typename?: 'Subscription';
+  bot_versions_subs: FBotVersionsSubs;
   comprehensive_thread_subs: FThreadMessageSubs;
   ephemeral_subs: FEphemeralSubs;
   experts_in_group: FExpertSubs;
   external_data_sources_in_group: FExternalDataSourceSubs;
   knowledge_items_in_group: FKnowledgeItemSubs;
+  mcp_runtime_info_subscription: McpRuntimeInfoDelta;
   mcp_servers_in_group: FMcpServerSubs;
   permissions_in_group_subs: FPermissionSubs;
   persona_kanban_subs: FPersonaKanbanSubs;
   personas_in_group: FPersonaSubs;
+  tamagotchi_subs: FTamagotchiSubs;
   threads_in_group: FThreadSubs;
   tree_subscription: TreeUpdateSubs;
+};
+
+
+export type SubscriptionBot_Versions_SubsArgs = {
+  marketable_name: Scalars['String']['input'];
+  ws_id: Scalars['String']['input'];
 };
 
 
@@ -1398,34 +1734,40 @@ export type SubscriptionEphemeral_SubsArgs = {
 
 
 export type SubscriptionExperts_In_GroupArgs = {
-  filter?: Array<Scalars['String']['input']>;
   limit?: Scalars['Int']['input'];
   located_fgroup_id: Scalars['String']['input'];
   sort_by?: Array<Scalars['String']['input']>;
+  subs_filter?: Array<Scalars['String']['input']>;
 };
 
 
 export type SubscriptionExternal_Data_Sources_In_GroupArgs = {
-  filter?: Array<Scalars['String']['input']>;
   limit?: Scalars['Int']['input'];
   located_fgroup_id: Scalars['String']['input'];
   sort_by?: Array<Scalars['String']['input']>;
+  subs_filter?: Array<Scalars['String']['input']>;
 };
 
 
 export type SubscriptionKnowledge_Items_In_GroupArgs = {
-  filter?: Array<Scalars['String']['input']>;
   limit?: Scalars['Int']['input'];
   located_fgroup_id: Scalars['String']['input'];
   sort_by?: Array<Scalars['String']['input']>;
+  subs_filter?: Array<Scalars['String']['input']>;
+};
+
+
+export type SubscriptionMcp_Runtime_Info_SubscriptionArgs = {
+  fgroup_id: Scalars['String']['input'];
+  mcp_id: Scalars['String']['input'];
 };
 
 
 export type SubscriptionMcp_Servers_In_GroupArgs = {
-  filter?: Array<Scalars['String']['input']>;
   limit?: Scalars['Int']['input'];
   located_fgroup_id: Scalars['String']['input'];
   sort_by?: Array<Scalars['String']['input']>;
+  subs_filter?: Array<Scalars['String']['input']>;
 };
 
 
@@ -1438,30 +1780,46 @@ export type SubscriptionPermissions_In_Group_SubsArgs = {
 
 export type SubscriptionPersona_Kanban_SubsArgs = {
   limit_done?: Scalars['Int']['input'];
-  limit_garbage?: Scalars['Int']['input'];
   limit_inbox?: Scalars['Int']['input'];
   persona_id: Scalars['String']['input'];
 };
 
 
 export type SubscriptionPersonas_In_GroupArgs = {
-  filter?: Array<Scalars['String']['input']>;
   limit?: Scalars['Int']['input'];
   located_fgroup_id: Scalars['String']['input'];
   sort_by?: Array<Scalars['String']['input']>;
+  subs_filter?: Array<Scalars['String']['input']>;
+};
+
+
+export type SubscriptionTamagotchi_SubsArgs = {
+  fgroup_id: Scalars['String']['input'];
 };
 
 
 export type SubscriptionThreads_In_GroupArgs = {
-  filter?: Array<Scalars['String']['input']>;
   limit?: Scalars['Int']['input'];
   located_fgroup_id: Scalars['String']['input'];
   sort_by?: Array<Scalars['String']['input']>;
+  subs_filter?: Array<Scalars['String']['input']>;
 };
 
 
 export type SubscriptionTree_SubscriptionArgs = {
   ws_id: Scalars['String']['input'];
+};
+
+export type TamagotchiMissing = {
+  __typename?: 'TamagotchiMissing';
+  group: Scalars['String']['output'];
+  importance: Scalars['Int']['output'];
+};
+
+export type TamagotchiWishes = {
+  __typename?: 'TamagotchiWishes';
+  setup_quest_count: Scalars['Int']['output'];
+  setup_quest_missing: Array<TamagotchiMissing>;
 };
 
 export type TreeUpdateSubs = {
@@ -1503,7 +1861,7 @@ export type MessagesSubscriptionSubscriptionVariables = Exact<{
 }>;
 
 
-export type MessagesSubscriptionSubscription = { __typename?: 'Subscription', comprehensive_thread_subs: { __typename?: 'FThreadMessageSubs', news_action: string, news_payload_id: string, news_payload_thread_message?: { __typename?: 'FThreadMessageOutput', ft_app_specific?: any | null, ftm_belongs_to_ft_id: string, ftm_alt: number, ftm_num: number, ftm_prev_alt: number, ftm_role: string, ftm_content?: any | null, ftm_tool_calls?: any | null, ftm_call_id: string, ftm_usage?: any | null, ftm_created_ts: number, ftm_user_preferences?: any | null } | null, stream_delta?: { __typename?: 'FThreadDelta', ftm_role: string, ftm_content: any } | null, news_payload_thread?: { __typename?: 'FThreadOutput', located_fgroup_id: string, ft_id: string, ft_need_user: number, ft_need_assistant: number, ft_fexp_id: string, ft_confirmation_request?: any | null, ft_confirmation_response?: any | null, ft_title: string, ft_toolset?: any | null } | null } };
+export type MessagesSubscriptionSubscription = { __typename?: 'Subscription', comprehensive_thread_subs: { __typename?: 'FThreadMessageSubs', news_action: string, news_payload_id: string, news_payload_thread_message?: { __typename?: 'FThreadMessageOutput', ft_app_specific?: any | null, ftm_belongs_to_ft_id: string, ftm_alt: number, ftm_num: number, ftm_prev_alt: number, ftm_role: string, ftm_content?: any | null, ftm_tool_calls?: any | null, ftm_call_id: string, ftm_usage?: any | null, ftm_created_ts: number, ftm_user_preferences?: any | null } | null, stream_delta?: { __typename?: 'FThreadDelta', ftm_role: string, ftm_content: any } | null, news_payload_thread?: { __typename?: 'FThreadOutput', located_fgroup_id: string, ft_id: string, ft_need_user: number, ft_need_assistant: number, ft_fexp_id: string, ft_confirmation_request?: any | null, ft_title: string, ft_toolset?: any | null } | null } };
 
 export type MessageCreateMultipleMutationVariables = Exact<{
   input: FThreadMultipleMessagesInput;
@@ -1542,13 +1900,14 @@ export type ToolsForGroupQueryVariables = Exact<{
 
 export type ToolsForGroupQuery = { __typename?: 'Query', cloud_tools_list: Array<{ __typename?: 'FCloudTool', ctool_confirmed_exists_ts?: number | null, ctool_description: string, ctool_id: string, ctool_name: string, ctool_parameters: any, located_fgroup_id?: string | null, owner_fuser_id?: string | null }> };
 
-export type ThreadConfirmationResponseMutationVariables = Exact<{
-  confirmation_response?: InputMaybe<Scalars['String']['input']>;
-  ft_id?: InputMaybe<Scalars['String']['input']>;
+export type ThreadConfirmationResolveMutationVariables = Exact<{
+  fcall_id: Scalars['String']['input'];
+  ft_id: Scalars['String']['input'];
+  positive: Scalars['Boolean']['input'];
 }>;
 
 
-export type ThreadConfirmationResponseMutation = { __typename?: 'Mutation', thread_set_confirmation_response: boolean };
+export type ThreadConfirmationResolveMutation = { __typename?: 'Mutation', thread_confirmation_resolve: boolean };
 
 export type BasicStuffQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1574,13 +1933,13 @@ export type WorkspaceTreeSubscription = { __typename?: 'Subscription', tree_subs
 export const ThreadsPageSubsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"ThreadsPageSubs"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"located_fgroup_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"threads_in_group"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"located_fgroup_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"located_fgroup_id"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"news_action"}},{"kind":"Field","name":{"kind":"Name","value":"news_payload_id"}},{"kind":"Field","name":{"kind":"Name","value":"news_payload"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"owner_fuser_id"}},{"kind":"Field","name":{"kind":"Name","value":"owner_shared"}},{"kind":"Field","name":{"kind":"Name","value":"ft_id"}},{"kind":"Field","name":{"kind":"Name","value":"ft_title"}},{"kind":"Field","name":{"kind":"Name","value":"ft_error"}},{"kind":"Field","name":{"kind":"Name","value":"ft_updated_ts"}},{"kind":"Field","name":{"kind":"Name","value":"ft_locked_by"}},{"kind":"Field","name":{"kind":"Name","value":"ft_need_assistant"}},{"kind":"Field","name":{"kind":"Name","value":"ft_need_tool_calls"}},{"kind":"Field","name":{"kind":"Name","value":"ft_archived_ts"}},{"kind":"Field","name":{"kind":"Name","value":"ft_created_ts"}}]}}]}}]}}]} as unknown as DocumentNode<ThreadsPageSubsSubscription, ThreadsPageSubsSubscriptionVariables>;
 export const DeleteThreadDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteThread"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"thread_delete"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeleteThreadMutation, DeleteThreadMutationVariables>;
 export const CreateThreadDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateThread"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"FThreadInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"thread_create"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ft_id"}}]}}]}}]} as unknown as DocumentNode<CreateThreadMutation, CreateThreadMutationVariables>;
-export const MessagesSubscriptionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"MessagesSubscription"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ft_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"want_deltas"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"comprehensive_thread_subs"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ft_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ft_id"}}},{"kind":"Argument","name":{"kind":"Name","value":"want_deltas"},"value":{"kind":"Variable","name":{"kind":"Name","value":"want_deltas"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"news_action"}},{"kind":"Field","name":{"kind":"Name","value":"news_payload_id"}},{"kind":"Field","name":{"kind":"Name","value":"news_payload_thread_message"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ft_app_specific"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_belongs_to_ft_id"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_alt"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_num"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_prev_alt"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_role"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_content"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_tool_calls"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_call_id"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_usage"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_created_ts"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_user_preferences"}}]}},{"kind":"Field","name":{"kind":"Name","value":"stream_delta"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ftm_role"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_content"}}]}},{"kind":"Field","name":{"kind":"Name","value":"news_payload_thread"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"located_fgroup_id"}},{"kind":"Field","name":{"kind":"Name","value":"ft_id"}},{"kind":"Field","name":{"kind":"Name","value":"ft_need_user"}},{"kind":"Field","name":{"kind":"Name","value":"ft_need_assistant"}},{"kind":"Field","name":{"kind":"Name","value":"ft_fexp_id"}},{"kind":"Field","name":{"kind":"Name","value":"ft_confirmation_request"}},{"kind":"Field","name":{"kind":"Name","value":"ft_confirmation_response"}},{"kind":"Field","name":{"kind":"Name","value":"ft_title"}},{"kind":"Field","name":{"kind":"Name","value":"ft_toolset"}}]}}]}}]}}]} as unknown as DocumentNode<MessagesSubscriptionSubscription, MessagesSubscriptionSubscriptionVariables>;
+export const MessagesSubscriptionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"MessagesSubscription"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ft_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"want_deltas"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"comprehensive_thread_subs"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ft_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ft_id"}}},{"kind":"Argument","name":{"kind":"Name","value":"want_deltas"},"value":{"kind":"Variable","name":{"kind":"Name","value":"want_deltas"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"news_action"}},{"kind":"Field","name":{"kind":"Name","value":"news_payload_id"}},{"kind":"Field","name":{"kind":"Name","value":"news_payload_thread_message"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ft_app_specific"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_belongs_to_ft_id"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_alt"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_num"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_prev_alt"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_role"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_content"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_tool_calls"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_call_id"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_usage"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_created_ts"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_user_preferences"}}]}},{"kind":"Field","name":{"kind":"Name","value":"stream_delta"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ftm_role"}},{"kind":"Field","name":{"kind":"Name","value":"ftm_content"}}]}},{"kind":"Field","name":{"kind":"Name","value":"news_payload_thread"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"located_fgroup_id"}},{"kind":"Field","name":{"kind":"Name","value":"ft_id"}},{"kind":"Field","name":{"kind":"Name","value":"ft_need_user"}},{"kind":"Field","name":{"kind":"Name","value":"ft_need_assistant"}},{"kind":"Field","name":{"kind":"Name","value":"ft_fexp_id"}},{"kind":"Field","name":{"kind":"Name","value":"ft_confirmation_request"}},{"kind":"Field","name":{"kind":"Name","value":"ft_title"}},{"kind":"Field","name":{"kind":"Name","value":"ft_toolset"}}]}}]}}]}}]} as unknown as DocumentNode<MessagesSubscriptionSubscription, MessagesSubscriptionSubscriptionVariables>;
 export const MessageCreateMultipleDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"MessageCreateMultiple"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"FThreadMultipleMessagesInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"thread_messages_create_multiple"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}]}]}}]} as unknown as DocumentNode<MessageCreateMultipleMutation, MessageCreateMultipleMutationVariables>;
 export const ThreadPatchDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ThreadPatch"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"message"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"thread_patch"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"patch"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"ft_error"},"value":{"kind":"Variable","name":{"kind":"Name","value":"message"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ft_id"}}]}}]}}]} as unknown as DocumentNode<ThreadPatchMutation, ThreadPatchMutationVariables>;
 export const ExpertsForGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExpertsForGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"located_fgroup_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"experts_effective_list"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"located_fgroup_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"located_fgroup_id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"fexp_id"}},{"kind":"Field","name":{"kind":"Name","value":"fexp_name"}}]}}]}}]} as unknown as DocumentNode<ExpertsForGroupQuery, ExpertsForGroupQueryVariables>;
 export const ModelsForExpertDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ModelsForExpert"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"fexp_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"inside_fgroup_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"expert_choice_consequences"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"fexp_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"fexp_id"}}},{"kind":"Argument","name":{"kind":"Name","value":"inside_fgroup_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"inside_fgroup_id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"models"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"provm_name"}},{"kind":"Field","name":{"kind":"Name","value":"provm_caps"}}]}}]}}]}}]} as unknown as DocumentNode<ModelsForExpertQuery, ModelsForExpertQueryVariables>;
 export const ToolsForGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ToolsForGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"located_fgroup_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cloud_tools_list"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"located_fgroup_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"located_fgroup_id"}}},{"kind":"Argument","name":{"kind":"Name","value":"include_offline"},"value":{"kind":"BooleanValue","value":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ctool_confirmed_exists_ts"}},{"kind":"Field","name":{"kind":"Name","value":"ctool_description"}},{"kind":"Field","name":{"kind":"Name","value":"ctool_id"}},{"kind":"Field","name":{"kind":"Name","value":"ctool_name"}},{"kind":"Field","name":{"kind":"Name","value":"ctool_parameters"}},{"kind":"Field","name":{"kind":"Name","value":"located_fgroup_id"}},{"kind":"Field","name":{"kind":"Name","value":"owner_fuser_id"}}]}}]}}]} as unknown as DocumentNode<ToolsForGroupQuery, ToolsForGroupQueryVariables>;
-export const ThreadConfirmationResponseDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ThreadConfirmationResponse"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"confirmation_response"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}},"defaultValue":{"kind":"StringValue","value":"","block":false}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ft_id"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"thread_set_confirmation_response"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ft_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ft_id"}}},{"kind":"Argument","name":{"kind":"Name","value":"confirmation_response"},"value":{"kind":"Variable","name":{"kind":"Name","value":"confirmation_response"}}}]}]}}]} as unknown as DocumentNode<ThreadConfirmationResponseMutation, ThreadConfirmationResponseMutationVariables>;
+export const ThreadConfirmationResolveDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ThreadConfirmationResolve"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"fcall_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ft_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"positive"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"thread_confirmation_resolve"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"fcall_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"fcall_id"}}},{"kind":"Argument","name":{"kind":"Name","value":"ft_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ft_id"}}},{"kind":"Argument","name":{"kind":"Name","value":"positive"},"value":{"kind":"Variable","name":{"kind":"Name","value":"positive"}}}]}]}}]} as unknown as DocumentNode<ThreadConfirmationResolveMutation, ThreadConfirmationResolveMutationVariables>;
 export const BasicStuffDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"BasicStuff"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"query_basic_stuff"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"fuser_id"}},{"kind":"Field","name":{"kind":"Name","value":"my_own_ws_id"}},{"kind":"Field","name":{"kind":"Name","value":"workspaces"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ws_id"}},{"kind":"Field","name":{"kind":"Name","value":"ws_owner_fuser_id"}},{"kind":"Field","name":{"kind":"Name","value":"ws_root_group_id"}},{"kind":"Field","name":{"kind":"Name","value":"root_group_name"}},{"kind":"Field","name":{"kind":"Name","value":"have_coins_exactly"}},{"kind":"Field","name":{"kind":"Name","value":"have_coins_enough"}},{"kind":"Field","name":{"kind":"Name","value":"have_admin"}}]}}]}}]}}]} as unknown as DocumentNode<BasicStuffQuery, BasicStuffQueryVariables>;
 export const CreateWorkSpaceGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateWorkSpaceGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_parent_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"group_create"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"fgroup_name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_name"}}},{"kind":"ObjectField","name":{"kind":"Name","value":"fgroup_parent_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_parent_id"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"fgroup_id"}},{"kind":"Field","name":{"kind":"Name","value":"fgroup_name"}},{"kind":"Field","name":{"kind":"Name","value":"ws_id"}},{"kind":"Field","name":{"kind":"Name","value":"fgroup_parent_id"}},{"kind":"Field","name":{"kind":"Name","value":"fgroup_created_ts"}}]}}]}}]} as unknown as DocumentNode<CreateWorkSpaceGroupMutation, CreateWorkSpaceGroupMutationVariables>;
 export const WorkspaceTreeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"WorkspaceTree"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ws_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"tree_subscription"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ws_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ws_id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"treeupd_action"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_id"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_path"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_type"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_title"}}]}}]}}]} as unknown as DocumentNode<WorkspaceTreeSubscription, WorkspaceTreeSubscriptionVariables>;
@@ -1599,6 +1958,7 @@ export function CloudtoolResultInputSchema(): z.ZodObject<Properties<CloudtoolRe
   return z.object({
     dollars: z.number().default(0),
     fcall_id: z.string(),
+    fcall_untrusted_key: z.string(),
     ftm_content: z.string(),
     ftm_provenance: z.string()
   })
@@ -1625,9 +1985,16 @@ export function FExpertPatchSchema(): z.ZodObject<Properties<FExpertPatch>> {
   })
 }
 
+export function FExternalAuthOAuthStartInputSchema(): z.ZodObject<Properties<FExternalAuthOAuthStartInput>> {
+  return z.object({
+    ws_id: z.string()
+  })
+}
+
 export function FExternalDataSourceInputSchema(): z.ZodObject<Properties<FExternalDataSourceInput>> {
   return z.object({
     eds_json: z.string(),
+    eds_last_successful_scan_ts: z.number().default(0),
     eds_name: z.string(),
     eds_type: z.string(),
     located_fgroup_id: z.string()
@@ -1689,7 +2056,9 @@ export function FMcpServerInputSchema(): z.ZodObject<Properties<FMcpServerInput>
     mcp_description: z.string().default(""),
     mcp_enabled: z.boolean().default(false),
     mcp_env_vars: definedNonNullAnySchema.nullish(),
-    mcp_name: z.string()
+    mcp_name: z.string(),
+    mcp_preinstall_script: z.string().default(""),
+    owner_shared: z.boolean().default(true)
   })
 }
 
@@ -1701,6 +2070,7 @@ export function FMcpServerPatchSchema(): z.ZodObject<Properties<FMcpServerPatch>
     mcp_enabled: z.boolean().nullish(),
     mcp_env_vars: definedNonNullAnySchema.nullish(),
     mcp_name: z.string().nullish(),
+    mcp_preinstall_script: z.string().nullish(),
     owner_shared: z.boolean().nullish()
   })
 }
@@ -1711,44 +2081,39 @@ export function FPermissionPatchSchema(): z.ZodObject<Properties<FPermissionPatc
   })
 }
 
-export function FPersonaInputSchema(): z.ZodObject<Properties<FPersonaInput>> {
-  return z.object({
-    located_fgroup_id: z.string(),
-    persona_discounts: z.string().nullish(),
-    persona_marketable_name: z.string(),
-    persona_marketable_version: z.string(),
-    persona_name: z.string(),
-    persona_setup: z.string()
-  })
-}
-
 export function FPersonaPatchSchema(): z.ZodObject<Properties<FPersonaPatch>> {
   return z.object({
     located_fgroup_id: z.string().nullish(),
-    persona_archived_ts: z.number().nullish(),
+    persona_auto_upgrade: z.boolean().nullish(),
+    persona_daily_budget: z.number().nullish(),
     persona_enabled: z.boolean().nullish(),
-    persona_marketable_version: z.string().nullish(),
+    persona_inbox_budget: z.number().nullish(),
     persona_name: z.string().nullish(),
+    persona_preferred_model: z.string().nullish(),
+    persona_prerelease: z.boolean().nullish(),
     persona_setup: z.string().nullish()
   })
 }
 
 export function FPersonaScheduleUpsertInputSchema(): z.ZodObject<Properties<FPersonaScheduleUpsertInput>> {
   return z.object({
+    sched_enable: z.boolean(),
     sched_first_question: z.string(),
     sched_id: z.string().nullish(),
+    sched_marketplace: z.boolean(),
     sched_persona_id: z.string(),
-    sched_rrule: z.string(),
-    sched_start_ts: z.number()
+    sched_type: z.string(),
+    sched_when: z.string()
   })
 }
 
 export function FStatsAddInputSchema(): z.ZodObject<Properties<FStatsAddInput>> {
   return z.object({
     fgroup_id: z.string().default(""),
+    ft_id: z.string().default(""),
     st_chart: z.number(),
     st_how_many: definedNonNullAnySchema,
-    st_involved_fexp_id: z.string().default(""),
+    st_involved_expert: z.string().default(""),
     st_involved_fuser_id: z.string().default(""),
     st_involved_model: z.string().default(""),
     st_thing: z.string(),
@@ -1761,10 +2126,11 @@ export function FThreadInputSchema(): z.ZodObject<Properties<FThreadInput>> {
     ft_app_capture: z.string().default(""),
     ft_app_searchable: z.string().default(""),
     ft_app_specific: z.string().default("null"),
+    ft_archived_ts: z.number().default(0),
+    ft_budget: z.number().default(500000),
     ft_error: z.string().default("null"),
     ft_fexp_id: z.string(),
     ft_persona_id: z.string().nullish(),
-    ft_subchat_dest_ft_id: z.string().nullish(),
     ft_title: z.string(),
     ft_toolset: z.string().default("null"),
     located_fgroup_id: z.string(),
@@ -1775,17 +2141,17 @@ export function FThreadInputSchema(): z.ZodObject<Properties<FThreadInput>> {
 export function FThreadMessageInputSchema(): z.ZodObject<Properties<FThreadMessageInput>> {
   return z.object({
     ftm_alt: z.number(),
-    ftm_app_specific: z.string().default("null").nullish(),
+    ftm_app_specific: z.string().default("null"),
     ftm_belongs_to_ft_id: z.string(),
     ftm_call_id: z.string(),
-    ftm_content: z.string().default("null").nullish(),
+    ftm_content: z.string().default("null"),
     ftm_num: z.number(),
     ftm_prev_alt: z.number(),
     ftm_provenance: z.string(),
     ftm_role: z.string(),
-    ftm_tool_calls: z.string().default("null").nullish(),
-    ftm_usage: z.string().default("null").nullish(),
-    ftm_user_preferences: z.string().default("null").nullish()
+    ftm_tool_calls: z.string().default("null"),
+    ftm_usage: z.string().default("null"),
+    ftm_user_preferences: z.string().default("null")
   })
 }
 
@@ -1801,10 +2167,8 @@ export function FThreadPatchSchema(): z.ZodObject<Properties<FThreadPatch>> {
     ft_app_searchable: z.string().nullish(),
     ft_app_specific: z.string().nullish(),
     ft_archived_ts: z.number().nullish(),
-    ft_confirmation_request: z.string().nullish(),
-    ft_confirmation_response: z.string().nullish(),
+    ft_budget: z.number().nullish(),
     ft_error: z.string().nullish(),
-    ft_subchat_dest_ft_id: z.string().nullish(),
     ft_title: z.string().nullish(),
     ft_toolset: z.string().nullish(),
     located_fgroup_id: z.string().nullish(),
@@ -1814,14 +2178,53 @@ export function FThreadPatchSchema(): z.ZodObject<Properties<FThreadPatch>> {
 
 export function FUserProfilePatchSchema(): z.ZodObject<Properties<FUserProfilePatch>> {
   return z.object({
+    fuser_avatar: z.string().nullish(),
     fuser_experimental: z.boolean().nullish(),
-    fuser_fullname: z.string().nullish()
+    fuser_fullname: z.string().nullish(),
+    fuser_nickname: z.string().nullish(),
+    fuser_questionnaire: z.string().nullish()
   })
 }
 
 export function FWorkspaceCreateInputSchema(): z.ZodObject<Properties<FWorkspaceCreateInput>> {
   return z.object({
     ws_name: z.string()
+  })
+}
+
+export function FWorkspacePatchSchema(): z.ZodObject<Properties<FWorkspacePatch>> {
+  return z.object({
+    new_workspace_name: z.string().nullish(),
+    ws_auto_recharge_amount: z.number().nullish(),
+    ws_auto_recharge_enabled: z.boolean().nullish(),
+    ws_auto_recharge_threshold: z.number().nullish(),
+    ws_monthly_spending_alert: z.number().nullish(),
+    ws_monthly_spending_limit: z.number().nullish(),
+    ws_payment_method: z.string().nullish(),
+    ws_timezone: z.string().nullish()
+  })
+}
+
+export function FeedbackInputSchema(): z.ZodObject<Properties<FeedbackInput>> {
+  return z.object({
+    active_ws_id: z.string().nullish(),
+    feedback_ft_id: z.string().nullish(),
+    feedback_guest_email: z.string().nullish(),
+    feedback_guest_nickname: z.string().nullish(),
+    feedback_public: z.boolean(),
+    feedback_stars: z.number().nullish(),
+    feedback_text: z.string(),
+    feedback_type: z.string(),
+    persona_marketable_name: z.string(),
+    persona_marketable_version: z.number()
+  })
+}
+
+export function FeedbackPatchSchema(): z.ZodObject<Properties<FeedbackPatch>> {
+  return z.object({
+    feedback_public: z.boolean().nullish(),
+    feedback_stars: z.number().nullish(),
+    feedback_text: z.string().nullish()
   })
 }
 

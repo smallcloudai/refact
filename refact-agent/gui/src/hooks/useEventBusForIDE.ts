@@ -63,7 +63,7 @@ export const ideToolCall = createAction<{
 export const ideToolCallResponse = createAction<{
   toolCallId: string;
   chatId: string;
-  accepted: boolean | "indeterminate";
+  accepted: boolean;
 }>("ide/toolEditResponse");
 
 export const ideForceReloadProjectTreeFiles = createAction(

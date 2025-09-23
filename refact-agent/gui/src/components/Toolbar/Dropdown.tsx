@@ -191,7 +191,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
           <DropdownMenu.Label>
             <Flex align="center" gap="1">
               {/**TODO: there could be multiple source for this */}
-              {coinBallance / 100000} <Coin />
+              {coinBallance / 1000000} <Coin />
               <HoverCard.Root>
                 <HoverCard.Trigger>
                   <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
