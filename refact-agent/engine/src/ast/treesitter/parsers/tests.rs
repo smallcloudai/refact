@@ -19,6 +19,7 @@ use crate::files_in_workspace::Document;
 mod rust;
 mod python;
 mod java;
+mod kotlin;
 mod cpp;
 mod ts;
 mod js;
