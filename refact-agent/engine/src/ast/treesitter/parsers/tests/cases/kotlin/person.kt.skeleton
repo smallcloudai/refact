@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "line": "data class Person(\nval name: String,\nval age: Int,\nval email: String? = null,\nval birthDate: LocalDate? = null\n) {\nfun isAdult(): Boolean = age >= 18\n\nfun getDisplayName(): String = name.uppercase()\n\ncompanion object {\nfun create(name: String, age: Int): Person {\nreturn Person(name, age)\n}\n}\n} {\n  fun isAdult(): Boolean = age >= 18 { ... }\n  fun getDisplayName(): String = name.uppercase() { ... }\n  fun create(name: String, age: Int): Person {\n  return Person(name, age)\n  }\n}"
+  },
+  {
+    "line": "class Employee(\nname: String,\nage: Int,\nval department: String,\nval salary: Double\n) : Person(name, age), Greetable {\n\noverride fun greet(): String {\nreturn \"Hello, I'm $name from $department department\"\n}\n\nfun getAnnualSalary(): Double = salary * 12\n} {\n  override fun greet(): String {\n  return \"Hello, I'm $name from $department department\"\n  }\n  fun getAnnualSalary(): Double = salary * 12 { ... }\n}"
+  },
+  {
+    "line": "enum class Department {\nENGINEERING,\nMARKETING,\nSALES,\nHR\n} {\n}"
+  },
+  {
+    "line": "interface Greetable {\nfun greet(): String\n} {\n  fun greet(): String { ... }\n}"
+  },
+  {
+    "line": "object Company {\nval name = \"TechCorp\"\nval employees = mutableListOf<Employee>()\n\nfun addEmployee(employee: Employee) {\nemployees.add(employee)\n}\n\nfun getEmployeeCount(): Int = employees.size\n} {\n  val name = \"TechCorp\",\n  val employees = mutableListOf<Employee>(),\n  fun addEmployee(employee: Employee) {\n  employees.add(employee)\n  }\n  fun getEmployeeCount(): Int = employees.size { ... }\n}"
+  }
+]

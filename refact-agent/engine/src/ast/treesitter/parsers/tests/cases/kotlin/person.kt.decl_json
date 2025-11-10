@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "top_row": 12,
+    "bottom_row": 12,
+    "line": "fun getDisplayName(): String = name.uppercase()"
+  },
+  {
+    "top_row": 10,
+    "bottom_row": 10,
+    "line": "fun isAdult(): Boolean = age >= 18"
+  },
+  {
+    "top_row": 50,
+    "bottom_row": 52,
+    "line": "fun addEmployee(employee: Employee) {\n    employees.add(employee)\n}"
+  },
+  {
+    "top_row": 15,
+    "bottom_row": 17,
+    "line": "fun create(name: String, age: Int): Person {\n    return Person(name, age)\n}"
+  },
+  {
+    "top_row": 36,
+    "bottom_row": 36,
+    "line": "fun getAnnualSalary(): Double = salary * 12"
+  },
+  {
+    "top_row": 54,
+    "bottom_row": 54,
+    "line": "fun getEmployeeCount(): Int = employees.size"
+  },
+  {
+    "top_row": 32,
+    "bottom_row": 34,
+    "line": "override fun greet(): String {\n    return \"Hello, I'm $name from $department department\"\n}"
+  },
+  {
+    "top_row": 22,
+    "bottom_row": 22,
+    "line": "fun greet(): String"
+  }
+]

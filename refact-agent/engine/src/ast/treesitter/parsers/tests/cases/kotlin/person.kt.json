@@ -1,1 +1,1423 @@
-[]
+[
+    {
+      "StructDeclaration": {
+        "ast_fields": {
+          "guid": "31acc62f-0cc5-4d5e-ae1f-0ddb737c87b2",
+          "name": "Person",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "ddd672da-20e1-4dfb-adbd-62bf8665d4a0",
+          "childs_guid": [
+            "8233bc21-9074-4629-8de3-e663e47b23f9",
+            "756f7162-ce6f-4dda-b973-e519b5264aff",
+            "a6d41d5b-3b38-4381-9214-bbaf02bd6c34"
+          ],
+          "full_range": {
+            "start_byte": 55,
+            "end_byte": 417,
+            "start_point": {
+              "row": 4,
+              "column": 0
+            },
+            "end_point": {
+              "row": 19,
+              "column": 1
+            }
+          },
+          "declaration_range": {
+            "start_byte": 55,
+            "end_byte": 417,
+            "start_point": {
+              "row": 4,
+              "column": 0
+            },
+            "end_point": {
+              "row": 19,
+              "column": 1
+            }
+          },
+          "definition_range": {
+            "start_byte": 55,
+            "end_byte": 417,
+            "start_point": {
+              "row": 4,
+              "column": 0
+            },
+            "end_point": {
+              "row": 19,
+              "column": 1
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "inherited_types": []
+      }
+    },
+    {
+      "StructDeclaration": {
+        "ast_fields": {
+          "guid": "d1908f8c-9be8-41ad-ac50-8ad91202f61b",
+          "name": "Greetable",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "ddd672da-20e1-4dfb-adbd-62bf8665d4a0",
+          "childs_guid": [
+            "f2f419ff-98d7-4628-be47-807a1a5ffccc"
+          ],
+          "full_range": {
+            "start_byte": 419,
+            "end_byte": 466,
+            "start_point": {
+              "row": 21,
+              "column": 0
+            },
+            "end_point": {
+              "row": 23,
+              "column": 1
+            }
+          },
+          "declaration_range": {
+            "start_byte": 419,
+            "end_byte": 466,
+            "start_point": {
+              "row": 21,
+              "column": 0
+            },
+            "end_point": {
+              "row": 23,
+              "column": 1
+            }
+          },
+          "definition_range": {
+            "start_byte": 419,
+            "end_byte": 466,
+            "start_point": {
+              "row": 21,
+              "column": 0
+            },
+            "end_point": {
+              "row": 23,
+              "column": 1
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "inherited_types": []
+      }
+    },
+    {
+      "StructDeclaration": {
+        "ast_fields": {
+          "guid": "1a2b4eec-e058-4115-b8e2-68e1c1967155",
+          "name": "Employee",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "ddd672da-20e1-4dfb-adbd-62bf8665d4a0",
+          "childs_guid": [
+            "018d645d-4c13-431f-b40a-3e63a3a07d03",
+            "ffd8fbf3-55b6-4fdb-b396-afbc4bf0102a"
+          ],
+          "full_range": {
+            "start_byte": 468,
+            "end_byte": 764,
+            "start_point": {
+              "row": 25,
+              "column": 0
+            },
+            "end_point": {
+              "row": 37,
+              "column": 1
+            }
+          },
+          "declaration_range": {
+            "start_byte": 468,
+            "end_byte": 764,
+            "start_point": {
+              "row": 25,
+              "column": 0
+            },
+            "end_point": {
+              "row": 37,
+              "column": 1
+            }
+          },
+          "definition_range": {
+            "start_byte": 468,
+            "end_byte": 764,
+            "start_point": {
+              "row": 25,
+              "column": 0
+            },
+            "end_point": {
+              "row": 37,
+              "column": 1
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "inherited_types": []
+      }
+    },
+    {
+      "StructDeclaration": {
+        "ast_fields": {
+          "guid": "1b78cdc4-f6a7-487c-a719-f22869d44781",
+          "name": "Department",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "ddd672da-20e1-4dfb-adbd-62bf8665d4a0",
+          "childs_guid": [
+            "4535069e-01d4-4e4b-8a9b-1fb9155b0505",
+            "b12622ea-0d11-4ad0-9e73-debec5356a61",
+            "19046035-0077-411c-9b0d-cef08f6e552d",
+            "d8ec955b-587f-4863-8517-2ba80030e16b"
+          ],
+          "full_range": {
+            "start_byte": 766,
+            "end_byte": 841,
+            "start_point": {
+              "row": 39,
+              "column": 0
+            },
+            "end_point": {
+              "row": 44,
+              "column": 1
+            }
+          },
+          "declaration_range": {
+            "start_byte": 766,
+            "end_byte": 841,
+            "start_point": {
+              "row": 39,
+              "column": 0
+            },
+            "end_point": {
+              "row": 44,
+              "column": 1
+            }
+          },
+          "definition_range": {
+            "start_byte": 766,
+            "end_byte": 841,
+            "start_point": {
+              "row": 39,
+              "column": 0
+            },
+            "end_point": {
+              "row": 44,
+              "column": 1
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "inherited_types": []
+      }
+    },
+    {
+      "StructDeclaration": {
+        "ast_fields": {
+          "guid": "7e4eeafb-a1bf-4662-b27a-1e9e5af1d528",
+          "name": "Company",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "ddd672da-20e1-4dfb-adbd-62bf8665d4a0",
+          "childs_guid": [
+            "856c96db-e2f4-40a6-ad8a-536e06bfe489",
+            "1c5ac737-2e77-49d2-ba80-c3072d6c2875",
+            "ca3eceb2-85c9-4f16-aeab-f44b53ad3560",
+            "f6b75eda-8c85-4337-8aba-73bb2fe8cb2d"
+          ],
+          "full_range": {
+            "start_byte": 843,
+            "end_byte": 1072,
+            "start_point": {
+              "row": 46,
+              "column": 0
+            },
+            "end_point": {
+              "row": 55,
+              "column": 1
+            }
+          },
+          "declaration_range": {
+            "start_byte": 843,
+            "end_byte": 1072,
+            "start_point": {
+              "row": 46,
+              "column": 0
+            },
+            "end_point": {
+              "row": 55,
+              "column": 1
+            }
+          },
+          "definition_range": {
+            "start_byte": 843,
+            "end_byte": 1072,
+            "start_point": {
+              "row": 46,
+              "column": 0
+            },
+            "end_point": {
+              "row": 55,
+              "column": 1
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "inherited_types": []
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "cd57f33d-e0bf-46eb-9463-5666ce5b8027",
+          "name": "com",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "ddd672da-20e1-4dfb-adbd-62bf8665d4a0",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 8,
+            "end_byte": 11,
+            "start_point": {
+              "row": 0,
+              "column": 8
+            },
+            "end_point": {
+              "row": 0,
+              "column": 11
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "2d1ad4d2-4e8a-4402-a6cb-1343ff0c5256",
+          "name": "example",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "ddd672da-20e1-4dfb-adbd-62bf8665d4a0",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 12,
+            "end_byte": 19,
+            "start_point": {
+              "row": 0,
+              "column": 12
+            },
+            "end_point": {
+              "row": 0,
+              "column": 19
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "79d536b1-438b-45a5-ac9d-50063d543d7c",
+          "name": "model",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "ddd672da-20e1-4dfb-adbd-62bf8665d4a0",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 20,
+            "end_byte": 25,
+            "start_point": {
+              "row": 0,
+              "column": 20
+            },
+            "end_point": {
+              "row": 0,
+              "column": 25
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "7a82f118-3d7e-4c07-8c6f-48d4214fbb53",
+          "name": "java",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "ddd672da-20e1-4dfb-adbd-62bf8665d4a0",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 34,
+            "end_byte": 38,
+            "start_point": {
+              "row": 2,
+              "column": 7
+            },
+            "end_point": {
+              "row": 2,
+              "column": 11
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "4b312423-d758-4058-a170-8b5eb3d9f893",
+          "name": "time",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "ddd672da-20e1-4dfb-adbd-62bf8665d4a0",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 39,
+            "end_byte": 43,
+            "start_point": {
+              "row": 2,
+              "column": 12
+            },
+            "end_point": {
+              "row": 2,
+              "column": 16
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "e96f3f75-3b29-4e57-a28e-9d29bbbaaceb",
+          "name": "LocalDate",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "ddd672da-20e1-4dfb-adbd-62bf8665d4a0",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 44,
+            "end_byte": 53,
+            "start_point": {
+              "row": 2,
+              "column": 17
+            },
+            "end_point": {
+              "row": 2,
+              "column": 26
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "8233bc21-9074-4629-8de3-e663e47b23f9",
+          "name": "isAdult",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "31acc62f-0cc5-4d5e-ae1f-0ddb737c87b2",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 190,
+            "end_byte": 224,
+            "start_point": {
+              "row": 10,
+              "column": 4
+            },
+            "end_point": {
+              "row": 10,
+              "column": 38
+            }
+          },
+          "declaration_range": {
+            "start_byte": 190,
+            "end_byte": 224,
+            "start_point": {
+              "row": 10,
+              "column": 4
+            },
+            "end_point": {
+              "row": 10,
+              "column": 38
+            }
+          },
+          "definition_range": {
+            "start_byte": 190,
+            "end_byte": 224,
+            "start_point": {
+              "row": 10,
+              "column": 4
+            },
+            "end_point": {
+              "row": 10,
+              "column": 38
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "756f7162-ce6f-4dda-b973-e519b5264aff",
+          "name": "getDisplayName",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "31acc62f-0cc5-4d5e-ae1f-0ddb737c87b2",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 234,
+            "end_byte": 281,
+            "start_point": {
+              "row": 12,
+              "column": 4
+            },
+            "end_point": {
+              "row": 12,
+              "column": 51
+            }
+          },
+          "declaration_range": {
+            "start_byte": 234,
+            "end_byte": 281,
+            "start_point": {
+              "row": 12,
+              "column": 4
+            },
+            "end_point": {
+              "row": 12,
+              "column": 51
+            }
+          },
+          "definition_range": {
+            "start_byte": 234,
+            "end_byte": 281,
+            "start_point": {
+              "row": 12,
+              "column": 4
+            },
+            "end_point": {
+              "row": 12,
+              "column": 51
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "f2f419ff-98d7-4628-be47-807a1a5ffccc",
+          "name": "greet",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "d1908f8c-9be8-41ad-ac50-8ad91202f61b",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 445,
+            "end_byte": 464,
+            "start_point": {
+              "row": 22,
+              "column": 4
+            },
+            "end_point": {
+              "row": 22,
+              "column": 23
+            }
+          },
+          "declaration_range": {
+            "start_byte": 445,
+            "end_byte": 464,
+            "start_point": {
+              "row": 22,
+              "column": 4
+            },
+            "end_point": {
+              "row": 22,
+              "column": 23
+            }
+          },
+          "definition_range": {
+            "start_byte": 445,
+            "end_byte": 464,
+            "start_point": {
+              "row": 22,
+              "column": 4
+            },
+            "end_point": {
+              "row": 22,
+              "column": 23
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "018d645d-4c13-431f-b40a-3e63a3a07d03",
+          "name": "greet",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "1a2b4eec-e058-4115-b8e2-68e1c1967155",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 611,
+            "end_byte": 709,
+            "start_point": {
+              "row": 32,
+              "column": 4
+            },
+            "end_point": {
+              "row": 34,
+              "column": 5
+            }
+          },
+          "declaration_range": {
+            "start_byte": 611,
+            "end_byte": 709,
+            "start_point": {
+              "row": 32,
+              "column": 4
+            },
+            "end_point": {
+              "row": 34,
+              "column": 5
+            }
+          },
+          "definition_range": {
+            "start_byte": 611,
+            "end_byte": 709,
+            "start_point": {
+              "row": 32,
+              "column": 4
+            },
+            "end_point": {
+              "row": 34,
+              "column": 5
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "ffd8fbf3-55b6-4fdb-b396-afbc4bf0102a",
+          "name": "getAnnualSalary",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "1a2b4eec-e058-4115-b8e2-68e1c1967155",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 719,
+            "end_byte": 762,
+            "start_point": {
+              "row": 36,
+              "column": 4
+            },
+            "end_point": {
+              "row": 36,
+              "column": 47
+            }
+          },
+          "declaration_range": {
+            "start_byte": 719,
+            "end_byte": 762,
+            "start_point": {
+              "row": 36,
+              "column": 4
+            },
+            "end_point": {
+              "row": 36,
+              "column": 47
+            }
+          },
+          "definition_range": {
+            "start_byte": 719,
+            "end_byte": 762,
+            "start_point": {
+              "row": 36,
+              "column": 4
+            },
+            "end_point": {
+              "row": 36,
+              "column": 47
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "ClassFieldDeclaration": {
+        "ast_fields": {
+          "guid": "856c96db-e2f4-40a6-ad8a-536e06bfe489",
+          "name": "name",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "7e4eeafb-a1bf-4662-b27a-1e9e5af1d528",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 864,
+            "end_byte": 885,
+            "start_point": {
+              "row": 47,
+              "column": 4
+            },
+            "end_point": {
+              "row": 47,
+              "column": 25
+            }
+          },
+          "declaration_range": {
+            "start_byte": 864,
+            "end_byte": 885,
+            "start_point": {
+              "row": 47,
+              "column": 4
+            },
+            "end_point": {
+              "row": 47,
+              "column": 25
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "type_": {
+          "name": null,
+          "inference_info": null,
+          "inference_info_guid": null,
+          "is_pod": false,
+          "namespace": "",
+          "guid": null,
+          "nested_types": []
+        }
+      }
+    },
+    {
+      "ClassFieldDeclaration": {
+        "ast_fields": {
+          "guid": "1c5ac737-2e77-49d2-ba80-c3072d6c2875",
+          "name": "employees",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "7e4eeafb-a1bf-4662-b27a-1e9e5af1d528",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 890,
+            "end_byte": 931,
+            "start_point": {
+              "row": 48,
+              "column": 4
+            },
+            "end_point": {
+              "row": 48,
+              "column": 45
+            }
+          },
+          "declaration_range": {
+            "start_byte": 890,
+            "end_byte": 931,
+            "start_point": {
+              "row": 48,
+              "column": 4
+            },
+            "end_point": {
+              "row": 48,
+              "column": 45
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "type_": {
+          "name": null,
+          "inference_info": null,
+          "inference_info_guid": null,
+          "is_pod": false,
+          "namespace": "",
+          "guid": null,
+          "nested_types": []
+        }
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "ca3eceb2-85c9-4f16-aeab-f44b53ad3560",
+          "name": "addEmployee",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "7e4eeafb-a1bf-4662-b27a-1e9e5af1d528",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 941,
+            "end_byte": 1016,
+            "start_point": {
+              "row": 50,
+              "column": 4
+            },
+            "end_point": {
+              "row": 52,
+              "column": 5
+            }
+          },
+          "declaration_range": {
+            "start_byte": 941,
+            "end_byte": 1016,
+            "start_point": {
+              "row": 50,
+              "column": 4
+            },
+            "end_point": {
+              "row": 52,
+              "column": 5
+            }
+          },
+          "definition_range": {
+            "start_byte": 941,
+            "end_byte": 1016,
+            "start_point": {
+              "row": 50,
+              "column": 4
+            },
+            "end_point": {
+              "row": 52,
+              "column": 5
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "f6b75eda-8c85-4337-8aba-73bb2fe8cb2d",
+          "name": "getEmployeeCount",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "7e4eeafb-a1bf-4662-b27a-1e9e5af1d528",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 1026,
+            "end_byte": 1070,
+            "start_point": {
+              "row": 54,
+              "column": 4
+            },
+            "end_point": {
+              "row": 54,
+              "column": 48
+            }
+          },
+          "declaration_range": {
+            "start_byte": 1026,
+            "end_byte": 1070,
+            "start_point": {
+              "row": 54,
+              "column": 4
+            },
+            "end_point": {
+              "row": 54,
+              "column": 48
+            }
+          },
+          "definition_range": {
+            "start_byte": 1026,
+            "end_byte": 1070,
+            "start_point": {
+              "row": 54,
+              "column": 4
+            },
+            "end_point": {
+              "row": 54,
+              "column": 48
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "4535069e-01d4-4e4b-8a9b-1fb9155b0505",
+          "name": "ENGINEERING",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "1b78cdc4-f6a7-487c-a719-f22869d44781",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 794,
+            "end_byte": 805,
+            "start_point": {
+              "row": 40,
+              "column": 4
+            },
+            "end_point": {
+              "row": 40,
+              "column": 15
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "b12622ea-0d11-4ad0-9e73-debec5356a61",
+          "name": "MARKETING",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "1b78cdc4-f6a7-487c-a719-f22869d44781",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 811,
+            "end_byte": 820,
+            "start_point": {
+              "row": 41,
+              "column": 4
+            },
+            "end_point": {
+              "row": 41,
+              "column": 13
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "19046035-0077-411c-9b0d-cef08f6e552d",
+          "name": "SALES",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "1b78cdc4-f6a7-487c-a719-f22869d44781",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 826,
+            "end_byte": 831,
+            "start_point": {
+              "row": 42,
+              "column": 4
+            },
+            "end_point": {
+              "row": 42,
+              "column": 9
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "d8ec955b-587f-4863-8517-2ba80030e16b",
+          "name": "HR",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "1b78cdc4-f6a7-487c-a719-f22869d44781",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 837,
+            "end_byte": 839,
+            "start_point": {
+              "row": 43,
+              "column": 4
+            },
+            "end_point": {
+              "row": 43,
+              "column": 6
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "a6d41d5b-3b38-4381-9214-bbaf02bd6c34",
+          "name": "create",
+          "language": "Kotlin",
+          "file_path": "person.kt",
+          "namespace": "",
+          "parent_guid": "31acc62f-0cc5-4d5e-ae1f-0ddb737c87b2",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 318,
+            "end_byte": 409,
+            "start_point": {
+              "row": 15,
+              "column": 8
+            },
+            "end_point": {
+              "row": 17,
+              "column": 9
+            }
+          },
+          "declaration_range": {
+            "start_byte": 318,
+            "end_byte": 409,
+            "start_point": {
+              "row": 15,
+              "column": 8
+            },
+            "end_point": {
+              "row": 17,
+              "column": 9
+            }
+          },
+          "definition_range": {
+            "start_byte": 318,
+            "end_byte": 409,
+            "start_point": {
+              "row": 15,
+              "column": 8
+            },
+            "end_point": {
+              "row": 17,
+              "column": 9
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    }
+  ]
