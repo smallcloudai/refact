@@ -6,6 +6,8 @@ use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use serde_json::Value;
 
+use base64::{engine::general_purpose, Engine as _};
+
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
@@ -32,6 +34,7 @@ pub struct PullRequest {
     pub title: String,
     pub author: Author,
     pub state: String,
+    #[allow(dead_code)]
     pub created_on: String,
 }
 
@@ -43,6 +46,7 @@ pub struct Author {
 #[derive(Deserialize, Debug)]
 pub struct Paginated<T> {
     pub values: Vec<T>,
+    #[allow(dead_code)]
     pub next: Option<String>,
 }
 
@@ -60,16 +64,19 @@ pub struct Branch {
 
 #[derive(Serialize, Debug)]
 pub struct Name {
+#[allow(dead_code)]
     pub name: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Repository {
     pub slug: String,
+#[allow(dead_code)]
     pub name: String,
     pub description: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct File {
     pub path: String,
@@ -86,7 +93,7 @@ pub struct BitbucketClient {
 impl BitbucketClient {
     pub fn new(username: &str, token: &str, workspace: &str) -> Result<Self, BitbucketError> {
         let mut headers = header::HeaderMap::new();
-        let auth_value = format!("Basic {}", base64::encode(format!("{}:{}", username, token)));
+        let auth_value = format!("Basic {}", general_purpose::STANDARD.encode(format!("{}:{}", username, token)));
         headers.insert(header::AUTHORIZATION, header::HeaderValue::from_str(&auth_value).unwrap());
         
         let client = Client::builder()

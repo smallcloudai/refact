@@ -80,10 +80,11 @@ PROMPT_AGENTIC_TOOLS: |
   You must confirm the plan with the user before proceeding!
 
   1. Explore the Problem
+    - First - search for all specific agentic instruction files (AGENTS.md, CLAUDE.md, ), open them all
     %AGENT_EXPLORATION_INSTRUCTIONS%
   2. Draft the Solution Plan
     - Identify the root cause and sketch the required code changes (files to touch, functions to edit, tests to add).
-  %AGENT_EXECUTION_INSTRUCTIONS%
+    %AGENT_EXECUTION_INSTRUCTIONS%
 
   **BEST PRACTICES**
     - %CD_INSTRUCTIONS%

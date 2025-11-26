@@ -65,6 +65,7 @@ pub struct ChatPassthrough {
     pub delta_sender: DeltaSender,
     pub allow_at: bool,
     pub supports_tools: bool,
+    #[allow(dead_code)]
     pub supports_clicks: bool,
 }
 

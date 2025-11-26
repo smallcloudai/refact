@@ -62,6 +62,7 @@ pub async fn handle_v1_trajectory_compress(
         .await.map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
 
     let response = serde_json::json!({
+        "goal": "compress it",
         "trajectory": trajectory,
     });
 
