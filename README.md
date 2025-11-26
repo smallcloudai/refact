@@ -162,7 +162,8 @@ Your contributions help shape the future of Refact Agent! 🚀
 
 
 ### ⭐ Star History
-![image (4)](https://github.com/user-attachments/assets/48440c6e-b0cd-4421-880e-44924bd21693)
+
+[![Star History Chart](https://api.star-history.com/svg?repos=smallcloudai/refact&type=Date)](https://www.star-history.com/#smallcloudai/refact&Date)
 
 ### 🎉 Join the Community
 
