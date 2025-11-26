@@ -13,6 +13,7 @@ pub(crate) mod rust;
 mod tests;
 mod utils;
 mod java;
+mod kotlin;
 mod cpp;
 mod ts;
 mod js;
@@ -47,6 +48,10 @@ pub(crate) fn get_ast_parser(language_id: LanguageId) -> Result<Box<dyn AstLangu
         }
         LanguageId::Java => {
             let parser = java::JavaParser::new()?;
+            Ok(Box::new(parser))
+        }
+        LanguageId::Kotlin => {
+            let parser = kotlin::KotlinParser::new()?;
             Ok(Box::new(parser))
         }
         LanguageId::Cpp => {
@@ -91,6 +96,7 @@ pub fn get_language_id_by_filename(filename: &PathBuf) -> Option<LanguageId> {
         "inl" | "inc" | "tpp" | "tpl" => Some(LanguageId::Cpp),
         "py" | "py3" | "pyx" => Some(LanguageId::Python),
         "java" => Some(LanguageId::Java),
+        "kt" | "kts" => Some(LanguageId::Kotlin),
         "js" | "jsx" => Some(LanguageId::JavaScript),
         "rs" => Some(LanguageId::Rust),
         "ts" => Some(LanguageId::TypeScript),

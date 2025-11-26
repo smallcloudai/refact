@@ -1,0 +1,899 @@
+[
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "3ca687ac-1dca-45c5-887a-b4edd6b38db3",
+          "name": "main",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "d9d6df2b-ea2e-4836-b762-bf5cbddd70fa",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 63,
+            "end_byte": 426,
+            "start_point": {
+              "row": 5,
+              "column": 0
+            },
+            "end_point": {
+              "row": 19,
+              "column": 1
+            }
+          },
+          "declaration_range": {
+            "start_byte": 63,
+            "end_byte": 426,
+            "start_point": {
+              "row": 5,
+              "column": 0
+            },
+            "end_point": {
+              "row": 19,
+              "column": 1
+            }
+          },
+          "definition_range": {
+            "start_byte": 63,
+            "end_byte": 426,
+            "start_point": {
+              "row": 5,
+              "column": 0
+            },
+            "end_point": {
+              "row": 19,
+              "column": 1
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "StructDeclaration": {
+        "ast_fields": {
+          "guid": "ae021215-49a0-4c2e-a7ee-f20af7c8787b",
+          "name": "Person",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "d9d6df2b-ea2e-4836-b762-bf5cbddd70fa",
+          "childs_guid": [
+            "4130233b-dee9-4215-9802-beaccd9435a8",
+            "b4dfc11c-caa0-40f2-819c-608826cdd434"
+          ],
+          "full_range": {
+            "start_byte": 428,
+            "end_byte": 603,
+            "start_point": {
+              "row": 21,
+              "column": 0
+            },
+            "end_point": {
+              "row": 27,
+              "column": 1
+            }
+          },
+          "declaration_range": {
+            "start_byte": 428,
+            "end_byte": 603,
+            "start_point": {
+              "row": 21,
+              "column": 0
+            },
+            "end_point": {
+              "row": 27,
+              "column": 1
+            }
+          },
+          "definition_range": {
+            "start_byte": 428,
+            "end_byte": 603,
+            "start_point": {
+              "row": 21,
+              "column": 0
+            },
+            "end_point": {
+              "row": 27,
+              "column": 1
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "inherited_types": []
+      }
+    },
+    {
+      "StructDeclaration": {
+        "ast_fields": {
+          "guid": "192ada66-03ff-4d7b-93f4-7e2abab4a3bc",
+          "name": "Calculator",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "d9d6df2b-ea2e-4836-b762-bf5cbddd70fa",
+          "childs_guid": [
+            "26a0303a-d702-4720-bc05-a6a807923438",
+            "3b9fd2f9-b545-45ab-89bc-b76c07a31f3a",
+            "b3733e75-8b9f-4343-822a-4db86840b51a",
+            "6c937f13-e717-4c4f-a7b2-51acf018e616"
+          ],
+          "full_range": {
+            "start_byte": 605,
+            "end_byte": 827,
+            "start_point": {
+              "row": 29,
+              "column": 0
+            },
+            "end_point": {
+              "row": 34,
+              "column": 1
+            }
+          },
+          "declaration_range": {
+            "start_byte": 605,
+            "end_byte": 827,
+            "start_point": {
+              "row": 29,
+              "column": 0
+            },
+            "end_point": {
+              "row": 34,
+              "column": 1
+            }
+          },
+          "definition_range": {
+            "start_byte": 605,
+            "end_byte": 827,
+            "start_point": {
+              "row": 29,
+              "column": 0
+            },
+            "end_point": {
+              "row": 34,
+              "column": 1
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "inherited_types": []
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "68098471-1305-4bcd-82a5-7933d10d330c",
+          "name": "com",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "d9d6df2b-ea2e-4836-b762-bf5cbddd70fa",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 8,
+            "end_byte": 11,
+            "start_point": {
+              "row": 0,
+              "column": 8
+            },
+            "end_point": {
+              "row": 0,
+              "column": 11
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "e98adeb5-c5c8-4aab-9347-80762539278c",
+          "name": "example",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "d9d6df2b-ea2e-4836-b762-bf5cbddd70fa",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 12,
+            "end_byte": 19,
+            "start_point": {
+              "row": 0,
+              "column": 12
+            },
+            "end_point": {
+              "row": 0,
+              "column": 19
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "93ea07b0-d871-433f-8c56-5f70a69a3d07",
+          "name": "kotlin",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "d9d6df2b-ea2e-4836-b762-bf5cbddd70fa",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 28,
+            "end_byte": 34,
+            "start_point": {
+              "row": 2,
+              "column": 7
+            },
+            "end_point": {
+              "row": 2,
+              "column": 13
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "302c1b4c-32a8-4abc-aa64-cbd3212ef180",
+          "name": "math",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "d9d6df2b-ea2e-4836-b762-bf5cbddd70fa",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 35,
+            "end_byte": 39,
+            "start_point": {
+              "row": 2,
+              "column": 14
+            },
+            "end_point": {
+              "row": 2,
+              "column": 18
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "dd141487-8970-4323-b3a5-32189bb02157",
+          "name": "PI",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "d9d6df2b-ea2e-4836-b762-bf5cbddd70fa",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 40,
+            "end_byte": 42,
+            "start_point": {
+              "row": 2,
+              "column": 19
+            },
+            "end_point": {
+              "row": 2,
+              "column": 21
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "337ba28d-5667-425a-a1c7-b69834effe1d",
+          "name": "java",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "d9d6df2b-ea2e-4836-b762-bf5cbddd70fa",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 50,
+            "end_byte": 54,
+            "start_point": {
+              "row": 3,
+              "column": 7
+            },
+            "end_point": {
+              "row": 3,
+              "column": 11
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "VariableUsage": {
+        "ast_fields": {
+          "guid": "aec23a5a-f2e6-4da0-afdf-57c30e8e83c1",
+          "name": "util",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "d9d6df2b-ea2e-4836-b762-bf5cbddd70fa",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 55,
+            "end_byte": 59,
+            "start_point": {
+              "row": 3,
+              "column": 12
+            },
+            "end_point": {
+              "row": 3,
+              "column": 16
+            }
+          },
+          "declaration_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "definition_range": {
+            "start_byte": 0,
+            "end_byte": 0,
+            "start_point": {
+              "row": 0,
+              "column": 0
+            },
+            "end_point": {
+              "row": 0,
+              "column": 0
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        }
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "4130233b-dee9-4215-9802-beaccd9435a8",
+          "name": "greet",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "ae021215-49a0-4c2e-a7ee-f20af7c8787b",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 479,
+            "end_byte": 557,
+            "start_point": {
+              "row": 22,
+              "column": 4
+            },
+            "end_point": {
+              "row": 24,
+              "column": 5
+            }
+          },
+          "declaration_range": {
+            "start_byte": 479,
+            "end_byte": 557,
+            "start_point": {
+              "row": 22,
+              "column": 4
+            },
+            "end_point": {
+              "row": 24,
+              "column": 5
+            }
+          },
+          "definition_range": {
+            "start_byte": 479,
+            "end_byte": 557,
+            "start_point": {
+              "row": 22,
+              "column": 4
+            },
+            "end_point": {
+              "row": 24,
+              "column": 5
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "b4dfc11c-caa0-40f2-819c-608826cdd434",
+          "name": "isAdult",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "ae021215-49a0-4c2e-a7ee-f20af7c8787b",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 567,
+            "end_byte": 601,
+            "start_point": {
+              "row": 26,
+              "column": 4
+            },
+            "end_point": {
+              "row": 26,
+              "column": 38
+            }
+          },
+          "declaration_range": {
+            "start_byte": 567,
+            "end_byte": 601,
+            "start_point": {
+              "row": 26,
+              "column": 4
+            },
+            "end_point": {
+              "row": 26,
+              "column": 38
+            }
+          },
+          "definition_range": {
+            "start_byte": 567,
+            "end_byte": 601,
+            "start_point": {
+              "row": 26,
+              "column": 4
+            },
+            "end_point": {
+              "row": 26,
+              "column": 38
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "26a0303a-d702-4720-bc05-a6a807923438",
+          "name": "add",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "192ada66-03ff-4d7b-93f4-7e2abab4a3bc",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 628,
+            "end_byte": 664,
+            "start_point": {
+              "row": 30,
+              "column": 4
+            },
+            "end_point": {
+              "row": 30,
+              "column": 40
+            }
+          },
+          "declaration_range": {
+            "start_byte": 628,
+            "end_byte": 664,
+            "start_point": {
+              "row": 30,
+              "column": 4
+            },
+            "end_point": {
+              "row": 30,
+              "column": 40
+            }
+          },
+          "definition_range": {
+            "start_byte": 628,
+            "end_byte": 664,
+            "start_point": {
+              "row": 30,
+              "column": 4
+            },
+            "end_point": {
+              "row": 30,
+              "column": 40
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "3b9fd2f9-b545-45ab-89bc-b76c07a31f3a",
+          "name": "subtract",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "192ada66-03ff-4d7b-93f4-7e2abab4a3bc",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 669,
+            "end_byte": 710,
+            "start_point": {
+              "row": 31,
+              "column": 4
+            },
+            "end_point": {
+              "row": 31,
+              "column": 45
+            }
+          },
+          "declaration_range": {
+            "start_byte": 669,
+            "end_byte": 710,
+            "start_point": {
+              "row": 31,
+              "column": 4
+            },
+            "end_point": {
+              "row": 31,
+              "column": 45
+            }
+          },
+          "definition_range": {
+            "start_byte": 669,
+            "end_byte": 710,
+            "start_point": {
+              "row": 31,
+              "column": 4
+            },
+            "end_point": {
+              "row": 31,
+              "column": 45
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "b3733e75-8b9f-4343-822a-4db86840b51a",
+          "name": "multiply",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "192ada66-03ff-4d7b-93f4-7e2abab4a3bc",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 715,
+            "end_byte": 756,
+            "start_point": {
+              "row": 32,
+              "column": 4
+            },
+            "end_point": {
+              "row": 32,
+              "column": 45
+            }
+          },
+          "declaration_range": {
+            "start_byte": 715,
+            "end_byte": 756,
+            "start_point": {
+              "row": 32,
+              "column": 4
+            },
+            "end_point": {
+              "row": 32,
+              "column": 45
+            }
+          },
+          "definition_range": {
+            "start_byte": 715,
+            "end_byte": 756,
+            "start_point": {
+              "row": 32,
+              "column": 4
+            },
+            "end_point": {
+              "row": 32,
+              "column": 45
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    },
+    {
+      "FunctionDeclaration": {
+        "ast_fields": {
+          "guid": "6c937f13-e717-4c4f-a7b2-51acf018e616",
+          "name": "divide",
+          "language": "Kotlin",
+          "file_path": "main.kt",
+          "namespace": "",
+          "parent_guid": "192ada66-03ff-4d7b-93f4-7e2abab4a3bc",
+          "childs_guid": [],
+          "full_range": {
+            "start_byte": 761,
+            "end_byte": 825,
+            "start_point": {
+              "row": 33,
+              "column": 4
+            },
+            "end_point": {
+              "row": 33,
+              "column": 68
+            }
+          },
+          "declaration_range": {
+            "start_byte": 761,
+            "end_byte": 825,
+            "start_point": {
+              "row": 33,
+              "column": 4
+            },
+            "end_point": {
+              "row": 33,
+              "column": 68
+            }
+          },
+          "definition_range": {
+            "start_byte": 761,
+            "end_byte": 825,
+            "start_point": {
+              "row": 33,
+              "column": 4
+            },
+            "end_point": {
+              "row": 33,
+              "column": 68
+            }
+          },
+          "linked_decl_guid": null,
+          "linked_decl_type": null,
+          "caller_guid": null,
+          "is_error": false,
+          "caller_depth": null
+        },
+        "template_types": [],
+        "args": [],
+        "return_type": null
+      }
+    }
+  ]
