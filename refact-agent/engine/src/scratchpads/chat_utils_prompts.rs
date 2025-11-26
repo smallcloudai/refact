@@ -4,7 +4,8 @@ use std::sync::Arc;
 use std::path::PathBuf;
 use tokio::sync::RwLock as ARwLock;
 
-use crate::call_validation;
+use crate::call_validation::{self, ContextFile};
+use crate::files_correction::get_active_project_path;
 use crate::global_context::GlobalContext;
 use crate::http::http_post_json;
 use crate::http::routers::v1::system_prompt::{PrependSystemPromptPost, PrependSystemPromptResponse};
@@ -283,8 +284,77 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
             ).await;
         },
     }
+
+    match get_agents_md(&gcx).await {
+        Ok(agent_md) => {
+            const IMPORTANTER_ROLES: [&str; 2] = ["system", "developer"];
+            stream_back_to_user.push_in_json(serde_json::json!(agent_md));
+            let pos_to_insert = if messages.is_empty() || !IMPORTANTER_ROLES.contains(&messages[0].role.as_str()) {
+                0
+            } else { 1 };
+            messages.insert(pos_to_insert, agent_md);
+        },
+        Err(e) => {
+            tracing::warn!("Failed to read AGENTS.md: {}", e);
+        },
+    }
+    
     tracing::info!("\n\nSYSTEM PROMPT MIXER chat_mode={:?}\n{:#?}", chat_meta.chat_mode, messages);
     messages
+}
+
+/// Reads AGENTS.md file from the active repository or nothing if it does not exist.
+async fn get_agents_md(gcx: &Arc<ARwLock<GlobalContext>>) -> Result<ChatMessage, String> {
+    let act_proj_path = get_active_project_path(gcx.clone()).await
+                            .ok_or("No active project path found")?;
+
+    let found_agents_md = {
+        let mut found_agents_md = vec![];
+
+        for parent in act_proj_path.ancestors() {
+            let mut files_in_dir = tokio::fs::read_dir(parent)
+                .await
+                .map_err(|e| format!("Failed to read directory {}: {}", act_proj_path.display(), e))?;
+
+            while let Ok(Some(entry)) = files_in_dir.next_entry().await {
+                let file_name = entry.file_name().to_string_lossy().to_string();
+                if file_name.to_lowercase() == "agents.md" {
+                    found_agents_md.push((parent, file_name));
+                }
+            }
+        }
+
+        if found_agents_md.is_empty() {
+            return Err("AGENTS.md not found in the active project directory".to_string());
+        }
+
+        found_agents_md
+    };
+
+    let mut context_files = vec![];
+
+    for (path, file_name) in found_agents_md {
+        let content = tokio::fs::read_to_string(&path.join(&file_name))
+            .await
+            .map_err(|e| format!("Failed to read AGENTS.md: {}", e))?;
+
+        let context_file = ContextFile {
+            file_name,
+            file_content: content.clone(),
+            line1: 0,
+            line2: content.lines().count(),
+            symbols: vec![],
+            gradient_type: 0,
+            usefulness: 100.0,
+        };
+
+        context_files.push(context_file);
+    }
+
+    let context_files = serde_json::to_string(&context_files)
+        .map_err(|e| format!("Failed to serialize context file: {}", e))?;
+
+    Ok(ChatMessage::new("context_file".to_string(), context_files))
 }
 
 pub async fn prepend_system_prompt_and_maybe_more_initial_messages_from_remote(
