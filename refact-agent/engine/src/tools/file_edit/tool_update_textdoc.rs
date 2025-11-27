@@ -196,7 +196,7 @@ impl Tool for ToolUpdateTextDoc {
                 },
                 ToolParam {
                     name: "old_str".to_string(),
-                    description: "The exact text that needs to be updated. Use update_textdoc_regex if you need pattern matching.".to_string(),
+                    description: "The exact text that needs to be updated. Use update_textdoc_regex if you need pattern matching (is not preferred for common editing).".to_string(),
                     param_type: "string".to_string(),
                 },
                 ToolParam {

@@ -120,7 +120,6 @@ AGENT_EXECUTION_INSTRUCTIONS: |
     - Always `cat()` a file before modifying to ensure you have current content
     - Use `update_textdoc()` for surgical edits - preferred for existing files
     - Use `update_textdoc_by_lines()` for replacing specific line ranges
-    - Use `update_textdoc_regex()` for pattern-based replacements
     - Use `create_textdoc()` for new files or complete rewrites
     - Use `rm()` and `mv()` for deletions and moves
     - Make atomic changes - one logical modification at a time
