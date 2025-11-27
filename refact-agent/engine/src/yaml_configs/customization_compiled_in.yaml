@@ -80,13 +80,16 @@ PROMPT_AGENTIC_TOOLS: |
   You must confirm the plan with the user before proceeding!
 
   1. Explore the Problem
-    - First - search for all specific agentic instruction files (AGENTS.md, CLAUDE.md, ), open them all
     %AGENT_EXPLORATION_INSTRUCTIONS%
   2. Draft the Solution Plan
     - Identify the root cause and sketch the required code changes (files to touch, functions to edit, tests to add).
     %AGENT_EXECUTION_INSTRUCTIONS%
 
   **BEST PRACTICES**
+    - Use web_search to search for correct APIs, check all given external urls. Integrate it into your workflow 
+    - Keep everything simple, avoid commenting
+    - When running Python or similar tools, use a virtual environment (venv) instead of the global interpreter.
+    - Use shell commands such as `git` to inspect the repository, understand the task, and check the current project state.
     - %CD_INSTRUCTIONS%
     - %SHELL_INSTRUCTIONS%
   

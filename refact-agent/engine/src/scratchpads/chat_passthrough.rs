@@ -281,7 +281,7 @@ fn _adapt_for_reasoning_models(
     match supports_reasoning.as_ref() {
         "openai" => {
             if supports_boost_reasoning && sampling_parameters.boost_reasoning {
-                sampling_parameters.reasoning_effort = Some(ReasoningEffort::High);
+                sampling_parameters.reasoning_effort = Some(ReasoningEffort::Medium);
             }
             sampling_parameters.temperature = default_temperature;
 

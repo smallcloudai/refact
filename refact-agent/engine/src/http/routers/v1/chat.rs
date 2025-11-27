@@ -50,8 +50,13 @@ fn fill_sampling_params(chat_post: &mut ChatPost, n_ctx: usize, model_id: &str) 
     let mut max_tokens = if chat_post.increase_max_tokens {
         chat_post.max_tokens.unwrap_or(16384)
     } else {
-        chat_post.max_tokens.unwrap_or(4096)
+        if chat_post.parameters.boost_reasoning {
+            chat_post.max_tokens.unwrap_or(4096) * 4
+        } else {
+            chat_post.max_tokens.unwrap_or(4096)
+        }
     };
+
     max_tokens = max_tokens.min(n_ctx / 4);
     chat_post.max_tokens = Some(max_tokens);
     if chat_post.parameters.max_new_tokens == 0 {
