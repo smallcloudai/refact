@@ -129,6 +129,7 @@ pub async fn run_at_commands_locally(
                 let ccx_locked = ccx.lock().await;
                 (ccx_locked.global_context.clone(), ccx_locked.postprocess_parameters.clone(), ccx_locked.pp_skeleton)
             };
+            pp_settings.use_ast_based_pp = false;
             pp_settings.max_files_n = top_n;
             if pp_skeleton {
                 pp_settings.take_floor = 50.0;

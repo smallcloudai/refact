@@ -61,6 +61,15 @@ pub async fn handle_v1_file_edit_tool_dry_run(
             .await
             .map_err(|x| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, x))?
         }
+        "update_textdoc_by_lines" => {
+            crate::tools::file_edit::tool_update_textdoc_by_lines::tool_update_text_doc_by_lines_exec(
+                global_context.clone(),
+                &post.tool_args,
+                true,
+            )
+            .await
+            .map_err(|x| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, x))?
+        }
         _ => {
             return Err(ScratchError::new(
                 StatusCode::BAD_REQUEST,

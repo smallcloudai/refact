@@ -5,10 +5,9 @@ use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 
 use crate::subchat::subchat;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType, MatchConfirmDeny, MatchConfirmDenyResult};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::integrations::integr_abstract::IntegrationConfirmation;
 
 pub struct ToolSubagent {
     pub config_path: String,
@@ -184,7 +183,7 @@ impl Tool for ToolSubagent {
             let mut t = AtCommandsContext::new(
                 ccx_lock.global_context.clone(),
                 subchat_params.subchat_n_ctx,
-                0,
+                8,
                 false,
                 vec![],
                 ccx_lock.chat_id.clone(),
@@ -232,44 +231,5 @@ impl Tool for ToolSubagent {
 
     fn tool_depends_on(&self) -> Vec<String> {
         vec![]
-    }
-
-    async fn command_to_match_against_confirm_deny(
-        &self,
-        _ccx: Arc<AMutex<AtCommandsContext>>,
-        args: &HashMap<String, Value>,
-    ) -> Result<String, String> {
-        let task = match args.get("task") {
-            Some(Value::String(s)) => s.clone(),
-            _ => return Ok("".to_string()),
-        };
-        let truncated_task = if task.len() > 100 {
-            format!("{}...", &task[..100])
-        } else {
-            task
-        };
-        Ok(format!("subagent \"{}\"", truncated_task))
-    }
-
-    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
-        Some(IntegrationConfirmation {
-            ask_user: vec!["*".to_string()],
-            deny: vec![],
-        })
-    }
-
-    async fn match_against_confirm_deny(
-        &self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        args: &HashMap<String, Value>,
-    ) -> Result<MatchConfirmDeny, String> {
-        let command_to_match = self.command_to_match_against_confirm_deny(ccx.clone(), &args).await.map_err(|e| {
-            format!("Error getting tool command to match: {}", e)
-        })?;
-        Ok(MatchConfirmDeny {
-            result: MatchConfirmDenyResult::CONFIRMATION,
-            command: command_to_match,
-            rule: "default".to_string(),
-        })
     }
 }

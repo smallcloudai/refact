@@ -182,43 +182,30 @@ pub async fn system_prompt_add_extra_instructions(
     }
 
     if system_prompt.contains("%AGENT_EXPLORATION_INSTRUCTIONS%") {
-        let replacement = if tool_names.contains("locate") {
-            "- Call `locate()` tool to find relevant files.\n"
-        } else {
-            "- Call available tools to find relevant files.\n"
-        };
-
+        let cfg = crate::yaml_configs::customization_loader::load_customization_compiled_in();
+        let replacement = cfg.get("AGENT_EXPLORATION_INSTRUCTIONS")
+            .and_then(|x| x.as_str())
+            .unwrap_or("- Call available tools to find relevant files.\n");
         system_prompt = system_prompt.replace("%AGENT_EXPLORATION_INSTRUCTIONS%", replacement);
     }
 
     if system_prompt.contains("%AGENT_EXECUTION_INSTRUCTIONS%") {
-        let replacement = if tool_names.contains("create_textdoc") || tool_names.contains("update_textdoc") {
-"3. Confirm the Plan with the User — No Coding Until Approved
-  - Post a concise, bullet-point summary that includes
-    • the suspected root cause
-    • the exact files/functions you will modify or create
-    • the new or updated tests you will add
-    • the expected outcome and success criteria
-  - Explicitly ask “Does this align with your vision?
-  - Wait for the user’s approval or revisions before proceeding.
-4. Implement the Fix
-  - Apply the approved changes directly to project files using `update_textdoc()` and `create_textdoc()` tools.
-5. Validate and Improve
-  - Run all available tooling to ensure the project compiles and your fix works.
-  - Add or update tests that reproduce the original bug and verify they pass.
-  - Execute the full test suite to guard against regressions.
-  - Iterate until everything is green.
-"
+        let has_edit_tools = tool_names.contains("create_textdoc") || tool_names.contains("update_textdoc");
+        let replacement = if has_edit_tools {
+            let cfg = crate::yaml_configs::customization_loader::load_customization_compiled_in();
+            cfg.get("AGENT_EXECUTION_INSTRUCTIONS")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string()
         } else {
 "  - Propose the changes to the user
-    • the suspected root cause
-    • the exact files/functions to modify or create
-    • the new or updated tests to add
-    • the expected outcome and success criteria
-"
+    - the suspected root cause
+    - the exact files/functions to modify or create
+    - the new or updated tests to add
+    - the expected outcome and success criteria
+".to_string()
         };
-
-        system_prompt = system_prompt.replace("%AGENT_EXECUTION_INSTRUCTIONS%", replacement);
+        system_prompt = system_prompt.replace("%AGENT_EXECUTION_INSTRUCTIONS%", &replacement);
     }
 
     system_prompt

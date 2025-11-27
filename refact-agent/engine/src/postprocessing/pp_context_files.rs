@@ -16,8 +16,6 @@ use crate::tokens::count_text_tokens_with_fallback;
 
 pub const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 pub const DEBUG: usize = 0;  // 0 nothing, 1 summary "N lines in K files => X tokens", 2 everything
-
-
 #[derive(Debug)]
 pub struct PPFile {
     pub symbols_sorted_by_path_len: Vec<Arc<AstDefinition>>,
@@ -355,7 +353,12 @@ pub async fn postprocess_context_files(
     settings: &PostprocessSettings,
 ) -> Vec<ContextFile> {
     assert!(settings.max_files_n > 0);
-    let files_marked_up = pp_ast_markup_files(gcx.clone(), context_file_vec).await;  // this modifies context_file.file_name to make it cpath
+    let files_marked_up = if settings.use_ast_based_pp {
+        // this modifies context_file.file_name to make it cpath
+        pp_ast_markup_files(gcx.clone(), context_file_vec).await
+    } else {
+        vec![]
+    };
 
     let mut lines_in_files = pp_color_lines(
         context_file_vec,
