@@ -54,7 +54,7 @@ export function postProcessMessagesAfterStreaming(messages: ChatMessages): ChatM
     const keptTools: ToolCall[] = [];
     
     deduplicatedTools.forEach((tool) => {
-      if (external_ignored_tools.includes(tool.function.name)) {
+      if (tool.function.name && external_ignored_tools.includes(tool.function.name)) {
         ignoredTools.push(tool);
       } else {
         keptTools.push(tool);
@@ -93,6 +93,7 @@ function deduplicateToolCalls(toolCalls: ToolCall[]): ToolCall[] {
   const toolCallMap = new Map<string, ToolCall>();
   
   toolCalls.forEach((tool) => {
+    if (!tool.id) return; // Skip tools without an id
     const existingTool = toolCallMap.get(tool.id);
     
     if (!existingTool) {
