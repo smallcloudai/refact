@@ -41,6 +41,53 @@ import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
 import { checkForDetailMessage } from "./types";
 
+const external_ignored_tools = ["web_search"];
+
+export function postProcessMessagesAfterStreaming(messages: ChatMessages): ChatMessages {
+  return messages.map((message) => {
+    if (!isAssistantMessage(message) || !message.tool_calls) {
+      return message;
+    }
+    
+    const ignoredTools: ToolCall[] = [];
+    const keptTools: ToolCall[] = [];
+    
+    message.tool_calls.forEach((tool) => {
+      if (external_ignored_tools.includes(tool.function.name)) {
+        ignoredTools.push(tool);
+      } else {
+        keptTools.push(tool);
+      }
+    });
+    
+    if (ignoredTools.length === 0) {
+      return message;
+    }
+    
+    const ignoredText = ignoredTools.map((tool) => {
+      let args = tool.function.arguments
+        .replace(/\}\{+\}/g, '}')
+        .replace(/\{+\)/g, ')')
+        .replace(/\}\{/g, '}')
+        .trim();
+      
+      if (args.endsWith('{')) {
+        args = args.slice(0, -1) + '}';
+      }
+      
+      return `\n---\n\n☁️ **${tool.function.name}**\`(${args})\` was called on the cloud`;
+    }).join("");
+    
+    const updatedContent = message.content + "\n" + ignoredText;
+    
+    return {
+      ...message,
+      content: updatedContent,
+      tool_calls: keptTools.length > 0 ? keptTools : undefined,
+    };
+  });
+}
+
 // export const TAKE_NOTE_MESSAGE = [
 //   'How many times user has corrected or directed you? Write "Number of correction points N".',
 //   'Then start each one with "---\n", describe what you (the assistant) did wrong, write "Mistake: ..."',
