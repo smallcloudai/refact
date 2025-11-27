@@ -105,6 +105,7 @@ async fn get_builtin_tools(
 
     let deep_analysis_tools: Vec<Box<dyn Tool + Send>> = vec![
         Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_deep_research::ToolDeepResearch{config_path: config_path.clone()}),
     ];
 
     let knowledge_tools: Vec<Box<dyn Tool + Send>> = vec![
