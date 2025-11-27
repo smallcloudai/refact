@@ -1316,8 +1316,8 @@ pub async fn create_instruction_files_message(
         context_files.push(ContextFile {
             file_name: display_name,
             file_content: final_content.clone(),
-            line1: 0,
-            line2: final_content.lines().count(),
+            line1: 1,
+            line2: final_content.lines().count().max(1),
             symbols: vec![],
             gradient_type: 0,
             usefulness: 100.0,
@@ -1332,9 +1332,9 @@ pub async fn create_instruction_files_message(
         );
         context_files.push(ContextFile {
             file_name: "(additional files - paths only)".to_string(),
-            file_content: paths_content,
-            line1: 0,
-            line2: paths_only.len() + 1,
+            file_content: paths_content.clone(),
+            line1: 1,
+            line2: paths_content.lines().count().max(1),
             symbols: vec![],
             gradient_type: 0,
             usefulness: 50.0,

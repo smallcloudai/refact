@@ -248,13 +248,24 @@ pub async fn context_file_from_file_path(
     let gradient_type = gradient_type_from_range_kind(&colon_kind_mb);
 
     let file_content = get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(&file_path_no_colon)).await?;
+    let file_line_count = file_content.lines().count().max(1);
 
     if let Some(colon) = &colon_kind_mb {
         line1 = colon.line1;
         line2 = colon.line2;
     }
-    if line1 == 0 && line2 == 0 {
-        line2 = file_content.lines().count();
+
+    // Validate line numbers - if they exceed file length, reset to whole file
+    if line1 > file_line_count || line2 > file_line_count {
+        tracing::warn!(
+            "Line numbers ({}, {}) exceed file length {} for {:?}, resetting to whole file",
+            line1, line2, file_line_count, file_path_no_colon
+        );
+        line1 = 1;
+        line2 = file_line_count;
+    } else if line1 == 0 && line2 == 0 {
+        line1 = 1;
+        line2 = file_line_count;
     }
 
     Ok(ContextFile {

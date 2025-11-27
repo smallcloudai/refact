@@ -112,8 +112,14 @@ async fn convert_input_into_usefullness(
             continue;
         }
         if msg.usefulness.is_sign_negative() {  // used in FIM to disable lines already in suffix or prefix
-            colorize_minus_one(lines, msg.line1-1, msg.line2);
+            colorize_minus_one(lines, msg.line1.saturating_sub(1), msg.line2.min(lines.len()));
             continue;
+        }
+
+        // Defensive check: warn if input line numbers exceed file length
+        if msg.line1 > lines.len() || msg.line2 > lines.len() {
+            warn!("Input ContextFile line numbers ({}, {}) exceed file length {} for {:?}, gradient coloring may be affected",
+                msg.line1, msg.line2, lines.len(), msg.file_name);
         }
 
         color_with_gradient_type(msg, lines);
@@ -326,16 +332,24 @@ async fn pp_limit_and_merge(
         if DEBUG >= 2 {
             info!("file {:?}:\n{}", cpath, out);
         } else if DEBUG == 1 {
-            info!("file {:?}:{}-{}", cpath, first_line, last_line);
+            info!("file {:?}:{}-{}", cpath, first_line + 1, last_line + 1);
         }
         if !anything {
             continue;
         }
+        let total_lines = lines.len();
+        let out_line1 = first_line + 1;
+        let out_line2 = last_line + 1;
+        // Defensive check: ensure line numbers don't exceed file length
+        if out_line1 > total_lines || out_line2 > total_lines {
+            warn!("Output line numbers ({}, {}) exceed file length {} for {:?}, clamping",
+                out_line1, out_line2, total_lines, file_ref.cpath);
+        }
         context_files_merged.push(ContextFile {
             file_name: file_ref.shorter_path.clone(),
             file_content: out.clone(),
-            line1: first_line,
-            line2: last_line,
+            line1: out_line1.min(total_lines).max(1),
+            line2: out_line2.min(total_lines).max(1),
             symbols: vec![],
             gradient_type: -1,
             usefulness: 0.0,
