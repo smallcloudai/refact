@@ -65,7 +65,7 @@ fn spawn_entertainment_task(
                 _ = cancel_token.cancelled() => {
                     break;
                 }
-                _ = tokio::time::sleep(tokio::time::Duration::from_secs(30)) => {
+                _ = tokio::time::sleep(tokio::time::Duration::from_secs(10)) => {
                     send_entertainment_message(&subchat_tx, &tool_call_id, message_idx).await;
                     message_idx += 1;
                 }
