@@ -64,15 +64,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
         </Box>
       </Flex>
 
-      {!groupSelectionEnabled ? (
-        <ChatHistory
-          history={history}
-          onHistoryItemClick={onHistoryItemClick}
-          onDeleteHistoryItem={onDeleteHistoryItem}
-        />
-      ) : (
-        <GroupTree />
-      )}
+      <ChatHistory
+        history={history}
+        onHistoryItemClick={onHistoryItemClick}
+        onDeleteHistoryItem={onDeleteHistoryItem}
+      />
       {/* TODO: duplicated */}
       {globalError && (
         <ErrorCallout
