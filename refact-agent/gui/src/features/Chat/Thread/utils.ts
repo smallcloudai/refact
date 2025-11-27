@@ -49,10 +49,11 @@ export function postProcessMessagesAfterStreaming(messages: ChatMessages): ChatM
       return message;
     }
     
+    const deduplicatedTools = deduplicateToolCalls(message.tool_calls);
     const ignoredTools: ToolCall[] = [];
     const keptTools: ToolCall[] = [];
     
-    message.tool_calls.forEach((tool) => {
+    deduplicatedTools.forEach((tool) => {
       if (external_ignored_tools.includes(tool.function.name)) {
         ignoredTools.push(tool);
       } else {
@@ -60,7 +61,7 @@ export function postProcessMessagesAfterStreaming(messages: ChatMessages): ChatM
       }
     });
     
-    if (ignoredTools.length === 0) {
+    if (ignoredTools.length === 0 && deduplicatedTools.length === message.tool_calls.length) {
       return message;
     }
     
@@ -78,7 +79,7 @@ export function postProcessMessagesAfterStreaming(messages: ChatMessages): ChatM
       return `\n---\n\n☁️ **${tool.function.name}**\`(${args})\` was called on the cloud`;
     }).join("");
     
-    const updatedContent = message.content + "\n" + ignoredText;
+    const updatedContent = ignoredText ? message.content + "\n" + ignoredText : message.content;
     
     return {
       ...message,
@@ -86,6 +87,27 @@ export function postProcessMessagesAfterStreaming(messages: ChatMessages): ChatM
       tool_calls: keptTools.length > 0 ? keptTools : undefined,
     };
   });
+}
+
+function deduplicateToolCalls(toolCalls: ToolCall[]): ToolCall[] {
+  const toolCallMap = new Map<string, ToolCall>();
+  
+  toolCalls.forEach((tool) => {
+    const existingTool = toolCallMap.get(tool.id);
+    
+    if (!existingTool) {
+      toolCallMap.set(tool.id, tool);
+    } else {
+      const existingHasArgs = existingTool.function.arguments && existingTool.function.arguments.trim() !== "";
+      const newHasArgs = tool.function.arguments && tool.function.arguments.trim() !== "";
+      
+      if (!existingHasArgs && newHasArgs) {
+        toolCallMap.set(tool.id, tool);
+      }
+    }
+  });
+  
+  return Array.from(toolCallMap.values());
 }
 
 // export const TAKE_NOTE_MESSAGE = [
