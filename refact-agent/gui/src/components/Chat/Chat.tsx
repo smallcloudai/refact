@@ -7,7 +7,6 @@ import {
   useAppDispatch,
   useSendChatRequest,
   useAutoSend,
-  useCapsForToolUse,
 } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
 import {
@@ -25,6 +24,7 @@ import { DropzoneProvider } from "../Dropzone";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
 import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
+import { ModelSelector } from "./ModelSelector";
 
 export type ChatProps = {
   host: Config["host"];
@@ -51,7 +51,6 @@ export const Chat: React.FC<ChatProps> = ({
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
   const messages = useAppSelector(selectMessages);
-  const capsForToolUse = useCapsForToolUse();
 
   const { shouldCheckpointsPopupBeShown } = useCheckpoints();
 
@@ -124,13 +123,16 @@ export const Chat: React.FC<ChatProps> = ({
           {/* Two flexboxes are left for the future UI element on the right side */}
           {messages.length > 0 && (
             <Flex align="center" justify="between" width="100%">
-              <Flex align="center" gap="1">
-                <Text size="1">model: {capsForToolUse.currentModel} </Text> •{" "}
+              <Flex align="center" gap="2">
+                <ModelSelector />
+                <Text size="1" color="gray">•</Text>
                 <Text
                   size="1"
+                  color="gray"
                   onClick={() => setIsDebugChatHistoryVisible((prev) => !prev)}
+                  style={{ cursor: "pointer" }}
                 >
-                  mode: {chatToolUse}{" "}
+                  mode: {chatToolUse}
                 </Text>
               </Flex>
               {messages.length !== 0 &&

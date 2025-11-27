@@ -6,6 +6,7 @@ export const TEXTDOC_TOOL_NAMES = [
   "update_textdoc",
   "replace_textdoc",
   "update_textdoc_regex",
+  "update_textdoc_by_lines",
 ];
 
 type TextDocToolNames = (typeof TEXTDOC_TOOL_NAMES)[number];
@@ -151,11 +152,36 @@ export const isReplaceTextDocToolCall = (
   return true;
 };
 
+export interface UpdateTextDocByLinesToolCall extends ParsedRawTextDocToolCall {
+  function: {
+    name: string;
+    arguments: {
+      path: string;
+      content: string;
+      ranges: string;
+    };
+  };
+}
+
+export const isUpdateTextDocByLinesToolCall = (
+  toolCall: ParsedRawTextDocToolCall,
+): toolCall is UpdateTextDocByLinesToolCall => {
+  if (toolCall.function.name !== "update_textdoc_by_lines") return false;
+  if (!("path" in toolCall.function.arguments)) return false;
+  if (typeof toolCall.function.arguments.path !== "string") return false;
+  if (!("content" in toolCall.function.arguments)) return false;
+  if (typeof toolCall.function.arguments.content !== "string") return false;
+  if (!("ranges" in toolCall.function.arguments)) return false;
+  if (typeof toolCall.function.arguments.ranges !== "string") return false;
+  return true;
+};
+
 export type TextDocToolCall =
   | CreateTextDocToolCall
   | UpdateTextDocToolCall
   | ReplaceTextDocToolCall
-  | UpdateRegexTextDocToolCall;
+  | UpdateRegexTextDocToolCall
+  | UpdateTextDocByLinesToolCall;
 
 function isTextDocToolCall(
   toolCall: ParsedRawTextDocToolCall,
@@ -164,7 +190,8 @@ function isTextDocToolCall(
   if (isUpdateTextDocToolCall(toolCall)) return true;
   if (isReplaceTextDocToolCall(toolCall)) return true;
   if (isUpdateRegexTextDocToolCall(toolCall)) return true;
-  return true;
+  if (isUpdateTextDocByLinesToolCall(toolCall)) return true;
+  return false;
 }
 
 export function parseRawTextDocToolCall(

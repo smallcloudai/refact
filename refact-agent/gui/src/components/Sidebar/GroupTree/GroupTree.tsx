@@ -33,7 +33,12 @@ export const GroupTree: React.FC = () => {
     onWorkspaceSelection,
     availableWorkspaces,
     treeHeight,
+    hasError,
   } = useGroupTree();
+
+  if (hasError) {
+    return null;
+  }
 
   return (
     <Flex direction="column" gap="4" mt="4" width="100%">

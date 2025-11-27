@@ -263,7 +263,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         {isKnowledgeFeatureAvailable && (
           <DropdownMenu.Item
             // TODO: get real URL from cloud inference
-            onSelect={() => openUrl("https://test-teams.smallcloud.ai/")}
+            onSelect={() => openUrl("https://flexus.team/")}
           >
             Manage Knowledge
           </DropdownMenu.Item>

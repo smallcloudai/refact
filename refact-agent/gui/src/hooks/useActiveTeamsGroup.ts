@@ -19,12 +19,8 @@ export function useActiveTeamsGroup() {
   }, [maybeActiveTeamsGroup, isKnowledgeFeatureAvailable]);
 
   const newChatEnabled = useMemo(() => {
-    if (isKnowledgeFeatureAvailable) {
-      return !!maybeActiveTeamsGroup;
-    }
-
     return true;
-  }, [maybeActiveTeamsGroup, isKnowledgeFeatureAvailable]);
+  }, []);
 
   return {
     groupSelectionEnabled,

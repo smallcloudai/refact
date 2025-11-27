@@ -12,10 +12,12 @@ import {
   TextDocToolCall,
   UpdateRegexTextDocToolCall,
   UpdateTextDocToolCall,
+  UpdateTextDocByLinesToolCall,
   isCreateTextDocToolCall,
   isReplaceTextDocToolCall,
   isUpdateRegexTextDocToolCall,
   isUpdateTextDocToolCall,
+  isUpdateTextDocByLinesToolCall,
   parseRawTextDocToolCall,
 } from "./types";
 import { Box, Card, Flex, Button } from "@radix-ui/themes";
@@ -58,6 +60,10 @@ export const TextDocTool: React.FC<{
     return <UpdateRegexTextDoc toolCall={maybeTextDocToolCall} />;
   }
 
+  if (isUpdateTextDocByLinesToolCall(maybeTextDocToolCall)) {
+    return <UpdateTextDocByLines toolCall={maybeTextDocToolCall} />;
+  }
+
   return false;
 };
 
@@ -94,6 +100,8 @@ const TextDocHeader = forwardRef<HTMLDivElement, TextDocHeaderProps>(
         return toolCall.function.arguments.content;
       if (isUpdateTextDocToolCall(toolCall))
         return toolCall.function.arguments.replacement;
+      if (isUpdateTextDocByLinesToolCall(toolCall))
+        return toolCall.function.arguments.content;
       return null;
     }, [toolCall]);
 
@@ -300,6 +308,38 @@ const UpdateTextDoc: React.FC<{
       <Reveal isRevealingCode defaultOpen={lineCount < 9} onClose={handleClose}>
         <MarkdownCodeBlock onCopyClick={handleCopy} className={className}>
           {toolCall.function.arguments.replacement}
+        </MarkdownCodeBlock>
+      </Reveal>
+    </Box>
+  );
+};
+
+const UpdateTextDocByLines: React.FC<{
+  toolCall: UpdateTextDocByLinesToolCall;
+}> = ({ toolCall }) => {
+  const copyToClipBoard = useCopyToClipboard();
+  const ref = useRef<HTMLDivElement>(null);
+  const handleClose = useHideScroll(ref);
+  const handleCopy = useCallback(() => {
+    copyToClipBoard(toolCall.function.arguments.content);
+  }, [copyToClipBoard, toolCall.function.arguments.content]);
+
+  const className = useMemo(() => {
+    const extension = getFileExtension(toolCall.function.arguments.path);
+    return `language-${extension}`;
+  }, [toolCall.function.arguments.path]);
+
+  const lineCount = useMemo(
+    () => toolCall.function.arguments.content.split("\n").length,
+    [toolCall.function.arguments.content],
+  );
+
+  return (
+    <Box className={styles.textdoc}>
+      <TextDocHeader toolCall={toolCall} ref={ref} />
+      <Reveal isRevealingCode defaultOpen={lineCount < 9} onClose={handleClose}>
+        <MarkdownCodeBlock onCopyClick={handleCopy} className={className}>
+          {toolCall.function.arguments.content}
         </MarkdownCodeBlock>
       </Reveal>
     </Box>

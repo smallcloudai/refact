@@ -200,6 +200,9 @@ export function useGroupTree() {
     return [];
   }, [teamsWorkspaces.data?.query_basic_stuff.workspaces]);
 
+  const hasError = teamsWorkspaces.error !== undefined;
+  const isLoading = teamsWorkspaces.fetching;
+
   return {
     // Refs
     treeParentRef,
@@ -222,5 +225,8 @@ export function useGroupTree() {
     setCurrentTeamsWorkspace,
     setGroupTreeData,
     setCurrentSelectedTeamsGroupNode,
+    // Status
+    hasError,
+    isLoading,
   };
 }

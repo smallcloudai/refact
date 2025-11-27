@@ -85,6 +85,7 @@ export const PATCH_LIKE_FUNCTIONS = [
   "update_textdoc",
   "replace_textdoc",
   "update_textdoc_regex",
+  "update_textdoc_by_lines",
 ];
 
 export const useSendChatRequest = () => {
