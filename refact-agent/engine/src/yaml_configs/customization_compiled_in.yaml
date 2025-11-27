@@ -178,9 +178,9 @@ PROMPT_AGENTIC_TOOLS: |
 
   **BEST PRACTICES**
     - Use `web_search` to verify APIs, check external URLs. Integrate it into your workflow.
-    - Keep code simple, avoid commenting!
-    - Use shell commands such as `git` to inspect the repository and check the current project state
-    - After each significant change, run available tests to catch regressions early
+    - Keep code simple, avoid commenting, do not create documents if user have not asked to create them.
+    - Use shell commands such as `git` to inspect the repository and check the current project state.
+    - After each significant change, run available tests to catch regressions early.
     - %CD_INSTRUCTIONS%
     - %SHELL_INSTRUCTIONS%
 

@@ -25,7 +25,7 @@ use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::CmdlineOutputFilter;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationTrait};
 use crate::custom_error::YamlError;
-use crate::tools::tools_execute::command_should_be_denied;
+use crate::tools::tools_execute::{command_should_be_denied, command_should_be_confirmed_by_user};
 
 
 #[derive(Deserialize, Serialize, Clone, Default)]
@@ -167,12 +167,21 @@ impl Tool for ToolShell {
                     rule: deny_rule.clone(),
                 });
             }
+
+            let (needs_confirmation, confirmation_rule) = command_should_be_confirmed_by_user(&command_to_match, &rules.ask_user);
+            if needs_confirmation {
+                return Ok(MatchConfirmDeny {
+                    result: MatchConfirmDenyResult::CONFIRMATION,
+                    command: command_to_match.clone(),
+                    rule: confirmation_rule.clone(),
+                });
+            }
         }
-        // NOTE: do not match command if not denied, always wait for confirmation from user
+
         Ok(MatchConfirmDeny {
-            result: MatchConfirmDenyResult::CONFIRMATION,
+            result: MatchConfirmDenyResult::PASS,
             command: command_to_match.clone(),
-            rule: "*".to_string(),
+            rule: "".to_string(),
         })
     }
 
@@ -296,11 +305,69 @@ fields:
     f_desc: "The output from the command can be long or even quasi-infinite. This section allows to set limits, prioritize top or bottom, or use regexp to show the model the relevant part."
     f_extra: true
 description: |
-  Allows to execute any command line tool with confirmation from the chat itself.
+  Allows to execute any command line tool. Most commands execute without confirmation. Dangerous commands require user confirmation.
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
 confirmation:
-  ask_user_default: ["*"]
+  ask_user_default: [
+    "*rm*",
+    "*rmdir*",
+    "*del /s*",
+    "*deltree*",
+    "*mkfs*",
+    "*dd *",
+    "*format*",
+    "*> /dev/*",
+    ":(){ :|:& };:",
+    "*chmod -R*",
+    "*chown -R*",
+    "*chmod 777*",
+    "*chmod a+rwx*",
+    "*git push*",
+    "*git reset --hard*",
+    "curl * | sh",
+    "curl * | bash",
+    "wget * -O - | sh",
+    "wget * -O - | bash",
+    "*apt-get remove*",
+    "*apt-get purge*",
+    "*apt remove*",
+    "*apt purge*",
+    "*yum remove*",
+    "*yum erase*",
+    "*dnf remove*",
+    "*pacman -R*",
+    "*brew uninstall*",
+    "*docker rm*",
+    "*docker rmi*",
+    "*docker system prune*",
+    "*kubectl delete*",
+    "*kill -9*",
+    "*killall*",
+    "*pkill*",
+    "*shutdown*",
+    "*reboot*",
+    "*halt*",
+    "*poweroff*",
+    "*init 0*",
+    "*init 6*",
+    "*systemctl stop*",
+    "*systemctl disable*",
+    "*service * stop",
+    "*truncate -s 0*",
+    "*fdisk*",
+    "*parted*",
+    "*mkswap*",
+    "*swapon*",
+    "*swapoff*",
+    "*mount*",
+    "*umount*",
+    "*crontab -r*",
+    "*history -c*",
+    "*shred*",
+    "*wipe*",
+    "*srm*"
+  ]
   deny_default: ["sudo*"]
 "#;
