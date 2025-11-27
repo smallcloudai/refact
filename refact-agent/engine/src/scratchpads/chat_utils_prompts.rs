@@ -4,13 +4,17 @@ use std::sync::Arc;
 use std::path::PathBuf;
 use tokio::sync::RwLock as ARwLock;
 
-use crate::call_validation::{self, ContextFile};
-use crate::files_correction::get_active_project_path;
+use crate::call_validation;
+use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
 use crate::http::http_post_json;
 use crate::http::routers::v1::system_prompt::{PrependSystemPromptPost, PrependSystemPromptResponse};
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
+use crate::scratchpads::system_context::{
+    self, create_instruction_files_message, gather_system_context, generate_git_info_prompt,
+    gather_git_info, INTERNAL_CONTEXT_GUIDANCE,
+};
 use crate::call_validation::{ChatMessage, ChatContent, ChatMode};
 
 
@@ -132,6 +136,57 @@ pub async fn system_prompt_add_extra_instructions(
     }
 
     let mut system_prompt = system_prompt.clone();
+
+    // New: %SYSTEM_INFO% - OS, datetime, username, architecture
+    if system_prompt.contains("%SYSTEM_INFO%") {
+        let system_info = system_context::SystemInfo::gather();
+        system_prompt = system_prompt.replace("%SYSTEM_INFO%", &system_info.to_prompt_string());
+    }
+
+    // New: %ENVIRONMENT_INFO% - Detected environments and usage instructions
+    if system_prompt.contains("%ENVIRONMENT_INFO%") {
+        let project_dirs = get_project_dirs(gcx.clone()).await;
+        let environments = system_context::detect_environments(&project_dirs).await;
+        let env_instructions = system_context::generate_environment_instructions(&environments);
+        system_prompt = system_prompt.replace("%ENVIRONMENT_INFO%", &env_instructions);
+    }
+
+    // New: %PROJECT_CONFIGS% - Detected project configuration files
+    if system_prompt.contains("%PROJECT_CONFIGS%") {
+        let project_dirs = get_project_dirs(gcx.clone()).await;
+        let configs = system_context::find_project_configs(&project_dirs).await;
+        if !configs.is_empty() {
+            let config_list = configs
+                .iter()
+                .map(|c| format!("- {} ({})", c.file_name, c.category))
+                .collect::<Vec<_>>()
+                .join("\n");
+            let config_section = format!("## Project Configuration Files\n{}", config_list);
+            system_prompt = system_prompt.replace("%PROJECT_CONFIGS%", &config_section);
+        } else {
+            system_prompt = system_prompt.replace("%PROJECT_CONFIGS%", "");
+        }
+    }
+
+    if system_prompt.contains("%PROJECT_TREE%") {
+        match system_context::generate_compact_project_tree(gcx.clone(), 4).await {
+            Ok(tree) if !tree.is_empty() => {
+                let tree_section = format!("## Project Structure\n```\n{}```", tree);
+                system_prompt = system_prompt.replace("%PROJECT_TREE%", &tree_section);
+            }
+            _ => {
+                system_prompt = system_prompt.replace("%PROJECT_TREE%", "");
+            }
+        }
+    }
+
+    if system_prompt.contains("%GIT_INFO%") {
+        let project_dirs = get_project_dirs(gcx.clone()).await;
+        let git_infos = gather_git_info(&project_dirs).await;
+        let git_section = generate_git_info_prompt(&git_infos);
+        system_prompt = system_prompt.replace("%GIT_INFO%", &git_section);
+    }
+
     if system_prompt.contains("%WORKSPACE_INFO%") {
         let (workspace_dirs, active_file_path) = workspace_files_info(&gcx).await;
         let info = _workspace_info(&workspace_dirs, &active_file_path).await;
@@ -272,76 +327,61 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
         },
     }
 
-    match get_agents_md(&gcx).await {
-        Ok(agent_md) => {
-            const IMPORTANTER_ROLES: [&str; 2] = ["system", "developer"];
-            stream_back_to_user.push_in_json(serde_json::json!(agent_md));
-            let pos_to_insert = if messages.is_empty() || !IMPORTANTER_ROLES.contains(&messages[0].role.as_str()) {
-                0
-            } else { 1 };
-            messages.insert(pos_to_insert, agent_md);
-        },
+    match gather_and_inject_system_context(&gcx, &mut messages, stream_back_to_user).await {
+        Ok(()) => {},
         Err(e) => {
-            tracing::warn!("Failed to read AGENTS.md: {}", e);
+            tracing::warn!("Failed to gather system context: {}", e);
         },
     }
-    
+
     tracing::info!("\n\nSYSTEM PROMPT MIXER chat_mode={:?}\n{:#?}", chat_meta.chat_mode, messages);
     messages
 }
 
-/// Reads AGENTS.md file from the active repository or nothing if it does not exist.
-async fn get_agents_md(gcx: &Arc<ARwLock<GlobalContext>>) -> Result<ChatMessage, String> {
-    let act_proj_path = get_active_project_path(gcx.clone()).await
-                            .ok_or("No active project path found")?;
+async fn gather_and_inject_system_context(
+    gcx: &Arc<ARwLock<GlobalContext>>,
+    messages: &mut Vec<ChatMessage>,
+    stream_back_to_user: &mut HasRagResults,
+) -> Result<(), String> {
+    let context = gather_system_context(gcx.clone(), false, 4).await?;
 
-    let found_agents_md = {
-        let mut found_agents_md = vec![];
+    if !context.instruction_files.is_empty() {
+        match create_instruction_files_message(&context.instruction_files).await {
+            Ok(instr_msg) => {
+                let first_user_pos = messages.iter().position(|m| m.role == "user");
 
-        for parent in act_proj_path.ancestors() {
-            let mut files_in_dir = tokio::fs::read_dir(parent)
-                .await
-                .map_err(|e| format!("Failed to read directory {}: {}", act_proj_path.display(), e))?;
+                if let Some(pos) = first_user_pos {
+                    stream_back_to_user.push_in_json(serde_json::json!(instr_msg));
+                    messages.insert(pos, instr_msg);
 
-            while let Ok(Some(entry)) = files_in_dir.next_entry().await {
-                let file_name = entry.file_name().to_string_lossy().to_string();
-                if file_name.to_lowercase() == "agents.md" {
-                    found_agents_md.push((parent, file_name));
+                    if let Some(system_msg) = messages.iter_mut().find(|m| m.role == "system") {
+                        if let ChatContent::SimpleText(ref mut text) = system_msg.content {
+                            text.push_str(INTERNAL_CONTEXT_GUIDANCE);
+                        }
+                    }
+
+                    tracing::info!(
+                        "Injected {} instruction files before first user message: {:?}",
+                        context.instruction_files.len(),
+                        context.instruction_files.iter().map(|f| &f.file_name).collect::<Vec<_>>()
+                    );
                 }
             }
+            Err(e) => {
+                tracing::warn!("Failed to create instruction files message: {}", e);
+            }
         }
-
-        if found_agents_md.is_empty() {
-            return Err("AGENTS.md not found in the active project directory".to_string());
-        }
-
-        found_agents_md
-    };
-
-    let mut context_files = vec![];
-
-    for (path, file_name) in found_agents_md {
-        let content = tokio::fs::read_to_string(&path.join(&file_name))
-            .await
-            .map_err(|e| format!("Failed to read AGENTS.md: {}", e))?;
-
-        let context_file = ContextFile {
-            file_name,
-            file_content: content.clone(),
-            line1: 0,
-            line2: content.lines().count(),
-            symbols: vec![],
-            gradient_type: 0,
-            usefulness: 100.0,
-        };
-
-        context_files.push(context_file);
     }
 
-    let context_files = serde_json::to_string(&context_files)
-        .map_err(|e| format!("Failed to serialize context file: {}", e))?;
+    if !context.detected_environments.is_empty() {
+        tracing::info!(
+            "Detected {} environments: {:?}",
+            context.detected_environments.len(),
+            context.detected_environments.iter().map(|e| &e.env_type).collect::<Vec<_>>()
+        );
+    }
 
-    Ok(ChatMessage::new("context_file".to_string(), context_files))
+    Ok(())
 }
 
 pub async fn prepend_system_prompt_and_maybe_more_initial_messages_from_remote(

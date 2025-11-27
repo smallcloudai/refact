@@ -44,7 +44,7 @@ async fn send_entertainment_message(
     let message_text = ENTERTAINMENT_MESSAGES[message_idx % ENTERTAINMENT_MESSAGES.len()];
     let entertainment_msg = json!({
         "tool_call_id": tool_call_id,
-        "subchat_id": format!("deep-research-status-{}", message_idx),
+        "subchat_id": message_text,
         "add_message": {
             "role": "assistant",
             "content": message_text

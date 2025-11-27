@@ -38,6 +38,7 @@ hashbrown = "0.15.2"
 headless_chrome = "1.0.16"
 heed = "0.22.0"
 home = "0.5"
+hostname = "0.4"
 html2text = "0.12.5"
 hyper = { version = "0.14", features = ["server", "stream"] }
 image = "0.25.2"

@@ -8,6 +8,20 @@
 #    %CURRENT_FILE%:%CURSOR_LINE%
 #       expanded to file.ext:42
 #       useful to form a "@file xxx" command that will insert the file text around the cursor
+#    %WORKSPACE_INFO%
+#       IDE workspace directories, active file, VCS info
+#    %PROJECT_SUMMARY%
+#       project summary from .refact/project_summary.yaml
+#    %SYSTEM_INFO%
+#       OS, datetime, username, architecture, shell
+#    %ENVIRONMENT_INFO%
+#       detected environments (venv, poetry, npm, cargo, etc.) with usage instructions
+#    %PROJECT_CONFIGS%
+#       detected project configuration files (eslint, tsconfig, etc.)
+#    %PROJECT_TREE%
+#       compact project tree structure
+#    %GIT_INFO%
+#       git/vcs info: current branch, branches, remotes, staged/modified/untracked files
 #
 # You can also use top-level keys to reduce copy-paste, like you see there with PROMPT_DEFAULT.
 
@@ -68,9 +82,19 @@ PROMPT_EXPLORATION_TOOLS: |
 
   %CD_INSTRUCTIONS%
 
+  %SYSTEM_INFO%
+
+  %ENVIRONMENT_INFO%
+
   %WORKSPACE_INFO%
 
   %PROJECT_SUMMARY%
+
+  %PROJECT_CONFIGS%
+
+  %GIT_INFO%
+
+  %PROJECT_TREE%
 
 
 AGENT_EXPLORATION_INSTRUCTIONS: |
@@ -119,6 +143,17 @@ PROMPT_AGENTIC_TOOLS: |
   **For complex tasks**: Follow the structured approach below, confirming with the user before major changes.
 
   **For ambiguous tasks**: Explore first, then ask clarifying questions before proposing a solution.
+  
+  **DELEGATION WITH SUBAGENT**
+    - Use `subagent()` when you need focused investigation that requires multiple tool calls. Try to use more often it to save the context window space.
+    - Provide: clear task description, expected result, optionally limit tools and max_steps
+    - The subagent works independently and reports back findings
+    - Good for: "find all usages of X", "investigate module Y", "search for pattern Z across codebase", "remove all comments from fileY", "update usage of Z in the whole project" 
+
+  **DEEP RESEARCH**
+    - Use `deep_research()` when you need comprehensive web research synthesizing multiple sources
+    - Use `web()` to fetch a specific URL, `web_search()` for quick lookups
+    - Do NOT use `deep_research` for questions about the current project's code - use exploration tools instead
 
   ### Strategy
 
@@ -143,30 +178,28 @@ PROMPT_AGENTIC_TOOLS: |
 
   **BEST PRACTICES**
     - Use `web_search` to verify APIs, check external URLs. Integrate it into your workflow.
-    - Keep code simple, avoid commenting
-    - When running Python or similar tools, use a virtual environment (venv) instead of the global interpreter
+    - Keep code simple, avoid commenting!
     - Use shell commands such as `git` to inspect the repository and check the current project state
     - After each significant change, run available tests to catch regressions early
     - %CD_INSTRUCTIONS%
     - %SHELL_INSTRUCTIONS%
 
-  **DELEGATION WITH SUBAGENT**
-    - Use `subagent()` when you need focused investigation that requires multiple tool calls
-    - Provide: clear task description, expected result, optionally limit tools and max_steps
-    - The subagent works independently and reports back findings
-    - Good for: "find all usages of X", "investigate module Y", "search for pattern Z across codebase", "remove all comments from fileY", "update usage of Z in the whole project" 
+  %SYSTEM_INFO%
 
-  **DEEP RESEARCH**
-    - Use `deep_research()` when you need comprehensive web research synthesizing multiple sources
-    - Use `web()` to fetch a specific URL, `web_search()` for quick lookups
-    - Do NOT use `deep_research` for questions about the current project's code - use exploration tools instead
+  %ENVIRONMENT_INFO%
 
   %WORKSPACE_INFO%
 
   %PROJECT_SUMMARY%
 
+  %PROJECT_CONFIGS%
+
+  %GIT_INFO%
+
   %KNOWLEDGE_INSTRUCTIONS%
 
+  %PROJECT_TREE%
+  
 
 PROMPT_CONFIGURATOR: |
   [mode3config] You are Refact Agent, a coding assistant. But today your job is to help the user to update Refact Agent configuration files,
@@ -308,8 +341,9 @@ subchat_tool_parameters:
     subchat_max_new_tokens: 32000
     subchat_reasoning_effort: "high"
   subagent:
-    subchat_n_ctx: 128000
-    subchat_max_new_tokens: 8000
+    subchat_n_ctx: 200000
+    subchat_max_new_tokens: 16000
+    subchat_reasoning_effort: "low"
 
 
 code_lens:
