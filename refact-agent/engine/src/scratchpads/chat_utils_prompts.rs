@@ -13,7 +13,7 @@ use crate::integrations::docker::docker_container_manager::docker_container_get_
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::scratchpads::system_context::{
     self, create_instruction_files_message, gather_system_context, generate_git_info_prompt,
-    gather_git_info, INTERNAL_CONTEXT_GUIDANCE,
+    gather_git_info
 };
 use crate::call_validation::{ChatMessage, ChatContent, ChatMode};
 
@@ -353,12 +353,6 @@ async fn gather_and_inject_system_context(
                 if let Some(pos) = first_user_pos {
                     stream_back_to_user.push_in_json(serde_json::json!(instr_msg));
                     messages.insert(pos, instr_msg);
-
-                    if let Some(system_msg) = messages.iter_mut().find(|m| m.role == "system") {
-                        if let ChatContent::SimpleText(ref mut text) = system_msg.content {
-                            text.push_str(INTERNAL_CONTEXT_GUIDANCE);
-                        }
-                    }
 
                     tracing::info!(
                         "Injected {} instruction files before first user message: {:?}",

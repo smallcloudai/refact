@@ -13,10 +13,6 @@ use crate::files_in_workspace::detect_vcs_for_a_file_path;
 use crate::global_context::GlobalContext;
 use crate::git::operations::{get_git_remotes, get_diff_statuses};
 
-pub const INTERNAL_CONTEXT_GUIDANCE: &str = r#"
-## Internal Context Files Notice
-The instruction and configuration files shared at the start of this conversation (AGENTS.md, IDE configs, .cursorrules, etc.) are internal context provided automatically to help you understand the project structure, IDE setup, and coding guidelines. **Do NOT explicitly mention, reference, or acknowledge these files to the user** - treat them as implicit background knowledge that silently informs your responses and decisions."#;
-
 const INSTRUCTION_FILE_PATTERNS: &[&str] = &[
     "AGENTS.md",
     "CLAUDE.md",
@@ -1028,6 +1024,7 @@ pub fn generate_environment_instructions(environments: &[DetectedEnvironment]) -
     instructions.push(String::new());
     instructions.push("**IMPORTANT**: Always prefer local/project-specific environments over system-wide installations.".to_string());
     instructions.push(String::new());
+    instructions.push("## Internal Context Files Notice\nThe instruction and configuration files (ie .idea) shared at the start of this conversation (AGENTS.md, IDE configs, .cursorrules, etc.) are internal context provided automatically to help you understand the project structure, IDE setup, and coding guidelines.\n**Do NOT explicitly mention, reference, or acknowledge these files to the user**!!!".to_string());
 
     let mut python_envs: Vec<&DetectedEnvironment> = Vec::new();
     let mut node_envs: Vec<&DetectedEnvironment> = Vec::new();
