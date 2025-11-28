@@ -107,6 +107,7 @@ AGENT_EXPLORATION_INSTRUCTIONS: |
   - Use `web()` to fetch documentation pages; use `web_search()` to find current API info
   - If the task is complex or ambiguous after initial exploration, use `strategic_planning()` with relevant file paths
   - If you need focused investigation of a subtopic, delegate to `subagent()` with a clear task and expected result
+  - For parallel exploration tasks, consider spawning multiple `subagent()` calls simultaneously to save time
 
 
 AGENT_EXECUTION_INSTRUCTIONS: |
@@ -181,6 +182,7 @@ PROMPT_AGENTIC_TOOLS: |
     - Keep code simple, avoid commenting, do not create documents if user have not asked to create them.
     - Use shell commands such as `git` to inspect the repository and check the current project state.
     - After each significant change, run available tests to catch regressions early.
+    - Clean up after yourself: remove fallback code, unused imports, commented-out code, and temporary debugging statements.
     - %CD_INSTRUCTIONS%
     - %SHELL_INSTRUCTIONS%
 

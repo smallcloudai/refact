@@ -1070,19 +1070,14 @@ pub fn generate_environment_instructions(environments: &[DetectedEnvironment]) -
             instructions.push("```".to_string());
         } else if has_venv {
             if let Some(venv) = python_envs.iter().find(|e| e.env_type == "python_venv") {
-                let venv_path = PathBuf::from(&venv.path);
-                let activate_path = if cfg!(windows) {
-                    venv_path.join("Scripts").join("activate")
-                } else {
-                    venv_path.join("bin").join("activate")
-                };
-                instructions.push("**Preferred**: Activate the virtual environment:".to_string());
+                instructions.push("**Preferred**: Use the virtual environment directly (no activation needed):".to_string());
                 instructions.push("```bash".to_string());
-                instructions.push(format!("source {}", activate_path.display()));
                 if cfg!(windows) {
                     instructions.push(format!("{}/Scripts/python.exe <script.py>", venv.path));
+                    instructions.push(format!("{}/Scripts/pip.exe install <package>", venv.path));
                 } else {
                     instructions.push(format!("{}/bin/python <script.py>", venv.path));
+                    instructions.push(format!("{}/bin/pip install <package>", venv.path));
                 }
                 instructions.push("```".to_string());
             }
