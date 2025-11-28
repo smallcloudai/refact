@@ -176,8 +176,8 @@ pub async fn context_msgs_from_paths(
         messages.push(ContextFile {
             file_name: file_name.clone(),
             file_content: text.clone(),
-            line1: 0,
-            line2: text.lines().count(),
+            line1: 1,
+            line2: text.lines().count().max(1),
             symbols: vec![],
             gradient_type: -1,
             usefulness: 0.,

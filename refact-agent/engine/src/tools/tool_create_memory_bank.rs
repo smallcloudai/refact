@@ -484,7 +484,7 @@ impl Tool for ToolCreateMemoryBank {
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
-        vec![]
+        vec!["knowledge".to_string()]
     }
 
     fn tool_description(&self) -> ToolDesc {

@@ -69,6 +69,7 @@ pub fn max_tokens_for_rag_chat_by_tools(
                 (4096 * context_files_len).min(base_limit / 2).max(4096)
             },
             "cat" | "locate" => (8192 * context_files_len).min(base_limit / 2).max(8192),
+            "deep_research" | "strategic_planning" => 32000,
             _ => (4096 * context_files_len).min(base_limit / 2).max(4096)
         };
         

@@ -47,8 +47,8 @@ pub enum CompressionStrength {
 /// A tuple containing (EXTRA_TOKENS_PER_MESSAGE, EXTRA_BUDGET_OFFSET_PERC)
 pub fn get_model_token_params(model_id: &str) -> (i32, f32) {
     match model_id {
-        // Claude 3 Sonnet models need higher token overhead
-        m if m.contains("claude-3-7-sonnet") | m.contains("claude-3-5-sonnet") => (150, 0.2),
+        // Claude 3-4 Sonnet models need higher token overhead
+        m if m.contains("claude") => (150, 0.2),
         
         // Default values for all other models
         _ => (3, 0.0),
@@ -1251,9 +1251,9 @@ mod tests {
         fn mock() -> Arc<Self> {
             use tokenizers::Tokenizer;
             use tokenizers::models::wordpiece::WordPiece;
-            use ahash::AHashMap;
+            use std::collections::HashMap;
 
-            let mut vocab = AHashMap::new();
+            let mut vocab = HashMap::new();
             vocab.insert("[UNK]".to_string(), 0u32);
 
             let wordpiece = WordPiece::builder()

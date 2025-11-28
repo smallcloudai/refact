@@ -197,14 +197,14 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy, node: &Node<'a>, pa
     // debug!(cx, "DOTTED {}", cx.ap.recursive_print_with_red_brackets(&node));
     match node.kind() {
         "identifier" => {
-            let u = py_simple_resolve(cx, path, &node_text, node.range().start_point.row);
+            let u = py_simple_resolve(cx, path, &node_text, node.range().start_point.row + 1);
             // debug!(cx, "DOTTED GO_UP {:?}", u);
             if u.resolved_as.is_empty() && allow_creation {
                 return Some(AstUsage {
                     targets_for_guesswork: vec![],
                     resolved_as: format!("{}::{}", path.join("::"), node_text),
                     debug_hint: format!("local_var_create"),
-                    uline: node.range().start_point.row,
+                    uline: node.range().start_point.row + 1,
                 });
             }
             if !u.resolved_as.ends_with("::self") && !u.debug_hint.ends_with("trivial") {
@@ -222,7 +222,7 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy, node: &Node<'a>, pa
                 targets_for_guesswork: vec![],
                 resolved_as: attrib_path.clone(),
                 debug_hint: format!("attr"),
-                uline: attrib.range().start_point.row,
+                uline: attrib.range().start_point.row + 1,
             };
             // debug!(cx, "DOTTED_ATTR {:?}", u);
             if let Some(_existing_attr) = cx.ap.things.get(&attrib_path) {

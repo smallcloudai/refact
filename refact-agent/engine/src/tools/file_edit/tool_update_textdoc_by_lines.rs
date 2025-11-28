@@ -2,7 +2,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum, DiffChunk};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLevel, PrivacySettings};
-use crate::tools::file_edit::auxiliary::{await_ast_indexing, convert_edit_to_diffchunks, str_replace, sync_documents_ast};
+use crate::tools::file_edit::auxiliary::{await_ast_indexing, convert_edit_to_diffchunks, str_replace_lines, sync_documents_ast};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use async_trait::async_trait;
 use serde_json::{json, Value};
@@ -15,14 +15,13 @@ use tokio::sync::RwLock as ARwLock;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::global_context::GlobalContext;
 
-struct ToolUpdateTextDocArgs {
+struct ToolUpdateTextDocByLinesArgs {
     path: PathBuf,
-    old_str: String,
-    replacement: String,
-    multiple: bool,
+    content: String,
+    ranges: String,
 }
 
-pub struct ToolUpdateTextDoc {
+pub struct ToolUpdateTextDocByLines {
     pub config_path: String,
 }
 
@@ -30,7 +29,7 @@ async fn parse_args(
     gcx: Arc<ARwLock<GlobalContext>>,
     args: &HashMap<String, Value>,
     privacy_settings: Arc<PrivacySettings>
-) -> Result<ToolUpdateTextDocArgs, String> {
+) -> Result<ToolUpdateTextDocByLinesArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
             let raw_path = preprocess_path_for_normalization(s.trim().to_string());
@@ -56,38 +55,31 @@ async fn parse_args(
         Some(v) => return Err(format!("Error: The 'path' argument must be a string, but received: {:?}", v)),
         None => return Err("Error: The 'path' argument is required but was not provided.".to_string()),
     };
-    let old_str = match args.get("old_str") {
+
+    let content = match args.get("content") {
         Some(Value::String(s)) => s.to_string(),
-        Some(v) => return Err(format!("Error: The 'old_str' argument must be a string containing the text to replace, but received: {:?}", v)),
-        None => return Err("Error: The 'old_str' argument is required. Please provide the text that needs to be replaced.".to_string())
-    };
-    let replacement = match args.get("replacement") {
-        Some(Value::String(s)) => s.to_string(),
-        Some(v) => return Err(format!("Error: The 'replacement' argument must be a string containing the new text, but received: {:?}", v)),
-        None => return Err("Error: The 'replacement' argument is required. Please provide the new text that will replace the old text.".to_string())
-    };
-    let multiple = match args.get("multiple") {
-        Some(Value::Bool(b)) => b.clone(),
-        Some(Value::String(v)) => match v.to_lowercase().as_str() {
-            "false" => false,
-            "true" => true,
-            _ => {
-                return Err(format!("argument 'multiple' should be a boolean: {:?}", v))
-            }
-        },
-        Some(v) => return Err(format!("Error: The 'multiple' argument must be a boolean (true/false) indicating whether to replace all occurrences, but received: {:?}", v)),
-        None => false,
+        Some(v) => return Err(format!("Error: The 'content' argument must be a string containing the new text, but received: {:?}", v)),
+        None => return Err("Error: The 'content' argument is required. Please provide the new text that will replace the specified lines.".to_string())
     };
 
-    Ok(ToolUpdateTextDocArgs {
+    let ranges = match args.get("ranges") {
+        Some(Value::String(s)) => s.trim().to_string(),
+        Some(v) => return Err(format!("Error: The 'ranges' argument must be a string, but received: {:?}", v)),
+        None => return Err("Error: The 'ranges' argument is required. Format: ':3' (lines 1-3), '40:50' (lines 40-50), '100:' (line 100 to end), or combine with commas like ':3,40:50,100:'.".to_string())
+    };
+
+    if ranges.is_empty() {
+        return Err("Error: The 'ranges' argument cannot be empty.".to_string());
+    }
+
+    Ok(ToolUpdateTextDocByLinesArgs {
         path,
-        old_str,
-        replacement,
-        multiple
+        content,
+        ranges,
     })
 }
 
-pub async fn tool_update_text_doc_exec(
+pub async fn tool_update_text_doc_by_lines_exec(
     gcx: Arc<ARwLock<GlobalContext>>,
     args: &HashMap<String, Value>,
     dry: bool
@@ -95,14 +87,20 @@ pub async fn tool_update_text_doc_exec(
     let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
     let args = parse_args(gcx.clone(), args, privacy_settings).await?;
     await_ast_indexing(gcx.clone()).await?;
-    let (before_text, after_text) = str_replace(gcx.clone(), &args.path, &args.old_str, &args.replacement, args.multiple, dry).await?;
+    let (before_text, after_text) = str_replace_lines(
+        gcx.clone(),
+        &args.path,
+        &args.content,
+        &args.ranges,
+        dry
+    ).await?;
     sync_documents_ast(gcx.clone(), &args.path).await?;
     let diff_chunks = convert_edit_to_diffchunks(args.path.clone(), &before_text, &after_text)?;
     Ok((before_text, after_text, diff_chunks))
 }
 
 #[async_trait]
-impl Tool for ToolUpdateTextDoc {
+impl Tool for ToolUpdateTextDocByLines {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -114,7 +112,7 @@ impl Tool for ToolUpdateTextDoc {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
-        let (_, _, diff_chunks) = tool_update_text_doc_exec(gcx.clone(), args, false).await?;
+        let (_, _, diff_chunks) = tool_update_text_doc_by_lines_exec(gcx.clone(), args, false).await?;
         let results = vec![ChatMessage {
             role: "diff".to_string(),
             content: ChatContent::SimpleText(json!(diff_chunks).to_string()),
@@ -144,20 +142,18 @@ impl Tool for ToolUpdateTextDoc {
 
         let msgs_len = ccx.lock().await.messages.len();
 
-        // workaround: if messages weren't passed by ToolsPermissionCheckPost, legacy
         if msgs_len != 0 {
-            // if we cannot execute apply_edit, there's no need for confirmation
             if let Err(_) = can_execute_tool_edit(gcx.clone(), args, privacy_settings).await {
                 return Ok(MatchConfirmDeny {
                     result: MatchConfirmDenyResult::PASS,
-                    command: "update_textdoc".to_string(),
+                    command: "update_textdoc_by_lines".to_string(),
                     rule: "".to_string(),
                 });
             }
         }
         Ok(MatchConfirmDeny {
             result: MatchConfirmDenyResult::CONFIRMATION,
-            command: "update_textdoc".to_string(),
+            command: "update_textdoc_by_lines".to_string(),
             rule: "default".to_string(),
         })
     }
@@ -167,50 +163,49 @@ impl Tool for ToolUpdateTextDoc {
         _ccx: Arc<AMutex<AtCommandsContext>>,
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
-        Ok("update_textdoc".to_string())
+        Ok("update_textdoc_by_lines".to_string())
     }
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(IntegrationConfirmation {
-            ask_user: vec!["update_textdoc*".to_string()],
+            ask_user: vec!["update_textdoc_by_lines*".to_string()],
             deny: vec![],
         })
     }
-    
+
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
-            name: "update_textdoc".to_string(),
-            display_name: "Update Text Document".to_string(),
-            source: ToolSource { 
-                source_type: ToolSourceType::Builtin, 
-                config_path: self.config_path.clone(), 
+            name: "update_textdoc_by_lines".to_string(),
+            display_name: "Update Text Document By Lines".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
             },
             agentic: false,
             experimental: false,
-            description: "Updates an existing document by replacing specific text, use this if file already exists. Optimized for large files or small changes where simple string replacement is sufficient. Avoid trailing spaces and tabs.".to_string(),
+            description: "Replaces line ranges in an existing file with new content. Line numbers are 1-based and inclusive. Supports multiple non-overlapping ranges.".to_string(),
             parameters: vec![
                 ToolParam {
                     name: "path".to_string(),
-                    description: "Absolute path to the file to change.".to_string(),
+                    description: "Absolute path to the file to modify.".to_string(),
                     param_type: "string".to_string(),
                 },
                 ToolParam {
-                    name: "old_str".to_string(),
-                    description: "The exact text that needs to be updated. Use update_textdoc_regex if you need pattern matching (is not preferred for common editing).".to_string(),
+                    name: "content".to_string(),
+                    description: "The new text content. For multiple ranges, separate content for each range with '---RANGE_SEPARATOR---'.".to_string(),
                     param_type: "string".to_string(),
                 },
                 ToolParam {
-                    name: "replacement".to_string(),
-                    description: "The new text that will replace the old text.".to_string(),
+                    name: "ranges".to_string(),
+                    description: "Line ranges to replace. Format: ':3' (lines 1-3), '40:50' (lines 40-50), '100:' (line 100 to end), '5' (just line 5). Combine multiple ranges with commas: ':3,40:50,100:'. Ranges must not overlap.".to_string(),
                     param_type: "string".to_string(),
                 },
-                ToolParam {
-                    name: "multiple".to_string(),
-                    description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced.".to_string(),
-                    param_type: "boolean".to_string(),
-                }
             ],
-            parameters_required: vec!["path".to_string(), "old_str".to_string(), "replacement".to_string()],
+            parameters_required: vec![
+                "path".to_string(),
+                "content".to_string(),
+                "ranges".to_string(),
+            ],
         }
     }
 }

@@ -111,7 +111,7 @@ pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBu
 }
 
 pub struct TreeNode {
-    children: HashMap<String, TreeNode>,
+    pub children: HashMap<String, TreeNode>,
     // NOTE: we can store here more info like depth, sub files count, etc.
 }
 

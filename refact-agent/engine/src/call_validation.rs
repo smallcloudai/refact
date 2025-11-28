@@ -325,6 +325,7 @@ pub struct DiffChunk {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct PostprocessSettings {
+    pub use_ast_based_pp: bool,
     pub useful_background: f32,          // first, fill usefulness of all lines with this
     pub useful_symbol_default: f32,      // when a symbol present, set usefulness higher
     // search results fill usefulness as it passed from outside
@@ -345,6 +346,7 @@ impl Default for PostprocessSettings {
 impl PostprocessSettings {
     pub fn new() -> Self {
         PostprocessSettings {
+            use_ast_based_pp: true,
             downgrade_body_coef: 0.8,
             downgrade_parent_coef: 0.6,
             useful_background: 5.0,

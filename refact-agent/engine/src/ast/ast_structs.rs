@@ -13,7 +13,7 @@ pub struct AstUsage {
     pub targets_for_guesswork: Vec<String>, // ?::DerivedFrom1::f ?::DerivedFrom2::f ?::f
     pub resolved_as: String,
     pub debug_hint: String,
-    pub uline: usize,     // starts from 0, TODO make it start from 1
+    pub uline: usize,     // starts from 1, like other line numbers
 }
 
 #[derive(Serialize, Deserialize)]
