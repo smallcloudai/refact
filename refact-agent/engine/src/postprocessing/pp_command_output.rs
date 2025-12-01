@@ -32,14 +32,12 @@ impl Default for CmdlineOutputFilter {
     }
 }
 
-// Since we have better compression routine, very large output will be compressed after a few turns anyway
-// The maximum output would be about 10K tokens
 fn default_limit_lines() -> usize {
-    400 
+    50
 }
 
 fn default_limit_chars() -> usize {
-    40000
+    8000
 }
 
 fn default_valuable_top_or_bottom() -> String {
@@ -47,11 +45,11 @@ fn default_valuable_top_or_bottom() -> String {
 }
 
 fn default_grep() -> String {
-    "(?i)error".to_string()
+    "(?i)(error|failed|exception|warning|fatal|panic|traceback)".to_string()
 }
 
 fn default_grep_context_lines() -> usize {
-    5
+    3
 }
 
 fn default_remove_from_output() -> String {

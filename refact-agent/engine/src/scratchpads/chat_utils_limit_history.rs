@@ -107,10 +107,26 @@ fn compress_message_at_index(
         format!("💿 Tool result {} compressed: {}", tool_info, preview_with_ellipsis)
     } else {
         let content = mutable_messages[index].content.content_text_only();
-        let preview_start = content.chars().take(50).collect::<String>();
-        let preview_end = content.chars().rev().take(50).collect::<String>().chars().rev().collect::<String>();
-        tracing::info!("Compressing large message at index {}: {}", index, &preview_start);
-        format!("💿 Message compressed: {}... (truncated) ...{}", preview_start, preview_end)
+        let lines: Vec<&str> = content.lines().collect();
+        
+        if lines.len() > 20 {
+            let head: Vec<&str> = lines.iter().take(10).cloned().collect();
+            let tail: Vec<&str> = lines.iter().rev().take(10).rev().cloned().collect();
+            let omitted = lines.len() - 20;
+            
+            format!(
+                "💿 Message compressed ({} lines omitted):\n{}\n... [{} lines omitted] ...\n{}",
+                omitted,
+                head.join("\n"),
+                omitted,
+                tail.join("\n")
+            )
+        } else {
+            let preview_start: String = content.chars().take(100).collect();
+            let preview_end: String = content.chars().rev().take(100).collect::<String>().chars().rev().collect();
+            tracing::info!("Compressing large message at index {}: {}", index, &preview_start);
+            format!("💿 Message compressed: {}... (truncated) ...{}", preview_start, preview_end)
+        }
     };
     
     mutable_messages[index].content = ChatContent::SimpleText(new_summary);

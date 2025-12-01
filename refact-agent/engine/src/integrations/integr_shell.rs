@@ -87,17 +87,19 @@ impl Tool for ToolShell {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
-        let (command, workdir_maybe) = parse_args(gcx.clone(), args).await?;
+        let (command, workdir_maybe, custom_filter) = parse_args_with_filter(gcx.clone(), args).await?;
         let timeout = self.cfg.timeout.parse::<u64>().unwrap_or(10);
 
         let mut error_log = Vec::<YamlError>::new();
         let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone(), &mut error_log).await;
 
+        let output_filter = custom_filter.unwrap_or_else(|| self.cfg.output_filter.clone());
+
         let tool_output = execute_shell_command(
             &command,
             &workdir_maybe,
             timeout,
-            &self.cfg.output_filter,
+            &output_filter,
             &env_variables,
             gcx.clone(),
         ).await?;
@@ -127,7 +129,7 @@ impl Tool for ToolShell {
             },
             agentic: true,
             experimental: false,
-            description: "Execute a single command, using the \"sh\" on unix-like systems and \"powershell.exe\" on windows. Use it for one-time tasks like dependencies installation. Don't call this unless you have to. Not suitable for regular work because it requires a confirmation at each step.".to_string(),
+            description: "Execute a single command, using the \"sh\" on unix-like systems and \"powershell.exe\" on windows. Use it for one-time tasks like dependencies installation. Don't call this unless you have to. Not suitable for regular work because it requires a confirmation at each step. Output is compressed by default - use output_filter and output_limit parameters to see specific parts if needed.".to_string(),
             parameters: vec![
                 ToolParam {
                     name: "command".to_string(),
@@ -138,6 +140,16 @@ impl Tool for ToolShell {
                     name: "workdir".to_string(),
                     param_type: "string".to_string(),
                     description: "workdir for the command".to_string(),
+                },
+                ToolParam {
+                    name: "output_filter".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Optional regex pattern to filter output lines. Only lines matching this pattern (and context) will be shown. Use to find specific errors or content in large outputs.".to_string(),
+                },
+                ToolParam {
+                    name: "output_limit".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Optional. Max lines to show (default: 40). Use higher values like '200' or 'all' to see more output.".to_string(),
                 },
             ],
             parameters_required: vec![
@@ -245,6 +257,11 @@ pub async fn execute_shell_command(
 }
 
 async fn parse_args(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>), String> {
+    let (command, workdir, _) = parse_args_with_filter(gcx, args).await?;
+    Ok((command, workdir))
+}
+
+async fn parse_args_with_filter(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>, Option<CmdlineOutputFilter>), String> {
     let command = match args.get("command") {
         Some(Value::String(s)) => {
             if s.is_empty() {
@@ -269,7 +286,38 @@ async fn parse_args(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Val
         None => None
     };
 
-    Ok((command, workdir))
+    let custom_filter = parse_output_filter_args(args);
+
+    Ok((command, workdir, custom_filter))
+}
+
+fn parse_output_filter_args(args: &HashMap<String, Value>) -> Option<CmdlineOutputFilter> {
+    let output_filter_pattern = args.get("output_filter")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    
+    let output_limit = args.get("output_limit")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    
+    if output_filter_pattern.is_none() && output_limit.is_none() {
+        return None;
+    }
+    
+    let limit_lines = match output_limit.as_deref() {
+        Some("all") | Some("full") => 10000,
+        Some(s) => s.parse::<usize>().unwrap_or(40),
+        None => 40,
+    };
+    
+    Some(CmdlineOutputFilter {
+        limit_lines,
+        limit_chars: limit_lines * 200,
+        valuable_top_or_bottom: "top".to_string(),
+        grep: output_filter_pattern.unwrap_or_else(|| "(?i)error".to_string()),
+        grep_context_lines: 5,
+        remove_from_output: "".to_string(),
+    })
 }
 
 async fn resolve_shell_workdir(gcx: Arc<ARwLock<GlobalContext>>, raw_path: &str) -> Result<PathBuf, String> {
