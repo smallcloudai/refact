@@ -139,6 +139,32 @@ pub async fn pp_ast_markup_files(
     result
 }
 
+pub async fn pp_load_files_without_ast(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    context_file_vec: &mut Vec<ContextFile>,
+) -> Vec<Arc<PPFile>> {
+    let mut result: Vec<Arc<PPFile>> = vec![];
+    for (cpath, short) in pp_resolve_ctx_file_paths(gcx.clone(), context_file_vec).await {
+        let cpath_pathbuf = PathBuf::from(&cpath);
+        let cpath_symmetry_breaker: f32 = (calculate_hash(&cpath_pathbuf) as f32) / (u64::MAX as f32) / 100.0;
+        let text = match get_file_text_from_memory_or_disk(gcx.clone(), &cpath_pathbuf).await {
+            Ok(text) => text,
+            Err(e) => {
+                warn!("pp_load_files_without_ast: cannot read file {:?}, skipping. Error: {}", cpath, e);
+                continue;
+            }
+        };
+        result.push(Arc::new(PPFile {
+            symbols_sorted_by_path_len: vec![],
+            file_content: text,
+            cpath: cpath,
+            cpath_symmetry_breaker,
+            shorter_path: short,
+        }));
+    }
+    result
+}
+
 pub fn colorize_if_more_useful(lines: &mut Vec<FileLine>, line1: usize, line2: usize, color: String, useful: f32) {
     if DEBUG >= 2 {
         info!("    colorize_if_more_useful {}..{} <= color {:?} useful {}", line1, line2, color, useful);

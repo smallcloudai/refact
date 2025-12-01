@@ -10,7 +10,7 @@ use crate::call_validation::{ContextFile, PostprocessSettings};
 use crate::ast::ast_structs::AstDefinition;
 use crate::global_context::GlobalContext;
 use crate::nicer_logs::{first_n_chars, last_n_chars};
-use crate::postprocessing::pp_utils::{color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, downgrade_lines_if_subsymbol, pp_ast_markup_files};
+use crate::postprocessing::pp_utils::{color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, downgrade_lines_if_subsymbol, pp_ast_markup_files, pp_load_files_without_ast};
 use crate::tokens::count_text_tokens_with_fallback;
 
 
@@ -371,7 +371,8 @@ pub async fn postprocess_context_files(
         // this modifies context_file.file_name to make it cpath
         pp_ast_markup_files(gcx.clone(), context_file_vec).await
     } else {
-        vec![]
+        // still need to load files for post-processing, just without AST symbols
+        pp_load_files_without_ast(gcx.clone(), context_file_vec).await
     };
 
     let mut lines_in_files = pp_color_lines(
