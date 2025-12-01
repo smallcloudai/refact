@@ -226,6 +226,30 @@ fn remove_invalid_tool_calls_and_tool_calls_results(messages: &mut Vec<ChatMessa
             true
         }
     });
+
+    // Remove duplicate tool results - keep only the last occurrence of each tool_call_id
+    // Anthropic API requires exactly one tool_result per tool_use
+    // For file edit operations, "diff" role typically comes after "tool" and contains cleaner output
+    let mut last_occurrence: HashMap<String, usize> = HashMap::new();
+    for (i, m) in messages.iter().enumerate() {
+        if !m.tool_call_id.is_empty() {
+            last_occurrence.insert(m.tool_call_id.clone(), i);
+        }
+    }
+    let indices_to_keep: HashSet<usize> = last_occurrence.values().cloned().collect();
+    let mut current_idx = 0usize;
+    messages.retain(|m| {
+        let idx = current_idx;
+        current_idx += 1;
+        if m.tool_call_id.is_empty() {
+            true
+        } else if indices_to_keep.contains(&idx) {
+            true
+        } else {
+            tracing::warn!("removing duplicate tool result (role={}) for tool_call_id: {}", m.role, m.tool_call_id);
+            false
+        }
+    });
 }
 
 /// Determines if a file content is substantially a duplicate of previously shown content
