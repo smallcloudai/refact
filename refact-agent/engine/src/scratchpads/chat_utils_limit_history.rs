@@ -1257,7 +1257,7 @@ mod tests {
             vocab.insert("[UNK]".to_string(), 0u32);
 
             let wordpiece = WordPiece::builder()
-                .vocab(vocab)
+                .vocab(vocab.into_iter().collect())
                 .unk_token("[UNK]".to_string())
                 .build()
                 .unwrap();
