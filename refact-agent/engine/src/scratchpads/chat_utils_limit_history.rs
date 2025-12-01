@@ -829,8 +829,44 @@ pub fn fix_and_limit_messages_history(
         5..=7 => CompressionStrength::High,
         _ => CompressionStrength::High,
     };
-    tracing::info!("Used compression stage {} resulting in {:?} compression strength", 
+    tracing::info!("Used compression stage {} resulting in {:?} compression strength",
                   highest_compression_stage, compression_strength);
+
+    // Insert cd_instruction message to instruct the model to prompt the user about compression
+    let compression_notice = match compression_strength {
+        CompressionStrength::Low => Some(
+            "💿 Light compression was applied to fit the context window. \
+            Inform the user that some older context has been summarized and suggest they press the 'Compress Chat' button to save tokens."
+        ),
+        CompressionStrength::Medium => Some(
+            "💿 Medium compression was applied - conversation blocks were dropped. \
+            Strongly recommend to the user that they press the 'Compress Chat' button to create a summary and continue with fresh context. \
+            Explain this will significantly reduce token costs."
+        ),
+        CompressionStrength::High => Some(
+            "💿 Heavy compression was applied affecting recent context quality. \
+            Urgently prompt the user to press the 'Compress Chat' button immediately. \
+            Warn them that continuing without compression will waste tokens and degrade response quality."
+        ),
+        CompressionStrength::Absent => None,
+    };
+
+    if let Some(notice) = compression_notice {
+        let compression_msg = ChatMessage {
+            role: "cd_instruction".to_string(),
+            content: ChatContent::SimpleText(notice.to_string()),
+            finish_reason: None,
+            tool_calls: None,
+            tool_call_id: String::new(),
+            tool_failed: None,
+            usage: None,
+            checkpoints: Vec::new(),
+            thinking_blocks: None,
+            output_filter: None,
+        };
+        mutable_messages.push(compression_msg);
+    }
+
     validate_chat_history(&mutable_messages).map(|msgs| (msgs, compression_strength))
 }
 
