@@ -323,6 +323,7 @@ impl Tool for ToolStrategicPlanning {
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             usage: Some(usage_collector),
+            output_filter: Some(crate::postprocessing::pp_command_output::OutputFilter::no_limits()),
             ..Default::default()
         }));  
         results.push(ContextEnum::ChatMessage(ChatMessage {

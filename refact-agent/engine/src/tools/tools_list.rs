@@ -88,7 +88,6 @@ async fn get_builtin_tools(
         Box::new(crate::tools::tool_cat::ToolCat{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_regex_search::ToolRegexSearch{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_search::ToolSearch{config_path: config_path.clone()}),
-        // Box::new(crate::tools::tool_locate_search::ToolLocateSearch{config_path: config_path.clone()}),
     ];
 
     let codebase_change_tools: Vec<Box<dyn Tool + Send>> = vec![
@@ -246,7 +245,7 @@ pub async fn get_available_tools_by_chat_mode(
             tools.collect()
         }
         ChatMode::CONFIGURE => {
-            let blacklist = ["tree", "locate", "knowledge", "search"];
+            let blacklist = ["tree", "knowledge", "search"];
             tools.filter(|tool| !blacklist.contains(&tool.tool_description().name.as_str())).collect()
         },
         ChatMode::PROJECT_SUMMARY => {

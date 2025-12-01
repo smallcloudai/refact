@@ -67,7 +67,7 @@ Installable by the end user:
 - [x] search_semantic() with scope (semantic search)
 - [x] search_pattern() with scope (pattern matching)
 - [x] @file @tree @web @definition @references @search mentions in chat
-- [x] locate() uses test-time compute to find good project cross-section
+- [x] subagent() delegates focused tasks to independent sub-agents
 - [x] Latest gpt-4o gpt-4o-mini
 - [x] Claude-3-5-sonnet
 - [x] Llama-3.1 (passthrough)

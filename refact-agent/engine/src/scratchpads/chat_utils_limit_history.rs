@@ -871,6 +871,7 @@ mod compression_tests {
             usage: None,
             checkpoints: Vec::new(),
             thinking_blocks: None,
+            output_filter: None,
         }
     }
 
@@ -1082,7 +1083,7 @@ mod compression_tests {
         // Create a set of messages including some that should be compressed
         let mut messages = vec![
             create_test_message("user", "User message", None, None),
-            create_test_message("context_file", r#"[{"file_name": "test.rs", "file_content": "fn main() {}"}]"#, None, None),
+            create_test_message("context_file", r#"[{"file_name": "test.rs", "file_content": "fn main() {}", "line1": 1, "line2": 1}]"#, None, None),
             create_test_message("tool", "Tool result content", Some("tool_123".to_string()), None)
         ];
         
@@ -1125,7 +1126,7 @@ mod compression_tests {
     fn test_process_stage_budget_reached() {
         // Create messages with high token counts
         let mut messages = vec![
-            create_test_message("context_file", r#"[{"file_name": "large_file.rs", "file_content": ""}]"#, None, None),
+            create_test_message("context_file", r#"[{"file_name": "large_file.rs", "file_content": "", "line1": 1, "line2": 1}]"#, None, None),
             create_test_message("tool", &"A".repeat(1000), Some("tool_123".to_string()), None)
         ];
         
@@ -1173,8 +1174,8 @@ mod compression_tests {
         // Create a set of messages
         let mut messages = vec![
             create_test_message("user", "User message 1", None, None),
-            create_test_message("context_file", r#"[{"file_name": "file1.rs", "file_content": ""}]"#, None, None),
-            create_test_message("context_file", r#"[{"file_name": "file2.rs", "file_content": ""}]"#, None, None)
+            create_test_message("context_file", r#"[{"file_name": "file1.rs", "file_content": "", "line1": 1, "line2": 1}]"#, None, None),
+            create_test_message("context_file", r#"[{"file_name": "file2.rs", "file_content": "", "line1": 1, "line2": 1}]"#, None, None)
         ];
         
         // Initial token counts
@@ -1298,6 +1299,7 @@ mod tests {
             usage: None,
             checkpoints: Vec::new(),
             thinking_blocks: None,
+            output_filter: None,
         }
     }
 
@@ -1368,8 +1370,8 @@ mod tests {
     fn create_mock_chat_history_with_context_files() -> (Vec<ChatMessage>, usize) {
         let x = vec![
             create_test_message("system", "System prompt", None, None),
-            create_test_message("context_file", r#"[{"file_name": "file1.rs", "file_content": "This is a large file with lots of content", "language": "rust"}]"#, None, None),
-            create_test_message("context_file", r#"[{"file_name": "file2.rs", "file_content": "Another large file with lots of content", "language": "rust"}]"#, None, None),
+            create_test_message("context_file", r#"[{"file_name": "file1.rs", "file_content": "This is a large file with lots of content", "line1": 1, "line2": 1}]"#, None, None),
+            create_test_message("context_file", r#"[{"file_name": "file2.rs", "file_content": "Another large file with lots of content", "line1": 1, "line2": 1}]"#, None, None),
             create_test_message("user", "block 1 user message", None, None),
             create_test_message("assistant", "block 1 assistant response", None, Some(vec![
                 ChatToolCall {
@@ -1382,7 +1384,7 @@ mod tests {
                 }
             ])),
             create_test_message("tool", "block 1 tool result", Some("tool1".to_string()), None),
-            create_test_message("context_file", r#"[{"file_name": "file3.rs", "file_content": "Yet another large file with lots of content", "language": "rust"}]"#, None, None),
+            create_test_message("context_file", r#"[{"file_name": "file3.rs", "file_content": "Yet another large file with lots of content", "line1": 1, "line2": 1}]"#, None, None),
             create_test_message("user", "block 2 user message", None, None),
             create_test_message("assistant", "block 2 assistant response", None, None),
             create_test_message("user", "block 3 user message", None, None),

@@ -22,7 +22,7 @@ use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::{execute_command, AnsiStrippable};
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, ToolSource, ToolSourceType, MatchConfirmDeny, MatchConfirmDenyResult};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::postprocessing::pp_command_output::CmdlineOutputFilter;
+use crate::postprocessing::pp_command_output::OutputFilter;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationTrait};
 use crate::custom_error::YamlError;
 use crate::tools::tools_execute::{command_should_be_denied, command_should_be_confirmed_by_user};
@@ -33,7 +33,7 @@ pub struct SettingsShell {
     #[serde(default)]
     pub timeout: String,
     #[serde(default)]
-    pub output_filter: CmdlineOutputFilter,
+    pub output_filter: OutputFilter,
 }
 
 #[derive(Default)]
@@ -95,11 +95,10 @@ impl Tool for ToolShell {
 
         let output_filter = custom_filter.unwrap_or_else(|| self.cfg.output_filter.clone());
 
-        let tool_output = execute_shell_command(
+        let tool_output = execute_shell_command_raw(
             &command,
             &workdir_maybe,
             timeout,
-            &output_filter,
             &env_variables,
             gcx.clone(),
         ).await?;
@@ -109,6 +108,7 @@ impl Tool for ToolShell {
             content: ChatContent::SimpleText(tool_output),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            output_filter: Some(output_filter),
             ..Default::default()
         })];
 
@@ -212,11 +212,10 @@ impl Tool for ToolShell {
     }
 }
 
-pub async fn execute_shell_command(
+pub async fn execute_shell_command_raw(
     command: &str,
     workdir_maybe: &Option<PathBuf>,
     timeout: u64,
-    output_filter: &CmdlineOutputFilter,
     env_variables: &HashMap<String, String>,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<String, String> {
@@ -247,10 +246,7 @@ pub async fn execute_shell_command(
     let stdout = output.stdout.to_string_lossy_and_strip_ansi();
     let stderr = output.stderr.to_string_lossy_and_strip_ansi();
 
-    let filtered_stdout = crate::postprocessing::pp_command_output::output_mini_postprocessing(output_filter, &stdout);
-    let filtered_stderr = crate::postprocessing::pp_command_output::output_mini_postprocessing(output_filter, &stderr);
-
-    let mut out = crate::integrations::integr_cmdline::format_output(&filtered_stdout, &filtered_stderr);
+    let mut out = crate::integrations::integr_cmdline::format_output(&stdout, &stderr);
     let exit_code = output.status.code().unwrap_or_default();
     out.push_str(&format!("The command was running {:.3}s, finished with exit code {exit_code}\n", duration.as_secs_f64()));
     Ok(out)
@@ -261,7 +257,7 @@ async fn parse_args(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Val
     Ok((command, workdir))
 }
 
-async fn parse_args_with_filter(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>, Option<CmdlineOutputFilter>), String> {
+async fn parse_args_with_filter(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>, Option<OutputFilter>), String> {
     let command = match args.get("command") {
         Some(Value::String(s)) => {
             if s.is_empty() {
@@ -291,32 +287,35 @@ async fn parse_args_with_filter(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap
     Ok((command, workdir, custom_filter))
 }
 
-fn parse_output_filter_args(args: &HashMap<String, Value>) -> Option<CmdlineOutputFilter> {
+fn parse_output_filter_args(args: &HashMap<String, Value>) -> Option<OutputFilter> {
     let output_filter_pattern = args.get("output_filter")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
-    
+
     let output_limit = args.get("output_limit")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
-    
+
     if output_filter_pattern.is_none() && output_limit.is_none() {
         return None;
     }
-    
-    let limit_lines = match output_limit.as_deref() {
-        Some("all") | Some("full") => 10000,
-        Some(s) => s.parse::<usize>().unwrap_or(40),
-        None => 40,
+
+    let is_unlimited = matches!(output_limit.as_deref(), Some("all") | Some("full"));
+
+    let limit_lines = if is_unlimited {
+        usize::MAX
+    } else {
+        output_limit.as_deref().and_then(|s| s.parse::<usize>().ok()).unwrap_or(40)
     };
-    
-    Some(CmdlineOutputFilter {
+
+    Some(OutputFilter {
         limit_lines,
-        limit_chars: limit_lines * 200,
+        limit_chars: if is_unlimited { usize::MAX } else { limit_lines * 200 },
         valuable_top_or_bottom: "top".to_string(),
         grep: output_filter_pattern.unwrap_or_else(|| "(?i)error".to_string()),
         grep_context_lines: 5,
         remove_from_output: "".to_string(),
+        limit_tokens: if is_unlimited { None } else { Some(limit_lines * 50) },
     })
 }
 

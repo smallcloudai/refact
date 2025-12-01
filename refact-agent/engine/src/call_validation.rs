@@ -184,6 +184,8 @@ pub struct ChatMessage {
     pub checkpoints: Vec<Checkpoint>,
     #[serde(default, skip_serializing_if="Option::is_none")]
     pub thinking_blocks: Option<Vec<serde_json::Value>>,
+    #[serde(skip)]
+    pub output_filter: Option<crate::postprocessing::pp_command_output::OutputFilter>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]

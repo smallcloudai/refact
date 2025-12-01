@@ -13,7 +13,7 @@ use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key}
 use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatContent, ChatMessage};
 use crate::scratchpads::multimodality::MultimodalElement;
-use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
+use crate::postprocessing::pp_command_output::{OutputFilter, output_mini_postprocessing};
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::docker::docker_container_manager::get_container_name;
@@ -886,16 +886,7 @@ async fn chrome_command_exec(
                 tab_log_lock.clear();
                 tab_log
             };
-            // let filter = CmdlineOutputFilter::default();
-            let filter = CmdlineOutputFilter {
-                limit_lines: 100,
-                limit_chars: 10000,
-                valuable_top_or_bottom: "top".to_string(),
-                grep: "".to_string(),
-                grep_context_lines: 0,
-                remove_from_output: "".to_string(),
-            };
-            let filtered_log = output_mini_postprocessing(&filter, tab_log.as_str());
+            let filtered_log = output_mini_postprocessing(&OutputFilter::default(), tab_log.as_str());
             tool_log.push(filtered_log.clone());
         },
         Command::Eval(args) => {

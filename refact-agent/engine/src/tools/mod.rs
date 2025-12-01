@@ -16,7 +16,7 @@ mod tool_deep_research;
 mod tool_subagent;
 mod tool_search;
 mod tool_knowledge;
-mod tool_locate_search;
+
 mod tool_create_knowledge;
 mod tool_create_memory_bank;
 pub mod file_edit;

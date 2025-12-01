@@ -319,12 +319,6 @@ system_prompts:
 
 
 subchat_tool_parameters:
-  locate:
-    subchat_model_type: "thinking"
-    subchat_tokens_for_rag: 150000
-    subchat_n_ctx: 200000
-    subchat_max_new_tokens: 10000
-    subchat_reasoning_effort: "low"
   strategic_planning:
     subchat_model_type: "thinking"
     subchat_tokens_for_rag: 120000
