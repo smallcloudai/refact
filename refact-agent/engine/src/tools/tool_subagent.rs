@@ -138,7 +138,7 @@ impl Tool for ToolSubagent {
                     description: "Maximum number of steps (tool calls) the subagent can make. Default is 10. Use lower values for simple tasks, higher for complex ones.".to_string(),
                 },
             ],
-            parameters_required: vec!["task".to_string(), "expected_result".to_string()],
+            parameters_required: vec!["task".to_string(), "expected_result".to_string(), "tools".to_string(), "max_steps".to_string()],
         }
     }
 

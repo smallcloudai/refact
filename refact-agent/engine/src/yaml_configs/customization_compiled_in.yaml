@@ -326,11 +326,9 @@ subchat_tool_parameters:
     subchat_max_new_tokens: 32000
     subchat_reasoning_effort: "high"
   create_memory_bank:
-    subchat_model_type: "thinking"
     subchat_tokens_for_rag: 120000
     subchat_n_ctx: 200000
     subchat_max_new_tokens: 10000
-    subchat_reasoning_effort: "low"
   deep_research:
     subchat_model: "o4-mini-deep-research"
     subchat_n_ctx: 200000

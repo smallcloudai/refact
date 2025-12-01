@@ -318,8 +318,8 @@ async fn pp_limit_and_merge(
             if !line_ref.take {
                 continue;
             }
+            if !anything { first_line = i; }
             anything = true;
-            if first_line == 0 { first_line = i; }
             if i > prev_line + 1 {
                 out.push_str("...\n");
             }
