@@ -276,6 +276,7 @@ pub async fn context_file_from_file_path(
         symbols: vec![],
         gradient_type,
         usefulness: 100.0,
+        skip_pp: false,
     })
 }
 

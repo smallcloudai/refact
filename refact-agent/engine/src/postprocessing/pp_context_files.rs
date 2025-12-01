@@ -353,6 +353,7 @@ async fn pp_limit_and_merge(
             symbols: vec![],
             gradient_type: -1,
             usefulness: 0.0,
+            skip_pp: false,
         });
     }
     context_files_merged

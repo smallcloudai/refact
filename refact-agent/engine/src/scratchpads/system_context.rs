@@ -1316,6 +1316,7 @@ pub async fn create_instruction_files_message(
             symbols: vec![],
             gradient_type: 0,
             usefulness: 100.0,
+            skip_pp: false,
         });
     }
 
@@ -1333,6 +1334,7 @@ pub async fn create_instruction_files_message(
             symbols: vec![],
             gradient_type: 0,
             usefulness: 50.0,
+            skip_pp: false,
         });
         tracing::info!("Listed {} additional instruction files as paths only", paths_only.len());
     }

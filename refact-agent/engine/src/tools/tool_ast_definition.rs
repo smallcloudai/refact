@@ -77,6 +77,7 @@ impl Tool for ToolAstDefinition {
                             symbols: vec![res.path_drop0()],
                             gradient_type: 5,
                             usefulness: 100.0,
+                            skip_pp: false,
                         })
                     }).collect();
 

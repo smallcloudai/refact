@@ -102,6 +102,7 @@ impl Tool for ToolAstReference {
                                 symbols: vec![usedin.path()],
                                 gradient_type: 4,
                                 usefulness: 100.0,
+                                skip_pp: false,
                             });
                         }
                     }

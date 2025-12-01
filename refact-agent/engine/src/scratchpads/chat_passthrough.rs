@@ -278,7 +278,7 @@ fn _adapt_for_reasoning_models(
     default_temperature: Option<f32>,
     supports_boost_reasoning: bool,
 ) -> Vec<ChatMessage> {
-    match supports_reasoning.as_ref() {
+    let messages = match supports_reasoning.as_ref() {
         "openai" => {
             if supports_boost_reasoning && sampling_parameters.boost_reasoning {
                 sampling_parameters.reasoning_effort = Some(ReasoningEffort::Medium);
@@ -321,5 +321,21 @@ fn _adapt_for_reasoning_models(
             sampling_parameters.temperature = default_temperature.clone();
             messages
         }
+    };
+
+    let thinking_enabled = sampling_parameters.thinking
+        .as_ref()
+        .and_then(|t| t.get("type"))
+        .and_then(|t| t.as_str())
+        .map(|t| t == "enabled")
+        .unwrap_or(false);
+
+    if !thinking_enabled {
+        messages.into_iter().map(|mut msg| {
+            msg.thinking_blocks = None;
+            msg
+        }).collect()
+    } else {
+        messages
     }
 }

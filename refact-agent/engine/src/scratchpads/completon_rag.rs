@@ -138,6 +138,7 @@ async fn _cursor_position_to_context_file(
                 symbols: vec![def.path_drop0()],
                 gradient_type: 4,
                 usefulness: 100.,
+                skip_pp: false,
             });
             let usage_dict = json!({
                 "file_path": def.cpath.clone(),
@@ -196,6 +197,7 @@ pub async fn retrieve_ast_based_extra_context(
             symbols: vec![],
             gradient_type: 4,
             usefulness: -1.0,
+            skip_pp: false,
         };
         ast_context_file_vec.push(fim_ban);
     }

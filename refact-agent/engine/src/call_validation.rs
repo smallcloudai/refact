@@ -122,6 +122,8 @@ pub struct ContextFile {
     pub gradient_type: i32,
     #[serde(default, skip_serializing)]
     pub usefulness: f32, // higher is better
+    #[serde(default, skip_serializing)]
+    pub skip_pp: bool, // if true, skip postprocessing compression for this file
 }
 
 fn default_gradient_type_value() -> i32 { -1 }

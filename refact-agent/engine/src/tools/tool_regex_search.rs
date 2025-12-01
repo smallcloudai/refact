@@ -51,6 +51,7 @@ async fn search_single_file(
                 symbols: vec![],
                 gradient_type: 5,
                 usefulness: 100.0,
+                skip_pp: false,
             });
         }
     }
@@ -257,6 +258,7 @@ impl Tool for ToolRegexSearch {
                         symbols: vec![],
                         gradient_type: 4,
                         usefulness: 80.0,
+                        skip_pp: false,
                     };
                     all_search_results.push(cf);
                 },

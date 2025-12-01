@@ -112,6 +112,7 @@ async fn _make_prompt(
                     symbols: vec![],
                     gradient_type: 4,
                     usefulness: 100.0,
+                    skip_pp: false,
                 }
             },
             Err(_) => {
