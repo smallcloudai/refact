@@ -299,12 +299,15 @@ fn _adapt_for_reasoning_models(
             } else {
                 0
             };
-            if supports_boost_reasoning && sampling_parameters.boost_reasoning && budget_tokens > 0 {
+            let should_enable_thinking = (supports_boost_reasoning && sampling_parameters.boost_reasoning)
+                || sampling_parameters.reasoning_effort.is_some();
+            if should_enable_thinking && budget_tokens > 0 {
                 sampling_parameters.thinking = Some(json!({
                     "type": "enabled",
                     "budget_tokens": budget_tokens,
                 }));
             }
+            sampling_parameters.reasoning_effort = None;
             messages
         },
         "qwen" => {
@@ -328,7 +331,9 @@ fn _adapt_for_reasoning_models(
         .and_then(|t| t.get("type"))
         .and_then(|t| t.as_str())
         .map(|t| t == "enabled")
-        .unwrap_or(false);
+        .unwrap_or(false)
+        || sampling_parameters.reasoning_effort.is_some()
+        || sampling_parameters.enable_thinking == Some(true);
 
     if !thinking_enabled {
         messages.into_iter().map(|mut msg| {
