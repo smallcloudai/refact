@@ -1252,8 +1252,9 @@ mod tests {
             use tokenizers::Tokenizer;
             use tokenizers::models::wordpiece::WordPiece;
 
+            let vocab = [("[UNK]".to_string(), 0u32)];
             let wordpiece = WordPiece::builder()
-                .vocab([("[UNK]".to_string(), 0u32)].into())
+                .vocab(vocab)
                 .unk_token("[UNK]".to_string())
                 .build()
                 .unwrap();
