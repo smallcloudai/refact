@@ -170,7 +170,7 @@ async fn chat_interaction_non_stream(
         let message = choice.get("message").ok_or("error parsing model's output: choice.message doesn't exist".to_string())?;
 
         // convert choice to a ChatMessage (we don't have code like this in any other place in rust, only in python and typescript)
-        let (role, content_value, tool_calls, tool_call_id) = {
+        let (role, content_value, tool_calls, tool_call_id, thinking_blocks) = {
             (
                 message.get("role")
                     .and_then(|v| v.as_str())
@@ -187,7 +187,10 @@ async fn chat_interaction_non_stream(
                     }),
                 message.get("tool_call_id")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("").to_string()
+                    .unwrap_or("").to_string(),
+                message.get("thinking_blocks")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| arr.clone())
             )
         };
 
@@ -200,6 +203,7 @@ async fn chat_interaction_non_stream(
             content,
             tool_calls,
             tool_call_id,
+            thinking_blocks,
             usage: usage_mb.clone(),
             ..Default::default()
         };
