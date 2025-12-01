@@ -1251,13 +1251,9 @@ mod tests {
         fn mock() -> Arc<Self> {
             use tokenizers::Tokenizer;
             use tokenizers::models::wordpiece::WordPiece;
-            use std::collections::HashMap;
-
-            let mut vocab = HashMap::new();
-            vocab.insert("[UNK]".to_string(), 0u32);
 
             let wordpiece = WordPiece::builder()
-                .vocab(vocab.into_iter().collect())
+                .vocab([("[UNK]".to_string(), 0u32)].into())
                 .unk_token("[UNK]".to_string())
                 .build()
                 .unwrap();
