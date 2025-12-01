@@ -261,21 +261,41 @@ impl ChatMessage {
         let mut dict = serde_json::Map::new();
         let chat_content_raw = self.content.into_raw(style);
         dict.insert("role".to_string(), Value::String(self.role.clone()));
-        if model_supports_empty_strings(model_id) || !chat_content_raw.is_empty() {
-            dict.insert("content".to_string(), json!(chat_content_raw));
+
+        // For Anthropic extended thinking: thinking blocks must be inside the content array
+        // as the first elements, not as a separate field. When thinking_blocks is present,
+        // we must use array format for content and prepend thinking blocks.
+        if let Some(thinking_blocks) = &self.thinking_blocks {
+            let mut content_array: Vec<Value> = thinking_blocks.clone();
+            match &chat_content_raw {
+                ChatContentRaw::SimpleText(text) => {
+                    if !text.is_empty() {
+                        content_array.push(json!({"type": "text", "text": text}));
+                    }
+                },
+                ChatContentRaw::Multimodal(elements) => {
+                    for el in elements {
+                        content_array.push(json!(el));
+                    }
+                }
+            }
+            dict.insert("content".to_string(), json!(content_array));
+        } else {
+            // No thinking blocks - use original format
+            if model_supports_empty_strings(model_id) || !chat_content_raw.is_empty() {
+                dict.insert("content".to_string(), json!(chat_content_raw));
+            }
+            if !model_supports_empty_strings(model_id) && chat_content_raw.is_empty()
+                && self.tool_calls.is_none() {
+                dict.insert("content".to_string(), "_".into());
+            }
         }
-        if !model_supports_empty_strings(model_id) && chat_content_raw.is_empty()
-            && self.tool_calls.is_none() && self.thinking_blocks.is_none() {
-            dict.insert("content".to_string(), "_".into());
-        }
+
         if let Some(tool_calls) = self.tool_calls.clone() {
             dict.insert("tool_calls".to_string(), json!(tool_calls));
         }
         if !self.tool_call_id.is_empty() {
             dict.insert("tool_call_id".to_string(), Value::String(self.tool_call_id.clone()));
-        }
-        if let Some(thinking_blocks) = self.thinking_blocks.clone() {
-            dict.insert("thinking_blocks".to_string(), json!(thinking_blocks));
         }
 
         Value::Object(dict)
