@@ -4,7 +4,31 @@ use tracing::{error, warn};
 use crate::call_validation::{ChatContent, ChatMessage, ContextFile, DiffChunk};
 
 
-pub fn convert_messages_to_openai_format(messages: Vec<ChatMessage>, style: &Option<String>, model_id: &str) -> Vec<Value> {
+pub fn convert_messages_to_openai_format(mut messages: Vec<ChatMessage>, style: &Option<String>, model_id: &str) -> Vec<Value> {
+    // Hack for reasoning models: if the last assistant message has no visible content
+    // but contains thinking_blocks (for example, when a previous reasoning step was
+    // interrupted mid-stream), replace it with a short dummy message and drop
+    // thinking_blocks. This avoids resending partial signed thinking back to
+    // providers like Anthropic, which would otherwise fail signature validation.
+    if let Some(last_asst_idx) = messages.iter().rposition(|m| m.role == "assistant") {
+        let has_only_thinking = messages[last_asst_idx]
+            .content
+            .content_text_only()
+            .trim()
+            .is_empty()
+            && messages[last_asst_idx]
+                .thinking_blocks
+                .as_ref()
+                .map_or(false, |v| !v.is_empty());
+        if has_only_thinking {
+            let m = &mut messages[last_asst_idx];
+            m.content = ChatContent::SimpleText(
+                "Previous reasoning was interrupted; continuing from here.".to_string(),
+            );
+            m.thinking_blocks = None;
+        }
+    }
+
     let mut results = vec![];
     let mut delay_images = vec![];
 
