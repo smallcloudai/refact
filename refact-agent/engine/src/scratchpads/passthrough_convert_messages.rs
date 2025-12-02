@@ -3,18 +3,11 @@ use serde_json::Value;
 use tracing::{error, warn};
 use crate::call_validation::{ChatContent, ChatMessage, ContextFile, DiffChunk};
 
-
+// Note: This function always produces OpenAI-compatible format.
+// When going through litellm proxy, litellm handles the conversion to Anthropic native format.
+// Tool results use role="tool" with tool_call_id (OpenAI format), not tool_result blocks.
+// Thinking blocks are preserved in assistant messages' content arrays for Anthropic models.
 pub fn convert_messages_to_openai_format(mut messages: Vec<ChatMessage>, style: &Option<String>, model_id: &str) -> Vec<Value> {
-    // Hack for reasoning models: if the last assistant message has no visible content
-    // but contains thinking_blocks (for example, when a previous reasoning step was
-    // interrupted mid-stream), replace it with a short dummy message and drop
-    // thinking_blocks. This avoids resending partial signed thinking back to
-    // providers like Anthropic, which would otherwise fail signature validation.
-    //
-    // IMPORTANT: Only apply this hack when there are NO tool_calls. If the assistant
-    // has thinking_blocks + tool_calls (but empty visible content), that's a normal
-    // tool use flow - Anthropic requires thinking blocks to be preserved and sent back
-    // during multi-turn conversations with extended thinking enabled.
     if let Some(last_asst_idx) = messages.iter().rposition(|m| m.role == "assistant") {
         let has_only_thinking = messages[last_asst_idx]
             .content
@@ -28,7 +21,7 @@ pub fn convert_messages_to_openai_format(mut messages: Vec<ChatMessage>, style: 
             && messages[last_asst_idx]
                 .tool_calls
                 .as_ref()
-                .map_or(true, |v| v.is_empty()); // Only if NO tool_calls
+                .map_or(true, |v| v.is_empty());
         if has_only_thinking {
             let m = &mut messages[last_asst_idx];
             m.content = ChatContent::SimpleText(
@@ -48,6 +41,8 @@ pub fn convert_messages_to_openai_format(mut messages: Vec<ChatMessage>, style: 
 
     for msg in messages {
         if msg.role == "tool" {
+            // Always use OpenAI format for tool results.
+            // Litellm will convert to Anthropic native format if needed.
             match &msg.content {
                 ChatContent::Multimodal(multimodal_content) => {
                     let texts = multimodal_content.iter().filter(|x|x.is_text()).collect::<Vec<_>>();
@@ -83,6 +78,8 @@ pub fn convert_messages_to_openai_format(mut messages: Vec<ChatMessage>, style: 
             results.push(msg.into_value(&style, model_id));
 
         } else if msg.role == "diff" {
+            // Always use OpenAI format for diff results (as tool role).
+            // Litellm will convert to Anthropic native format if needed.
             let extra_message = match serde_json::from_str::<Vec<DiffChunk>>(&msg.content.content_text_only()) {
                 Ok(chunks) => {
                     if chunks.is_empty() {
@@ -96,9 +93,10 @@ pub fn convert_messages_to_openai_format(mut messages: Vec<ChatMessage>, style: 
                 },
                 Err(_) => "".to_string()
             };
+            let content_text = format!("The operation has succeeded.\n{extra_message}");
             let tool_msg = ChatMessage {
                 role: "tool".to_string(),
-                content: ChatContent::SimpleText(format!("The operation has succeeded.\n{extra_message}")),
+                content: ChatContent::SimpleText(content_text),
                 tool_calls: None,
                 tool_call_id: msg.tool_call_id.clone(),
                 ..Default::default()

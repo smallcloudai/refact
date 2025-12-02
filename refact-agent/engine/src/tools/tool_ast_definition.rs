@@ -10,6 +10,7 @@ use crate::ast::ast_db::fetch_counters;
 use crate::custom_error::trace_and_default;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
+use crate::postprocessing::pp_command_output::OutputFilter;
 
 pub struct ToolAstDefinition {
     pub config_path: String,
@@ -100,6 +101,7 @@ impl Tool for ToolAstDefinition {
                 content: ChatContent::SimpleText(combined_message),
                 tool_calls: None,
                 tool_call_id: tool_call_id.clone(),
+                output_filter: Some(OutputFilter::no_limits()), // Already compressed internally
                 ..Default::default()
             }));
 

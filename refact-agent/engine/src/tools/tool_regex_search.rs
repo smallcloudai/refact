@@ -14,6 +14,7 @@ use tracing::info;
 
 use crate::at_commands::at_commands::{vec_context_file_to_context_tools, AtCommandsContext};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
+use crate::postprocessing::pp_command_output::OutputFilter;
 use crate::files_correction::shortify_paths;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::global_context::GlobalContext;
@@ -293,9 +294,10 @@ impl Tool for ToolRegexSearch {
             content: ChatContent::SimpleText(all_content),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            output_filter: Some(OutputFilter::no_limits()), // Already compressed internally
             ..Default::default()
         }));
-        
+
         Ok((false, results))
     }
 

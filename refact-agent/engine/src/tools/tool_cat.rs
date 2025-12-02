@@ -158,31 +158,16 @@ impl Tool for ToolCat {
             corrections = true;
         }
 
-        // When output_limit="all", bypass ContextFile compression by including content directly
-        let mut results = if no_compression {
-            let gcx = ccx.lock().await.global_context.clone();
-            for ctx in context_enums.iter() {
-                if let ContextEnum::ContextFile(cf) = ctx {
-                    match get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(&cf.file_name)).await {
-                        Ok(file_text) => {
-                            let lines: Vec<&str> = file_text.lines().collect();
-                            let start = cf.line1.saturating_sub(1);
-                            let end = cf.line2.min(lines.len());
-                            let selected_lines: Vec<String> = lines[start..end]
-                                .iter()
-                                .enumerate()
-                                .map(|(i, line)| format!("{:4} | {}", start + i + 1, line))
-                                .collect();
-                            content.push_str(&format!("📎 {}:{}-{}\n```\n{}\n```\n\n", 
-                                cf.file_name, cf.line1, cf.line2, selected_lines.join("\n")));
-                        },
-                        Err(e) => {
-                            content.push_str(&format!("Error reading {}: {}\n\n", cf.file_name, e));
-                        }
-                    }
+        // When output_limit="all", mark ContextFiles to skip postprocessing compression
+        let mut results: Vec<ContextEnum> = if no_compression {
+            context_enums.into_iter().map(|ctx| {
+                if let ContextEnum::ContextFile(mut cf) = ctx {
+                    cf.skip_pp = true;
+                    ContextEnum::ContextFile(cf)
+                } else {
+                    ctx
                 }
-            }
-            vec![] // Don't return ContextFile entries - content is in the message
+            }).collect()
         } else {
             context_enums
         };

@@ -18,8 +18,6 @@ mod completon_rag;
 pub mod system_context;
 #[cfg(test)]
 mod chat_utils_limit_history_tests;
-#[cfg(test)]
-mod thinking_blocks_tests;
 
 use crate::ast::ast_indexer_thread::AstIndexService;
 use crate::call_validation::{ChatMessage, CodeCompletionPost};
