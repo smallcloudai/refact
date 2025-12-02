@@ -10,6 +10,11 @@ pub fn convert_messages_to_openai_format(mut messages: Vec<ChatMessage>, style: 
     // interrupted mid-stream), replace it with a short dummy message and drop
     // thinking_blocks. This avoids resending partial signed thinking back to
     // providers like Anthropic, which would otherwise fail signature validation.
+    //
+    // IMPORTANT: Only apply this hack when there are NO tool_calls. If the assistant
+    // has thinking_blocks + tool_calls (but empty visible content), that's a normal
+    // tool use flow - Anthropic requires thinking blocks to be preserved and sent back
+    // during multi-turn conversations with extended thinking enabled.
     if let Some(last_asst_idx) = messages.iter().rposition(|m| m.role == "assistant") {
         let has_only_thinking = messages[last_asst_idx]
             .content
@@ -19,7 +24,11 @@ pub fn convert_messages_to_openai_format(mut messages: Vec<ChatMessage>, style: 
             && messages[last_asst_idx]
                 .thinking_blocks
                 .as_ref()
-                .map_or(false, |v| !v.is_empty());
+                .map_or(false, |v| !v.is_empty())
+            && messages[last_asst_idx]
+                .tool_calls
+                .as_ref()
+                .map_or(true, |v| v.is_empty()); // Only if NO tool_calls
         if has_only_thinking {
             let m = &mut messages[last_asst_idx];
             m.content = ChatContent::SimpleText(
