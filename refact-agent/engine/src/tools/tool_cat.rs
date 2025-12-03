@@ -118,11 +118,6 @@ impl Tool for ToolCat {
                     description: "Comma separated file names or directories: dir1/file1.ext,dir3/dir4.".to_string(),
                     param_type: "string".to_string(),
                 },
-                ToolParam {
-                    name: "output_limit".to_string(),
-                    description: "Optional. Max lines to show (default: uses smart compression). Use higher values like '500' or 'all' to see more output.".to_string(),
-                    param_type: "string".to_string(),
-                },
             ],
             parameters_required: vec!["paths".to_string()],
         }
@@ -136,12 +131,6 @@ impl Tool for ToolCat {
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let mut corrections = false;
         let (paths, path_line_ranges, symbols) = parse_cat_args(args)?;
-        let output_limit = match args.get("output_limit") {
-            Some(Value::String(s)) => s.to_lowercase(),
-            _ => "".to_string(),
-        };
-        let no_compression = output_limit == "all" || output_limit == "full";
-        
         let (filenames_present, symbols_not_found, not_found_messages, context_enums, multimodal) = 
             paths_and_symbols_to_cat_with_path_ranges(ccx.clone(), paths, path_line_ranges, symbols).await;
 
@@ -158,19 +147,14 @@ impl Tool for ToolCat {
             corrections = true;
         }
 
-        // When output_limit="all", mark ContextFiles to skip postprocessing compression
-        let mut results: Vec<ContextEnum> = if no_compression {
-            context_enums.into_iter().map(|ctx| {
-                if let ContextEnum::ContextFile(mut cf) = ctx {
-                    cf.skip_pp = true;
-                    ContextEnum::ContextFile(cf)
-                } else {
-                    ctx
-                }
-            }).collect()
-        } else {
-            context_enums
-        };
+        let mut results: Vec<ContextEnum> = context_enums.into_iter().map(|ctx| {
+            if let ContextEnum::ContextFile(mut cf) = ctx {
+                cf.skip_pp = true;
+                ContextEnum::ContextFile(cf)
+            } else {
+                ctx
+            }
+        }).collect();
         
         let chat_content = if multimodal.is_empty() {
             ChatContent::SimpleText(content)
@@ -365,7 +349,7 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
                     symbols: vec![sym.path()],
                     gradient_type: 5,
                     usefulness: 100.0,
-                    skip_pp: false,
+                    skip_pp: true,
                 };
                 context_enums.push(ContextEnum::ContextFile(cf));
             }
@@ -434,7 +418,7 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
                         symbols: vec![],
                         gradient_type: 5,
                         usefulness: 100.0,
-                        skip_pp: false,
+                        skip_pp: true,
                     };
                     context_enums.push(ContextEnum::ContextFile(cf));
                 },
