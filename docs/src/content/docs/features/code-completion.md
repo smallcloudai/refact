@@ -9,6 +9,8 @@ Refact offers a powerful AI-driven code completion feature.
 
 Refact utilizes a technique called **Fill-in-the-middle** (FIM), where the context before and after your cursor is considered to predict and insert the most relevant code snippets.
 
+![Create a completion gif](../../../assets/completion.gif)
+
 ## Code Completion Models
 
 - **Cloud Version**: The cloud version of Refact uses the `Refact-1.6-fim` and `starcoder2/3b` model.
