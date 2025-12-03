@@ -63,7 +63,7 @@ subscription MessagesSubscription($ft_id: String!, $want_deltas: Boolean!) {
       ft_need_assistant
       ft_fexp_id ## contain the expert id
       ft_confirmation_request
-      ft_confirmation_response
+      # ft_confirmation_response
       ft_title
       ft_toolset
       ## ft_need_tool_calls ## This might be useful for tool confirmation?
@@ -115,13 +115,15 @@ query ToolsForGroup($located_fgroup_id: String!) {
   }
 }
 
-mutation ThreadConfirmationResponse(
-  $confirmation_response: String = ""
-  $ft_id: String = ""
+mutation ThreadConfirmationResolve(
+  $fcall_id: String!
+  $ft_id: String!
+  $positive: Boolean!
 ) {
-  thread_set_confirmation_response(
+  thread_confirmation_resolve(
+    fcall_id: $fcall_id
     ft_id: $ft_id
-    confirmation_response: $confirmation_response
+    positive: $positive
   )
 }
 

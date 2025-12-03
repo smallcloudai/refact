@@ -26,15 +26,15 @@ import {
   ToolsForGroupQueryVariables,
   ToolsForGroupDocument,
   FCloudTool,
-  ThreadConfirmationResponseMutation,
-  ThreadConfirmationResponseMutationVariables,
-  ThreadConfirmationResponseDocument,
   BasicStuffQuery,
   BasicStuffQueryVariables,
   BasicStuffDocument,
   CreateWorkSpaceGroupMutation,
   CreateWorkSpaceGroupMutationVariables,
   CreateWorkSpaceGroupDocument,
+  ThreadConfirmationResolveDocument,
+  ThreadConfirmationResolveMutation,
+  ThreadConfirmationResolveMutationVariables,
 } from "../../../generated/documents";
 
 import { type RootState } from "../../app/store";
@@ -566,9 +566,10 @@ export const graphqlQueriesAndMutations = createApi({
         return { data: result.data };
       },
     }),
+
     toolConfirmation: builder.mutation<
-      ThreadConfirmationResponseMutation,
-      ThreadConfirmationResponseMutationVariables
+      ThreadConfirmationResolveMutation,
+      ThreadConfirmationResolveMutationVariables
     >({
       async queryFn(args, api, _extraOptions, _baseQuery) {
         const state = api.getState() as RootState;
@@ -578,9 +579,9 @@ export const graphqlQueriesAndMutations = createApi({
 
         const client = createGraphqlClient(addressUrl, apiKey, api.signal);
         const result = await client.mutation<
-          ThreadConfirmationResponseMutation,
-          ThreadConfirmationResponseMutationVariables
-        >(ThreadConfirmationResponseDocument, args);
+          ThreadConfirmationResolveMutation,
+          ThreadConfirmationResolveMutationVariables
+        >(ThreadConfirmationResolveDocument, args);
 
         if (result.error) {
           return {

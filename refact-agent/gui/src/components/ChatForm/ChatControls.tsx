@@ -22,31 +22,31 @@ import {
 
 import {
   selectPatchIsAutomatic,
-  selectThreadId,
-  selectToolConfirmationResponses,
+  //  selectThreadId,
+  // selectToolConfirmationResponses,
 } from "../../features/ThreadMessages";
 import { useAppSelector } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
-import { graphqlQueriesAndMutations } from "../../services/graphql";
+// import { graphqlQueriesAndMutations } from "../../services/graphql";
 
 export const ApplyPatchSwitch: React.FC = () => {
-  const chatId = useAppSelector(selectThreadId);
+  // const chatId = useAppSelector(selectThreadId);
   const isPatchAutomatic = useAppSelector(selectPatchIsAutomatic);
-  const toolConfirmationResponses = useAppSelector(
-    selectToolConfirmationResponses,
-  );
-  const [toolConfirmation, _toolConfirmationResult] =
-    graphqlQueriesAndMutations.useToolConfirmationMutation();
+  // const toolConfirmationResponses = useAppSelector(
+  //   selectToolConfirmationResponses,
+  // );
+  // const [toolConfirmation, _toolConfirmationResult] =
+  //   graphqlQueriesAndMutations.useToolConfirmationMutation();
 
-  const handleAutomaticPatchChange = (checked: boolean) => {
-    const value = checked
-      ? toolConfirmationResponses.filter((res) => res !== "*")
-      : [...toolConfirmationResponses, "*"];
-
-    void toolConfirmation({
-      ft_id: chatId,
-      confirmation_response: JSON.stringify(value),
-    });
+  const handleAutomaticPatchChange = (_checked: boolean) => {
+    // TODO: enable tools
+    // const value = checked
+    //   ? toolConfirmationResponses.filter((res) => res !== "*")
+    //   : [...toolConfirmationResponses, "*"];
+    // void toolConfirmation({
+    //   ft_id: chatId,
+    //   confirmation_response: JSON.stringify(value),
+    // });
   };
 
   return (
