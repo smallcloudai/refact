@@ -232,6 +232,18 @@ pub struct InstructionFile {
     pub source_tool: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub processed_content: Option<String>,
+    #[serde(skip)]
+    pub importance: u8,
+}
+
+const PARENT_DIR_SEARCH_MAX_DEPTH: usize = 10;
+
+fn determine_importance(file_name: &str) -> u8 {
+    match file_name {
+        "AGENTS.md" | "CLAUDE.md" | "REFACT.md" => 0,
+        "GEMINI.md" | ".cursorrules" | "global_rules.md" | "copilot-instructions.md" => 1,
+        _ => 2,
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -735,6 +747,7 @@ fn find_instruction_files_recursive(
                             file_path: path_str,
                             source_tool: determine_tool_source(pattern),
                             processed_content: None,
+                            importance: determine_importance(&entry_name),
                         });
                     }
                     break;
@@ -781,9 +794,10 @@ pub async fn find_instruction_files(project_dirs: &[PathBuf]) -> Vec<Instruction
                                     tracing::info!("Found instruction file (dir pattern {}): {}", dir_pattern, path_str);
                                     files.push(InstructionFile {
                                         file_name: entry_name.clone(),
-                                        file_path: path_str,
+                                        file_path: path_str.clone(),
                                         source_tool: determine_tool_source(dir_pattern),
                                         processed_content,
+                                        importance: determine_importance(&entry_name),
                                     });
                                 }
                             }
@@ -794,9 +808,9 @@ pub async fn find_instruction_files(project_dirs: &[PathBuf]) -> Vec<Instruction
         }
 
         let mut current = project_dir.clone();
-        for _ in 0..3 {
+        for _ in 0..PARENT_DIR_SEARCH_MAX_DEPTH {
             if let Some(parent) = current.parent() {
-                for pattern in &["AGENTS.md", "CLAUDE.md", "REFACT.md"] {
+                for pattern in INSTRUCTION_FILE_PATTERNS {
                     let file_path = parent.join(pattern);
                     if file_path.exists() && file_path.is_file() {
                         let path_str = file_path.to_string_lossy().to_string();
@@ -808,6 +822,7 @@ pub async fn find_instruction_files(project_dirs: &[PathBuf]) -> Vec<Instruction
                                 file_path: path_str,
                                 source_tool: determine_tool_source(pattern),
                                 processed_content: None,
+                                importance: determine_importance(pattern),
                             });
                         }
                     }
@@ -818,6 +833,8 @@ pub async fn find_instruction_files(project_dirs: &[PathBuf]) -> Vec<Instruction
             }
         }
     }
+
+    files.sort_by_key(|f| f.importance);
 
     tracing::info!(
         "Instruction files search complete: found {} files total",
@@ -1263,8 +1280,8 @@ pub async fn gather_system_context(
     })
 }
 
-const MAX_FILE_SIZE: usize = 10_000;
-const MAX_INCLUDED_FILES: usize = 10;
+const MAX_FILE_SIZE: usize = 40_000;
+const MAX_INCLUDED_FILES: usize = 15;
 
 pub async fn create_instruction_files_message(
     instruction_files: &[InstructionFile],
