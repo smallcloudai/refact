@@ -122,6 +122,8 @@ pub struct ContextFile {
     pub gradient_type: i32,
     #[serde(default, skip_serializing)]
     pub usefulness: f32, // higher is better
+    #[serde(default, skip_serializing)]
+    pub skip_pp: bool, // if true, skip postprocessing compression for this file
 }
 
 fn default_gradient_type_value() -> i32 { -1 }
@@ -184,6 +186,8 @@ pub struct ChatMessage {
     pub checkpoints: Vec<Checkpoint>,
     #[serde(default, skip_serializing_if="Option::is_none")]
     pub thinking_blocks: Option<Vec<serde_json::Value>>,
+    #[serde(skip)]
+    pub output_filter: Option<crate::postprocessing::pp_command_output::OutputFilter>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
@@ -325,6 +329,7 @@ pub struct DiffChunk {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct PostprocessSettings {
+    pub use_ast_based_pp: bool,
     pub useful_background: f32,          // first, fill usefulness of all lines with this
     pub useful_symbol_default: f32,      // when a symbol present, set usefulness higher
     // search results fill usefulness as it passed from outside
@@ -345,6 +350,7 @@ impl Default for PostprocessSettings {
 impl PostprocessSettings {
     pub fn new() -> Self {
         PostprocessSettings {
+            use_ast_based_pp: true,
             downgrade_body_coef: 0.8,
             downgrade_parent_coef: 0.6,
             useful_background: 5.0,

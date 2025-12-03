@@ -6,7 +6,7 @@ lto = true
 
 [package]
 name = "refact-lsp"
-version = "0.10.21"
+version = "0.10.30"
 edition = "2021"
 build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -18,10 +18,8 @@ shadow-rs = "1.1.0"
 winreg = "0.55.0"
 
 [dependencies]
-ahash = "0.8.12"
 astral-tokio-tar = "0.5.2"
 axum = { version = "0.6.20", features = ["default", "http2"] }
-async-process = "2.0.1"
 async-stream = "0.3.5"
 async-trait = "0.1.73"
 backtrace = "0.3.71"
@@ -38,6 +36,7 @@ hashbrown = "0.15.2"
 headless_chrome = "1.0.16"
 heed = "0.22.0"
 home = "0.5"
+hostname = "0.4"
 html2text = "0.12.5"
 hyper = { version = "0.14", features = ["server", "stream"] }
 image = "0.25.2"
@@ -82,7 +81,6 @@ tokio = { version = "1.43.0", features = ["fs", "io-std", "io-util", "macros", "
 tokio-rusqlite = "0.5.0"
 tokio-util = { version = "0.7.12", features = ["compat"] }
 tokio-tungstenite = "0.21.0"
-tower = { version = "0.4", features = ["full"] }
 tower-http = { version = "0.4.0", features = ["cors"] }
 tower-lsp = "0.20"
 tracing = "0.1"
@@ -106,3 +104,4 @@ zerocopy = "0.8.14"
 # There you can use a local copy
 # rmcp = { path = "../../../rust-sdk/crates/rmcp/", "features" = ["client", "transport-child-process", "transport-sse"] }
 rmcp = { git = "https://github.com/smallcloudai/rust-sdk", branch = "main", features = ["client", "transport-child-process", "transport-sse-client", "reqwest"] }
+thiserror = "2.0.12"

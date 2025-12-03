@@ -15,6 +15,9 @@ pub mod multimodality;
 mod comments_parser;
 pub mod passthrough_convert_messages;
 mod completon_rag;
+pub mod system_context;
+#[cfg(test)]
+mod chat_utils_limit_history_tests;
 
 use crate::ast::ast_indexer_thread::AstIndexService;
 use crate::call_validation::{ChatMessage, CodeCompletionPost};

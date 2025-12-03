@@ -83,17 +83,18 @@ async fn get_builtin_tools(
 
     let codebase_search_tools: Vec<Box<dyn Tool + Send>> = vec![
         Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{config_path: config_path.clone()}),
-        Box::new(crate::tools::tool_ast_reference::ToolAstReference{config_path: config_path.clone()}),
+        // works badly, better not to use it 
+        // Box::new(crate::tools::tool_ast_reference::ToolAstReference{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_tree::ToolTree{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_cat::ToolCat{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_regex_search::ToolRegexSearch{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_search::ToolSearch{config_path: config_path.clone()}),
-        // Box::new(crate::tools::tool_locate_search::ToolLocateSearch{config_path: config_path.clone()}),
     ];
 
     let codebase_change_tools: Vec<Box<dyn Tool + Send>> = vec![
         Box::new(crate::tools::file_edit::tool_create_textdoc::ToolCreateTextDoc{config_path: config_path.clone()}),
         Box::new(crate::tools::file_edit::tool_update_textdoc::ToolUpdateTextDoc{config_path: config_path.clone()}),
+        Box::new(crate::tools::file_edit::tool_update_textdoc_by_lines::ToolUpdateTextDocByLines{config_path: config_path.clone()}),
         Box::new(crate::tools::file_edit::tool_update_textdoc_regex::ToolUpdateTextDocRegex{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_rm::ToolRm{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_mv::ToolMv{config_path: config_path.clone()}),
@@ -105,6 +106,8 @@ async fn get_builtin_tools(
 
     let deep_analysis_tools: Vec<Box<dyn Tool + Send>> = vec![
         Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_deep_research::ToolDeepResearch{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_subagent::ToolSubagent{config_path: config_path.clone()}),
     ];
 
     let knowledge_tools: Vec<Box<dyn Tool + Send>> = vec![
@@ -243,7 +246,7 @@ pub async fn get_available_tools_by_chat_mode(
             tools.collect()
         }
         ChatMode::CONFIGURE => {
-            let blacklist = ["tree", "locate", "knowledge", "search"];
+            let blacklist = ["tree", "knowledge", "search"];
             tools.filter(|tool| !blacklist.contains(&tool.tool_description().name.as_str())).collect()
         },
         ChatMode::PROJECT_SUMMARY => {

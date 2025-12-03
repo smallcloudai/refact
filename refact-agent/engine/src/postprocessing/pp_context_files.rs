@@ -10,14 +10,12 @@ use crate::call_validation::{ContextFile, PostprocessSettings};
 use crate::ast::ast_structs::AstDefinition;
 use crate::global_context::GlobalContext;
 use crate::nicer_logs::{first_n_chars, last_n_chars};
-use crate::postprocessing::pp_utils::{color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, downgrade_lines_if_subsymbol, pp_ast_markup_files};
+use crate::postprocessing::pp_utils::{color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, downgrade_lines_if_subsymbol, pp_ast_markup_files, pp_load_files_without_ast};
 use crate::tokens::count_text_tokens_with_fallback;
 
 
 pub const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 pub const DEBUG: usize = 0;  // 0 nothing, 1 summary "N lines in K files => X tokens", 2 everything
-
-
 #[derive(Debug)]
 pub struct PPFile {
     pub symbols_sorted_by_path_len: Vec<Arc<AstDefinition>>,
@@ -114,8 +112,14 @@ async fn convert_input_into_usefullness(
             continue;
         }
         if msg.usefulness.is_sign_negative() {  // used in FIM to disable lines already in suffix or prefix
-            colorize_minus_one(lines, msg.line1-1, msg.line2);
+            colorize_minus_one(lines, msg.line1.saturating_sub(1), msg.line2.min(lines.len()));
             continue;
+        }
+
+        // Defensive check: warn if input line numbers exceed file length
+        if msg.line1 > lines.len() || msg.line2 > lines.len() {
+            warn!("Input ContextFile line numbers ({}, {}) exceed file length {} for {:?}, gradient coloring may be affected",
+                msg.line1, msg.line2, lines.len(), msg.file_name);
         }
 
         color_with_gradient_type(msg, lines);
@@ -314,8 +318,8 @@ async fn pp_limit_and_merge(
             if !line_ref.take {
                 continue;
             }
+            if !anything { first_line = i; }
             anything = true;
-            if first_line == 0 { first_line = i; }
             if i > prev_line + 1 {
                 out.push_str("...\n");
             }
@@ -328,19 +332,28 @@ async fn pp_limit_and_merge(
         if DEBUG >= 2 {
             info!("file {:?}:\n{}", cpath, out);
         } else if DEBUG == 1 {
-            info!("file {:?}:{}-{}", cpath, first_line, last_line);
+            info!("file {:?}:{}-{}", cpath, first_line + 1, last_line + 1);
         }
         if !anything {
             continue;
         }
+        let total_lines = lines.len();
+        let out_line1 = first_line + 1;
+        let out_line2 = last_line + 1;
+        // Defensive check: ensure line numbers don't exceed file length
+        if out_line1 > total_lines || out_line2 > total_lines {
+            warn!("Output line numbers ({}, {}) exceed file length {} for {:?}, clamping",
+                out_line1, out_line2, total_lines, file_ref.cpath);
+        }
         context_files_merged.push(ContextFile {
             file_name: file_ref.shorter_path.clone(),
             file_content: out.clone(),
-            line1: first_line,
-            line2: last_line,
+            line1: out_line1.min(total_lines).max(1),
+            line2: out_line2.min(total_lines).max(1),
             symbols: vec![],
             gradient_type: -1,
             usefulness: 0.0,
+            skip_pp: false,
         });
     }
     context_files_merged
@@ -355,7 +368,13 @@ pub async fn postprocess_context_files(
     settings: &PostprocessSettings,
 ) -> Vec<ContextFile> {
     assert!(settings.max_files_n > 0);
-    let files_marked_up = pp_ast_markup_files(gcx.clone(), context_file_vec).await;  // this modifies context_file.file_name to make it cpath
+    let files_marked_up = if settings.use_ast_based_pp {
+        // this modifies context_file.file_name to make it cpath
+        pp_ast_markup_files(gcx.clone(), context_file_vec).await
+    } else {
+        // still need to load files for post-processing, just without AST symbols
+        pp_load_files_without_ast(gcx.clone(), context_file_vec).await
+    };
 
     let mut lines_in_files = pp_color_lines(
         context_file_vec,

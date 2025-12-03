@@ -258,6 +258,7 @@ async fn read_and_compress_directory(
             symbols: vec![],
             gradient_type: 4,
             usefulness: 100.0,
+            skip_pp: false,
         });
     }
 
@@ -484,7 +485,7 @@ impl Tool for ToolCreateMemoryBank {
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
-        vec![]
+        vec!["knowledge".to_string()]
     }
 
     fn tool_description(&self) -> ToolDesc {

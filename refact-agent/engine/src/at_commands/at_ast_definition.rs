@@ -142,6 +142,7 @@ impl AtCommand for AtAstDefinition {
                     symbols: vec![res.path_drop0()],
                     gradient_type: 4,
                     usefulness: 100.0,
+                    skip_pp: false,
                 });
             }
             Ok((result.into_iter().map(|x| ContextEnum::ContextFile(x)).collect::<Vec<ContextEnum>>(), text))

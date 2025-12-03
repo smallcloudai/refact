@@ -1,12 +1,14 @@
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::info;
+use std::collections::HashMap;
+use tracing::{info, warn};
 
 use reqwest::Client;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 use select::predicate::{Attr, Name};
 use html2text::render::text_renderer::{TaggedLine, TextDecorator};
+use serde_json::Value;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::execute_at::AtCommandMember;
@@ -57,7 +59,8 @@ impl AtCommand for AtWeb {
         let text = match text_from_cache {
             Some(text) => text,
             None => {
-                let text = execute_at_web(&url.text).await.map_err(|e|format!("Failed to execute @web {}.\nError: {e}", url.text))?;
+                let text = execute_at_web(&url.text, None).await
+                    .map_err(|e| format!("Failed to execute @web {}.\nError: {e}", url.text))?;
                 preview_cache.lock().await.insert(format!("@web:{}", url.text), text.clone());
                 text
             }
@@ -74,6 +77,122 @@ impl AtCommand for AtWeb {
 
     fn depends_on(&self) -> Vec<String> {
         vec![]
+    }
+}
+
+const JINA_READER_BASE_URL: &str = "https://r.jina.ai/";
+const JINA_TIMEOUT_SECS: u64 = 60;
+const FALLBACK_TIMEOUT_SECS: u64 = 10;
+
+pub async fn execute_at_web(url: &str, options: Option<&HashMap<String, Value>>) -> Result<String, String> {
+    match fetch_with_jina_reader(url, options).await {
+        Ok(text) => {
+            info!("successfully fetched {} via Jina Reader", url);
+            Ok(text)
+        }
+        Err(jina_err) => {
+            warn!("Jina Reader failed for {}: {}, falling back to simple fetch", url, jina_err);
+            match fetch_simple(url).await {
+                Ok(text) => {
+                    info!("successfully fetched {} via simple fetch (fallback)", url);
+                    Ok(text)
+                }
+                Err(simple_err) => {
+                    Err(format!("Both Jina Reader and simple fetch failed.\nJina error: {}\nSimple fetch error: {}", jina_err, simple_err))
+                }
+            }
+        }
+    }
+}
+
+async fn fetch_with_jina_reader(url: &str, options: Option<&HashMap<String, Value>>) -> Result<String, String> {
+    let client = Client::builder()
+        .timeout(Duration::from_secs(JINA_TIMEOUT_SECS))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let jina_url = format!("{}{}", JINA_READER_BASE_URL, url);
+    let mut request = client.get(&jina_url).header("User-Agent", "RefactAgent/1.0");
+
+    let mut is_streaming = false;
+
+    if let Some(opts) = options {
+        if let Some(Value::String(v)) = opts.get("respond_with") {
+            request = request.header("x-respond-with", v.as_str());
+        }
+        if let Some(Value::String(v)) = opts.get("target_selector") {
+            request = request.header("x-target-selector", v.as_str());
+        }
+        if let Some(Value::String(v)) = opts.get("wait_for_selector") {
+            request = request.header("x-wait-for-selector", v.as_str());
+        }
+        if let Some(Value::Number(n)) = opts.get("timeout") {
+            if let Some(t) = n.as_u64() {
+                request = request.header("x-timeout", t.to_string());
+            }
+        }
+        if let Some(Value::Bool(true)) = opts.get("no_cache") {
+            request = request.header("x-no-cache", "true");
+        }
+        if let Some(Value::Number(n)) = opts.get("cache_tolerance") {
+            if let Some(t) = n.as_u64() {
+                request = request.header("x-cache-tolerance", t.to_string());
+            }
+        }
+        if let Some(Value::Bool(true)) = opts.get("with_generated_alt") {
+            request = request.header("x-with-generated-alt", "true");
+        }
+        if let Some(Value::Bool(true)) = opts.get("streaming") {
+            request = request.header("Accept", "text/event-stream");
+            is_streaming = true;
+        }
+        if let Some(Value::String(v)) = opts.get("set_cookie") {
+            request = request.header("x-set-cookie", v.as_str());
+        }
+        if let Some(Value::String(v)) = opts.get("proxy_url") {
+            request = request.header("x-proxy-url", v.as_str());
+        }
+    }
+
+    let response = request.send().await.map_err(|e| e.to_string())?;
+
+    if !response.status().is_success() {
+        return Err(format!("Jina Reader returned status: {}", response.status()));
+    }
+
+    let text = if is_streaming {
+        parse_streaming_response(response).await?
+    } else {
+        response.text().await.map_err(|e| e.to_string())?
+    };
+
+    if text.trim().is_empty() {
+        return Err("Jina Reader returned empty content".to_string());
+    }
+
+    Ok(text)
+}
+
+async fn parse_streaming_response(response: reqwest::Response) -> Result<String, String> {
+    let text = response.text().await.map_err(|e| e.to_string())?;
+    let mut last_content = String::new();
+
+    for line in text.lines() {
+        if let Some(data) = line.strip_prefix("data: ") {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
+                if let Some(content) = json.get("content").and_then(|c| c.as_str()) {
+                    last_content = content.to_string();
+                }
+            } else if !data.trim().is_empty() {
+                last_content = data.to_string();
+            }
+        }
+    }
+
+    if last_content.is_empty() {
+        Ok(text)
+    } else {
+        Ok(last_content)
     }
 }
 
@@ -202,8 +321,8 @@ async fn fetch_html(url: &str, timeout: Duration) -> Result<String, String> {
     Ok(body)
 }
 
-pub async fn execute_at_web(url: &str) -> Result<String, String>{
-    let html = fetch_html(url, Duration::from_secs(5)).await?;
+async fn fetch_simple(url: &str) -> Result<String, String> {
+    let html = fetch_html(url, Duration::from_secs(FALLBACK_TIMEOUT_SECS)).await?;
     let html = find_content(html);
 
     let text = html2text::config::with_decorator(CustomTextConversion)
@@ -220,11 +339,31 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_execute_at_web() {
+    async fn test_execute_at_web_jina() {
         let url = "https://doc.rust-lang.org/book/ch03-04-comments.html";
-        match execute_at_web(url).await {
-            Ok(text) => info!("Test executed successfully:\n\n{text}"),
-            Err(e) => warn!("Test failed with error: {e}"),
+        match execute_at_web(url, None).await {
+            Ok(text) => info!("test executed successfully (length: {} chars):\n\n{}", text.len(), &text[..text.len().min(500)]),
+            Err(e) => warn!("test failed with error: {e}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_jina_pdf_reading() {
+        let url = "https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf";
+        match execute_at_web(url, None).await {
+            Ok(text) => info!("PDF test executed successfully (length: {} chars)", text.len()),
+            Err(e) => warn!("PDF test failed with error: {e}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_jina_with_options() {
+        let url = "https://doc.rust-lang.org/book/ch03-04-comments.html";
+        let mut options = HashMap::new();
+        options.insert("target_selector".to_string(), Value::String("main".to_string()));
+        match execute_at_web(url, Some(&options)).await {
+            Ok(text) => info!("options test executed successfully (length: {} chars)", text.len()),
+            Err(e) => warn!("options test failed with error: {e}"),
         }
     }
 }

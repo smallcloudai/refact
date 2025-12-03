@@ -22,10 +22,10 @@ use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::{execute_command, AnsiStrippable};
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, ToolSource, ToolSourceType, MatchConfirmDeny, MatchConfirmDenyResult};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::postprocessing::pp_command_output::CmdlineOutputFilter;
+use crate::postprocessing::pp_command_output::OutputFilter;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationTrait};
 use crate::custom_error::YamlError;
-use crate::tools::tools_execute::command_should_be_denied;
+use crate::tools::tools_execute::{command_should_be_denied, command_should_be_confirmed_by_user};
 
 
 #[derive(Deserialize, Serialize, Clone, Default)]
@@ -33,7 +33,7 @@ pub struct SettingsShell {
     #[serde(default)]
     pub timeout: String,
     #[serde(default)]
-    pub output_filter: CmdlineOutputFilter,
+    pub output_filter: OutputFilter,
 }
 
 #[derive(Default)]
@@ -87,17 +87,18 @@ impl Tool for ToolShell {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
-        let (command, workdir_maybe) = parse_args(gcx.clone(), args).await?;
+        let (command, workdir_maybe, custom_filter) = parse_args_with_filter(gcx.clone(), args).await?;
         let timeout = self.cfg.timeout.parse::<u64>().unwrap_or(10);
 
         let mut error_log = Vec::<YamlError>::new();
         let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone(), &mut error_log).await;
 
-        let tool_output = execute_shell_command(
+        let output_filter = custom_filter.unwrap_or_else(|| self.cfg.output_filter.clone());
+
+        let tool_output = execute_shell_command_raw(
             &command,
             &workdir_maybe,
             timeout,
-            &self.cfg.output_filter,
             &env_variables,
             gcx.clone(),
         ).await?;
@@ -107,6 +108,7 @@ impl Tool for ToolShell {
             content: ChatContent::SimpleText(tool_output),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            output_filter: Some(output_filter),
             ..Default::default()
         })];
 
@@ -127,7 +129,7 @@ impl Tool for ToolShell {
             },
             agentic: true,
             experimental: false,
-            description: "Execute a single command, using the \"sh\" on unix-like systems and \"powershell.exe\" on windows. Use it for one-time tasks like dependencies installation. Don't call this unless you have to. Not suitable for regular work because it requires a confirmation at each step.".to_string(),
+            description: "Execute a single command, using the \"sh\" on unix-like systems and \"powershell.exe\" on windows. Use it for one-time tasks like dependencies installation. Don't call this unless you have to. Not suitable for regular work because it requires a confirmation at each step. Output is compressed by default - use output_filter and output_limit parameters to see specific parts if needed.".to_string(),
             parameters: vec![
                 ToolParam {
                     name: "command".to_string(),
@@ -138,6 +140,16 @@ impl Tool for ToolShell {
                     name: "workdir".to_string(),
                     param_type: "string".to_string(),
                     description: "workdir for the command".to_string(),
+                },
+                ToolParam {
+                    name: "output_filter".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Optional regex pattern to filter output lines. Only lines matching this pattern (and context) will be shown. Use to find specific errors or content in large outputs.".to_string(),
+                },
+                ToolParam {
+                    name: "output_limit".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Optional. Max lines to show (default: 40). Use higher values like '200' or 'all' to see more output.".to_string(),
                 },
             ],
             parameters_required: vec![
@@ -167,12 +179,21 @@ impl Tool for ToolShell {
                     rule: deny_rule.clone(),
                 });
             }
+
+            let (needs_confirmation, confirmation_rule) = command_should_be_confirmed_by_user(&command_to_match, &rules.ask_user);
+            if needs_confirmation {
+                return Ok(MatchConfirmDeny {
+                    result: MatchConfirmDenyResult::CONFIRMATION,
+                    command: command_to_match.clone(),
+                    rule: confirmation_rule.clone(),
+                });
+            }
         }
-        // NOTE: do not match command if not denied, always wait for confirmation from user
+
         Ok(MatchConfirmDeny {
-            result: MatchConfirmDenyResult::CONFIRMATION,
+            result: MatchConfirmDenyResult::PASS,
             command: command_to_match.clone(),
-            rule: "*".to_string(),
+            rule: "".to_string(),
         })
     }
 
@@ -191,11 +212,10 @@ impl Tool for ToolShell {
     }
 }
 
-pub async fn execute_shell_command(
+pub async fn execute_shell_command_raw(
     command: &str,
     workdir_maybe: &Option<PathBuf>,
     timeout: u64,
-    output_filter: &CmdlineOutputFilter,
     env_variables: &HashMap<String, String>,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<String, String> {
@@ -226,16 +246,18 @@ pub async fn execute_shell_command(
     let stdout = output.stdout.to_string_lossy_and_strip_ansi();
     let stderr = output.stderr.to_string_lossy_and_strip_ansi();
 
-    let filtered_stdout = crate::postprocessing::pp_command_output::output_mini_postprocessing(output_filter, &stdout);
-    let filtered_stderr = crate::postprocessing::pp_command_output::output_mini_postprocessing(output_filter, &stderr);
-
-    let mut out = crate::integrations::integr_cmdline::format_output(&filtered_stdout, &filtered_stderr);
+    let mut out = crate::integrations::integr_cmdline::format_output(&stdout, &stderr);
     let exit_code = output.status.code().unwrap_or_default();
     out.push_str(&format!("The command was running {:.3}s, finished with exit code {exit_code}\n", duration.as_secs_f64()));
     Ok(out)
 }
 
 async fn parse_args(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>), String> {
+    let (command, workdir, _) = parse_args_with_filter(gcx, args).await?;
+    Ok((command, workdir))
+}
+
+async fn parse_args_with_filter(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>, Option<OutputFilter>), String> {
     let command = match args.get("command") {
         Some(Value::String(s)) => {
             if s.is_empty() {
@@ -260,7 +282,41 @@ async fn parse_args(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Val
         None => None
     };
 
-    Ok((command, workdir))
+    let custom_filter = parse_output_filter_args(args);
+
+    Ok((command, workdir, custom_filter))
+}
+
+fn parse_output_filter_args(args: &HashMap<String, Value>) -> Option<OutputFilter> {
+    let output_filter_pattern = args.get("output_filter")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let output_limit = args.get("output_limit")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    if output_filter_pattern.is_none() && output_limit.is_none() {
+        return None;
+    }
+
+    let is_unlimited = matches!(output_limit.as_deref(), Some("all") | Some("full"));
+
+    let limit_lines = if is_unlimited {
+        usize::MAX
+    } else {
+        output_limit.as_deref().and_then(|s| s.parse::<usize>().ok()).unwrap_or(40)
+    };
+
+    Some(OutputFilter {
+        limit_lines,
+        limit_chars: if is_unlimited { usize::MAX } else { limit_lines * 200 },
+        valuable_top_or_bottom: "top".to_string(),
+        grep: output_filter_pattern.unwrap_or_else(|| "(?i)error".to_string()),
+        grep_context_lines: 5,
+        remove_from_output: "".to_string(),
+        limit_tokens: if is_unlimited { None } else { Some(limit_lines * 50) },
+    })
 }
 
 async fn resolve_shell_workdir(gcx: Arc<ARwLock<GlobalContext>>, raw_path: &str) -> Result<PathBuf, String> {
@@ -296,11 +352,69 @@ fields:
     f_desc: "The output from the command can be long or even quasi-infinite. This section allows to set limits, prioritize top or bottom, or use regexp to show the model the relevant part."
     f_extra: true
 description: |
-  Allows to execute any command line tool with confirmation from the chat itself.
+  Allows to execute any command line tool. Most commands execute without confirmation. Dangerous commands require user confirmation.
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
 confirmation:
-  ask_user_default: ["*"]
+  ask_user_default: [
+    "*rm*",
+    "*rmdir*",
+    "*del /s*",
+    "*deltree*",
+    "*mkfs*",
+    "*dd *",
+    "*format*",
+    "*> /dev/*",
+    ":(){ :|:& };:",
+    "*chmod -R*",
+    "*chown -R*",
+    "*chmod 777*",
+    "*chmod a+rwx*",
+    "*git push*",
+    "*git reset --hard*",
+    "curl * | sh",
+    "curl * | bash",
+    "wget * -O - | sh",
+    "wget * -O - | bash",
+    "*apt-get remove*",
+    "*apt-get purge*",
+    "*apt remove*",
+    "*apt purge*",
+    "*yum remove*",
+    "*yum erase*",
+    "*dnf remove*",
+    "*pacman -R*",
+    "*brew uninstall*",
+    "*docker rm*",
+    "*docker rmi*",
+    "*docker system prune*",
+    "*kubectl delete*",
+    "*kill -9*",
+    "*killall*",
+    "*pkill*",
+    "*shutdown*",
+    "*reboot*",
+    "*halt*",
+    "*poweroff*",
+    "*init 0*",
+    "*init 6*",
+    "*systemctl stop*",
+    "*systemctl disable*",
+    "*service * stop",
+    "*truncate -s 0*",
+    "*fdisk*",
+    "*parted*",
+    "*mkswap*",
+    "*swapon*",
+    "*swapoff*",
+    "*mount*",
+    "*umount*",
+    "*crontab -r*",
+    "*history -c*",
+    "*shred*",
+    "*wipe*",
+    "*srm*"
+  ]
   deny_default: ["sudo*"]
 "#;

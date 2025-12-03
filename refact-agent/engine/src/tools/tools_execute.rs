@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use glob::Pattern;
 use indexmap::IndexMap;
@@ -20,6 +21,7 @@ use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_cha
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::{is_cloud_model, resolve_chat_model, resolve_model};
+use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
 
@@ -358,17 +360,49 @@ async fn pp_run_tools(
             pp_settings.take_floor = 50.0;
         }
 
+        // Separate files that skip postprocessing from those that don't
+        let (skip_pp_files, mut pp_files): (Vec<_>, Vec<_>) = context_files_for_pp
+            .drain(..)
+            .partition(|cf| cf.skip_pp);
+
         let context_file_vec = postprocess_context_files(
             gcx.clone(),
-            context_files_for_pp,
+            &mut pp_files,
             tokenizer.clone(),
             tokens_limit_files,
             false,
             &pp_settings,
         ).await;
 
-        if !context_file_vec.is_empty() {
-            let json_vec: Vec<_> = context_file_vec.into_iter().map(|p| json!(p)).collect();
+        // Fill content for files that skipped postprocessing
+        let mut skip_pp_filled = Vec::new();
+        for mut cf in skip_pp_files {
+            match get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(&cf.file_name)).await {
+                Ok(text) => {
+                    let lines: Vec<&str> = text.lines().collect();
+                    let start = cf.line1.saturating_sub(1);
+                    let end = cf.line2.min(lines.len());
+                    let selected_lines: Vec<String> = lines[start..end]
+                        .iter()
+                        .enumerate()
+                        .map(|(i, line)| format!("{:4} | {}", start + i + 1, line))
+                        .collect();
+                    cf.file_content = selected_lines.join("\n");
+                    skip_pp_filled.push(cf);
+                },
+                Err(e) => {
+                    warn!("Failed to load skip_pp file {}: {}", cf.file_name, e);
+                }
+            }
+        }
+
+        // Combine: postprocessed files + files that skipped postprocessing
+        let all_context_files: Vec<_> = context_file_vec.into_iter()
+            .chain(skip_pp_filled.into_iter())
+            .collect();
+
+        if !all_context_files.is_empty() {
+            let json_vec: Vec<_> = all_context_files.into_iter().map(|p| json!(p)).collect();
             let message = ChatMessage::new(
                 "context_file".to_string(),
                 serde_json::to_string(&json_vec).unwrap()

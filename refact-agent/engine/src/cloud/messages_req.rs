@@ -234,6 +234,7 @@ pub fn convert_thread_messages_to_messages(
                 checkpoints: vec![],
                 thinking_blocks: None,
                 finish_reason: None,
+                output_filter: None,
             }
         })
         .collect()

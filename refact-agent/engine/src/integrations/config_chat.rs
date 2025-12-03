@@ -41,6 +41,7 @@ pub async fn mix_config_messages(
             symbols: vec![],
             gradient_type: -1,
             usefulness: 100.0,
+            skip_pp: false,
         };
         context_file_vec.push(context_file);
     }
@@ -74,6 +75,7 @@ pub async fn mix_config_messages(
                         symbols: vec![],
                         gradient_type: -1,
                         usefulness: 100.0,
+                        skip_pp: false,
                     };
                     context_file_vec.push(context_file);
                 }

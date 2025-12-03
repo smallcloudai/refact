@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
-use serde_json::Value;
+use serde_json::{Value, json};
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 use axum::http::StatusCode;
@@ -32,6 +32,54 @@ Also make a couple of alternative ways to solve the problem, if the initial solu
 
 
 static GUARDRAILS_PROMPT: &str = r#"💿 Now confirm the plan with the user"#;
+
+static ENTERTAINMENT_MESSAGES: &[&str] = &[
+    "🧠 Strategic planning in progress...",
+    "📋 Analyzing the problem and context...",
+    "🔍 Reviewing relevant files...",
+    "💡 Formulating solution approaches...",
+    "📝 Drafting the strategic plan...",
+    "⏳ Still working... Almost there!",
+    "🔄 Refining the solution...",
+];
+
+async fn send_entertainment_message(
+    subchat_tx: &Arc<AMutex<tokio::sync::mpsc::UnboundedSender<serde_json::Value>>>,
+    tool_call_id: &str,
+    message_idx: usize,
+) {
+    let message_text = ENTERTAINMENT_MESSAGES[message_idx % ENTERTAINMENT_MESSAGES.len()];
+    let entertainment_msg = json!({
+        "tool_call_id": tool_call_id,
+        "subchat_id": message_text,
+        "add_message": {
+            "role": "assistant",
+            "content": message_text
+        }
+    });
+    let _ = subchat_tx.lock().await.send(entertainment_msg);
+}
+
+fn spawn_entertainment_task(
+    subchat_tx: Arc<AMutex<tokio::sync::mpsc::UnboundedSender<serde_json::Value>>>,
+    tool_call_id: String,
+    cancel_token: tokio_util::sync::CancellationToken,
+) {
+    tokio::spawn(async move {
+        let mut message_idx = 0usize;
+        loop {
+            tokio::select! {
+                _ = cancel_token.cancelled() => {
+                    break;
+                }
+                _ = tokio::time::sleep(tokio::time::Duration::from_secs(10)) => {
+                    send_entertainment_message(&subchat_tx, &tool_call_id, message_idx).await;
+                    message_idx += 1;
+                }
+            }
+        }
+    });
+}
 
 async fn _make_prompt(
     ccx: Arc<AMutex<AtCommandsContext>>,
@@ -64,6 +112,7 @@ async fn _make_prompt(
                     symbols: vec![],
                     gradient_type: 4,
                     usefulness: 100.0,
+                    skip_pp: false,
                 }
             },
             Err(_) => {
@@ -221,7 +270,7 @@ impl Tool for ToolStrategicPlanning {
             let ccx_lock = ccx.lock().await;
             ccx_lock.messages.clone()
         };
-        let ccx_subchat = {
+        let (ccx_subchat, subchat_tx) = {
             let ccx_lock = ccx.lock().await;
             let mut t = AtCommandsContext::new(
                 ccx_lock.global_context.clone(),
@@ -235,8 +284,14 @@ impl Tool for ToolStrategicPlanning {
             ).await;
             t.subchat_tx = ccx_lock.subchat_tx.clone();
             t.subchat_rx = ccx_lock.subchat_rx.clone();
-            Arc::new(AMutex::new(t))
+            let tx = ccx_lock.subchat_tx.clone();
+            (Arc::new(AMutex::new(t)), tx)
         };
+
+        send_entertainment_message(&subchat_tx, tool_call_id, 0).await;
+        let cancel_token = tokio_util::sync::CancellationToken::new();
+        spawn_entertainment_task(subchat_tx, tool_call_id.clone(), cancel_token.clone());
+
         let prompt = _make_prompt(
             ccx.clone(),
             &subchat_params,
@@ -246,7 +301,7 @@ impl Tool for ToolStrategicPlanning {
         ).await?;
         let history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
         tracing::info!("FIRST ITERATION: Get the initial solution");
-        let (_, initial_solution) = _execute_subchat_iteration(
+        let result = _execute_subchat_iteration(
             ccx_subchat.clone(),
             &subchat_params,
             history.clone(),
@@ -255,8 +310,11 @@ impl Tool for ToolStrategicPlanning {
             tool_call_id,
             "get-initial-solution",
             &log_prefix,
-        ).await?;
+        ).await;
 
+        cancel_token.cancel();
+
+        let (_, initial_solution) = result?;
         let final_message = format!("# Solution\n{}", initial_solution.content.content_text_only());
         tracing::info!("strategic planning response (combined):\n{}", final_message);
         let mut results = vec![];
@@ -266,6 +324,7 @@ impl Tool for ToolStrategicPlanning {
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             usage: Some(usage_collector),
+            output_filter: Some(crate::postprocessing::pp_command_output::OutputFilter::no_limits()),
             ..Default::default()
         }));  
         results.push(ContextEnum::ChatMessage(ChatMessage {
