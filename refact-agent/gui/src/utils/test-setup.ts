@@ -14,13 +14,15 @@ beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
 
   // Mock localStorage for tests
-  const localStorageMock = {
-    getItem: vi.fn(),
+  const localStorageMock: Storage = {
+    getItem: vi.fn(() => null),
     setItem: vi.fn(),
     removeItem: vi.fn(),
     clear: vi.fn(),
+    key: vi.fn(() => null),
+    length: 0,
   };
-  global.localStorage = localStorageMock as Storage;
+  global.localStorage = localStorageMock;
 });
 
 afterEach(() => {
