@@ -34,13 +34,13 @@ jobs:
           cache: "npm"
           cache-dependency-path: refact-agent/gui/package-lock.json
 
-      # Disable Husky install during npm ci
+      # Disable Husky install during npm install --prefer-offline
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y libcairo2-dev libjpeg-dev libpango1.0-dev libgif-dev librsvg2-dev
           npm pkg delete scripts.prepare
-          npm ci
+          npm install --prefer-offline
 
       - run: npm run test
       - run: npm run format:check
