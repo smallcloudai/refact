@@ -52,12 +52,17 @@ function pruneHistory(key: string, item: string) {
 }
 
 function removeOldEntry(key: string) {
-  if (localStorage.getItem(key)) {
+  if (
+    typeof localStorage !== "undefined" &&
+    typeof localStorage.getItem === "function" &&
+    localStorage.getItem(key)
+  ) {
     localStorage.removeItem(key);
   }
 }
 
 function cleanOldEntries() {
+  if (typeof localStorage === "undefined") return;
   removeOldEntry("tour");
   removeOldEntry("tipOfTheDay");
   removeOldEntry("chatHistory");

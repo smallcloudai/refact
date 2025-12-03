@@ -41,6 +41,91 @@ import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
 import { checkForDetailMessage } from "./types";
 
+const external_ignored_tools = ["web_search"];
+
+export function postProcessMessagesAfterStreaming(
+  messages: ChatMessages,
+): ChatMessages {
+  return messages.map((message) => {
+    if (!isAssistantMessage(message) || !message.tool_calls) {
+      return message;
+    }
+
+    const deduplicatedTools = deduplicateToolCalls(message.tool_calls);
+    const ignoredTools: ToolCall[] = [];
+    const keptTools: ToolCall[] = [];
+
+    deduplicatedTools.forEach((tool) => {
+      if (
+        tool.function.name &&
+        external_ignored_tools.includes(tool.function.name)
+      ) {
+        ignoredTools.push(tool);
+      } else {
+        keptTools.push(tool);
+      }
+    });
+
+    if (
+      ignoredTools.length === 0 &&
+      deduplicatedTools.length === message.tool_calls.length
+    ) {
+      return message;
+    }
+
+    const ignoredText = ignoredTools
+      .map((tool) => {
+        let args = tool.function.arguments
+          .replace(/\}\{+\}/g, "}")
+          .replace(/\{+\)/g, ")")
+          .replace(/\}\{/g, "}")
+          .trim();
+
+        if (args.endsWith("{")) {
+          args = args.slice(0, -1) + "}";
+        }
+
+        return `\n---\n\n☁️ **${tool.function.name}**\`(${args})\` was called on the cloud`;
+      })
+      .join("");
+
+    const updatedContent = ignoredText
+      ? message.content + "\n" + ignoredText
+      : message.content;
+
+    return {
+      ...message,
+      content: updatedContent,
+      tool_calls: keptTools.length > 0 ? keptTools : undefined,
+    };
+  });
+}
+
+function deduplicateToolCalls(toolCalls: ToolCall[]): ToolCall[] {
+  const toolCallMap = new Map<string, ToolCall>();
+
+  toolCalls.forEach((tool) => {
+    if (!tool.id) return; // Skip tools without an id
+    const existingTool = toolCallMap.get(tool.id);
+
+    if (!existingTool) {
+      toolCallMap.set(tool.id, tool);
+    } else {
+      const existingHasArgs =
+        existingTool.function.arguments &&
+        existingTool.function.arguments.trim() !== "";
+      const newHasArgs =
+        tool.function.arguments && tool.function.arguments.trim() !== "";
+
+      if (!existingHasArgs && newHasArgs) {
+        toolCallMap.set(tool.id, tool);
+      }
+    }
+  });
+
+  return Array.from(toolCallMap.values());
+}
+
 // export const TAKE_NOTE_MESSAGE = [
 //   'How many times user has corrected or directed you? Write "Number of correction points N".',
 //   'Then start each one with "---\n", describe what you (the assistant) did wrong, write "Mistake: ..."',
