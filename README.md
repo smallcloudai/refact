@@ -35,10 +35,10 @@ Refact Agent works effortlessly with the tools and databases you already use:
 ### ⚡ Why Choose Refact Agent?  
 
 - ✅ **Deploy On-Premise:** For maximum security, choose our self-hosted AI Agent version and run it on your own infrastructure.
-- 🧠 **Access State-of-the-Art Models:** Use Claude 4, GPT-4o, or GPT-4o mini with AI Agent or for chat queries.
-- 🔑 **Bring Your Own Key (BYOK):** Connect your API key and use any LLM: Gemini, Grok, OpenAI, Deepseek, and others.
+- 🧠 **Access State-of-the-Art Models:** Use GPT-5, Claude 4.5, Gemini 3.0, DeepSeek, and more with AI Agent or for chat queries.
+- 🔑 **Bring Your Own Key (BYOK):** Connect your API key and use any LLM: OpenAI, Anthropic, Google, DeepSeek, Qwen, and others.
 - 💬 **Integrated IDE Chat:** Integrate with GitHub, PostgreSQL, Docker, and more. Refact.ai Agent accesses your resources and handles related operations autonomously, mimicking your workflow.
-- ⚡ **Free, Unlimited, Context-Aware Auto-Completion:** Code faster with smart AI suggestions.  
+- ⚡ **Free, Unlimited, Context-Aware Auto-Completion:** Code faster with smart AI suggestions powered by Qwen2.5-Coder-1.5B with RAG.
 - 🛠️ **Supports 25+ Programming Languages:** Python, JavaScript, Java, Rust, TypeScript, PHP, C++, C#, Go, and many more!  
 
 ### 🎉  Hear from our Community
@@ -87,7 +87,7 @@ Our Ambassadors shared remarkable stories of how they transform weeks of coding 
 
 ![integrations](https://lh7-rt.googleusercontent.com/docsz/AD_4nXc4DWYXF73AgPWAaFFGLTqEprWwA0im8R_A1QMo4QW4pTnSi1MCoP9L8udMZb5FPyN-CdgefaxJFGpX2ndn5nkjGBF2b_hZBNHogM7IM6SPvUIvUd9iE1lYIq7q-TB2qKzSGLk00A?key=zllGjEBckkx13bRZ6JIqX6qr)
 
- ✅ **State-of-the-Art Models** – Use Claude 4, GPT-4o, or GPT-4o mini with AI Agent or for chat queries.
+ ✅ **State-of-the-Art Models** – Use GPT-5, Claude 4.5, Gemini 3.0, DeepSeek Reasoner, and more with AI Agent or for chat queries.
 
  ✅ **Bring Your Own Key (BYOK)** – Use your own API keys for external LLMs.  
 

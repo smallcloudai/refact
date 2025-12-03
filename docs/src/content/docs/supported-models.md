@@ -7,29 +7,100 @@ description: Supported Models in Refact.ai
 
 With Refact.ai, access state-of-the-art models in your VS Code or JetBrains plugin and select the optimal LLM for each task.
 
-### AI Agent models
-- GPT 4.1 (default)
-- Claude 4 Sonnet
-- GPT-4o
-- o4-mini
-- Gemini 2.5 Pro
-- Gemini 2.5 Pro Preview
+### AI Agent Models
 
+Refact.ai supports advanced models with agent capabilities that can autonomously use tools, integrate with your development environment, and handle complex multi-step tasks:
 
-### Chat models
-- GPT 4.1 (default)
-- GPT-4.1 Mini
-- GPT-4.1 Nano
-- Claude 4 Sonnet  
-- GPT-4o
-- GPT-4o-mini
-- o4-mini
-- Gemini 2.5 Pro
-- Gemini 2.5 Pro Preview
+- **GPT-5 Family** - Latest OpenAI models with reasoning, web search, and code interpreter
+  - `gpt-5` - Most advanced model with full agent capabilities (400K context)
+  - `gpt-5-mini` - Efficient reasoning model (400K context)
+  - `gpt-5-nano` - Ultra-efficient option (400K context)
+  - `gpt-5.1` - Enhanced version with improved reasoning (400K context)
+  - `gpt-5.1-codex` - Code-specialized variant (400K context)
 
+- **GPT-4.1 Family** - Advanced multimodal models (1M context)
+  - `gpt-4.1` (default) - Full-featured with agent capabilities
+  - `gpt-4.1-mini` - Balanced performance and cost
+  - `gpt-4.1-nano` - Most cost-effective option
+
+- **Claude 4.5 Family** - Anthropic's latest with extended thinking (200K context)
+  - `claude-sonnet-4-5` - Balanced performance
+  - `claude-haiku-4-5` - Fast and efficient
+  - `claude-opus-4.5` - Most capable (PRO+ plans only)
+
+- **O-Series** - Reasoning-focused models
+  - `o4-mini` - Multimodal reasoning (200K context)
+  - `o3-mini` - Compact reasoning model (200K context)
+  - `o4-mini-deep-research` - Autonomous web research agent with code execution support (400K context)
+
+- **Google Gemini Models** - Large context multimodal models
+  - `gemini-2.5-pro` - Production-ready (1M context)
+  - `gemini-2.5-pro-preview` - Preview access (200K context)
+  - `gemini-3-pro-preview` - Next-generation preview (200K context)
+
+### Chat Models
+
+All agent models above can be used for chat, plus additional efficient options:
+
+- **GPT-4.1 Family**
+  - `gpt-4.1` (default) - Full-featured multimodal model (1M context)
+  - `gpt-4.1-mini` - Balanced option (1M context)
+  - `gpt-4.1-nano` - Most efficient (1M context)
+
+- **GPT-5 Family**
+  - `gpt-5`, `gpt-5-mini`, `gpt-5-nano` - All support chat with reasoning (400K context)
+  - `gpt-5.1`, `gpt-5.1-codex` - Enhanced versions (400K context)
+
+- **Claude 4.5 Family**
+  - `claude-sonnet-4-5` - Balanced performance (200K context)
+  - `claude-haiku-4-5` - Fast responses (200K context)
+  - `claude-opus-4.5` - Maximum capability (200K context, PRO+ only)
+
+- **O-Series**
+  - `o4-mini`, `o3-mini` - Reasoning models
+  - `o4-mini-deep-research` - Autonomous web research (multi-step internet research)
+
+- **Google Gemini**
+  - `gemini-2.5-pro`, `gemini-2.5-pro-preview`, `gemini-3-pro-preview` - Large context models
+
+- **DeepSeek Models** (Refact team only)
+  - `deepseek-chat` - High-performance chat with tools (64K context)
+  - `deepseek-reasoner` - Reasoning-focused model (64K context)
+
+- **Qwen Models** (Refact team only)
+  - `Qwen3-235B-A22B` - Large-scale reasoning model (41K context)
+
+### Advanced Reasoning
 
 For select models, click the `💡Think` button to enable advanced reasoning, helping AI better solve complex tasks. Available only in [Refact.ai Pro plan](https://refact.ai/pricing/).
 
+**Models with Extended Thinking/Reasoning:**
+- All GPT-5 family models (OpenAI reasoning)
+- All O-series models (OpenAI reasoning)
+- All Claude 4.5 family models (Anthropic extended thinking)
+- DeepSeek Reasoner (DeepSeek reasoning)
+- Qwen3-235B-A22B (Qwen reasoning)
+
+### Model Capabilities Overview
+
+| Capability | Description | Supported Models |
+|------------|-------------|------------------|
+| **Tools/Function Calling** | Models can use external tools and APIs | Most models |
+| **Multimodal** | Support for image inputs | GPT-4.1, GPT-5, O4-mini, Claude 4.5, Gemini |
+| **Agent Mode** | Autonomous multi-step task handling | GPT-5, GPT-4.1, Claude 4.5, Gemini, DeepSeek |
+| **Reasoning** | Advanced problem-solving with chain-of-thought | GPT-5, O-series, Claude 4.5, DeepSeek, Qwen |
+| **Web Search** | Integrated web search capabilities | GPT-5 models, o4-mini-deep-research |
+| **Code Interpreter** | Execute code in sandboxed environment | o4-mini-deep-research (supporting tool) |
+| **Prompt Caching** | Reduced costs for repeated contexts | OpenAI and Anthropic models |
+
+### Pricing Information
+
+All models are available with transparent token-based pricing:
+- **Prompt tokens**: Text you send to the model
+- **Generated tokens**: Text the model produces
+- **Cached tokens**: Previously processed context (discounted)
+
+Models with prompt caching (OpenAI, Anthropic) offer significant cost savings for repeated contexts. Cache read tokens are typically 90% cheaper than regular prompt tokens.
 
 ### Code completion models 
 - Qwen2.5-Coder-1.5B
