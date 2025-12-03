@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::time::SystemTime;
 use indexmap::IndexMap;
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
@@ -10,7 +11,8 @@ use crate::basic_utils::generate_random_hash;
 use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, ContextEnum, ContextFile};
 use crate::cloud::messages_req::ThreadMessage;
 use crate::cloud::threads_req::{lock_thread, Thread};
-use crate::cloud::threads_sub::{BasicStuff, ThreadPayload};
+use crate::cloud::threads_sub::{BasicStuff, ThreadMessagePayload, ThreadPayload};
+use crate::git::checkpoints::create_workspace_checkpoint;
 use crate::global_context::GlobalContext;
 use crate::scratchpads::scratchpad_utils::max_tokens_for_rag_chat_by_tools;
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
@@ -337,23 +339,11 @@ pub async fn process_thread_event(
     basic_info: BasicStuff,
     cmd_address_url: String,
     api_key: String,
-    app_searchable_id: String,
     located_fgroup_id: String,
 ) -> Result<(), String> {
     if thread_payload.ft_need_tool_calls == -1
         || thread_payload.owner_fuser_id != basic_info.fuser_id
         || !thread_payload.ft_locked_by.is_empty() {
-        return Ok(());
-    }
-    if let Some(ft_app_searchable) = thread_payload.ft_app_searchable.clone() {
-        if ft_app_searchable != app_searchable_id {
-            info!("thread `{}` has different `app_searchable` id, skipping it: {} != {}",
-                thread_payload.ft_id, app_searchable_id, ft_app_searchable
-            );
-            return Ok(());
-        }
-    } else {
-        info!("thread `{}` doesn't have the `app_searchable` id, skipping it", thread_payload.ft_id);
         return Ok(());
     }
     if let Some(error) = thread_payload.ft_error.as_ref() {
@@ -384,6 +374,42 @@ pub async fn process_thread_event(
         },
     }
     process_result
+}
+
+pub async fn process_thread_message_event(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    mut thread_message_payload: ThreadMessagePayload,
+    cmd_address_url: String,
+    api_key: String,
+) -> Result<(), String> {
+    let old_message_cutoff = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() - 300;
+    if thread_message_payload.ftm_role != "user" || thread_message_payload.ftm_created_ts < old_message_cutoff as f64 {
+        return Ok(());
+    }
+    if thread_message_payload.ftm_app_specific.as_ref().is_some_and(|a| a.get("checkpoints").is_some()) {
+        return Ok(());
+    }
+
+    let (checkpoints, _) = create_workspace_checkpoint(gcx.clone(), None, &thread_message_payload.ftm_belongs_to_ft_id).await?;
+
+    let mut app_specific = thread_message_payload.ftm_app_specific.as_ref()
+        .and_then(|v| v.as_object().cloned())
+        .unwrap_or_else(|| serde_json::Map::new());
+    app_specific.insert("checkpoints".to_string(), serde_json::json!(checkpoints));
+    thread_message_payload.ftm_app_specific = Some(Value::Object(app_specific.clone()));
+
+    crate::cloud::messages_req::thread_message_patch_app_specific(
+        &cmd_address_url,
+        &api_key,
+        &thread_message_payload.ftm_belongs_to_ft_id,
+        thread_message_payload.ftm_alt,
+        thread_message_payload.ftm_num,
+        Value::Object(app_specific),
+    ).await?;
+
+    tracing::info!("Created and stored checkpoints: {:#?}", checkpoints);
+
+    Ok(())
 }
 
 async fn process_locked_thread(

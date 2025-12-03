@@ -23,6 +23,7 @@ use crate::integrations::sessions::IntegrationSession;
 use crate::privacy::PrivacySettings;
 use crate::background_tasks::BackgroundTasksHolder;
 
+pub const APP_CAPTURE_ID: &str = "refact-agent";
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CommandLine {
@@ -198,7 +199,7 @@ pub async fn migrate_to_config_folder(
 pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
     use std::process::Command;
     use rand::Rng;
-    
+
     // Try multiple methods to get a unique machine identifier on macOS
     let machine_id = {
         // First attempt: Use system_profiler to get hardware UUID (most reliable)
@@ -217,13 +218,13 @@ pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
                             .map(|s| s.trim().to_string())
                     })
             });
-            
+
         if let Some(uuid) = hardware_uuid {
             if !uuid.trim().is_empty() {
                 return uuid;
             }
         }
-        
+
         // Second attempt: Try to get the serial number
         let serial_number = Command::new("system_profiler")
             .args(&["SPHardwareDataType"])
@@ -239,13 +240,13 @@ pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
                             .map(|s| s.trim().to_string())
                     })
             });
-            
+
         if let Some(serial) = serial_number {
             if !serial.trim().is_empty() {
                 return serial;
             }
         }
-        
+
         // Third attempt: Try to get the MAC address using ifconfig
         let mac_address = Command::new("ifconfig")
             .args(&["en0"])
@@ -261,13 +262,13 @@ pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
                             .map(|s| s.trim().replace(":", ""))
                     })
             });
-            
+
         if let Some(mac) = mac_address {
             if !mac.trim().is_empty() && mac != "000000000000" {
                 return mac;
             }
         }
-        
+
         // Final fallback: Generate a random ID and store it persistently
         // This is just a temporary solution in case all other methods fail
         let mut rng = rand::thread_rng();
