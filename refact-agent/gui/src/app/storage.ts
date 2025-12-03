@@ -52,7 +52,11 @@ function pruneHistory(key: string, item: string) {
 }
 
 function removeOldEntry(key: string) {
-  if (typeof localStorage !== "undefined" && localStorage.getItem(key)) {
+  if (
+    typeof localStorage !== "undefined" &&
+    typeof localStorage.getItem === "function" &&
+    localStorage.getItem(key)
+  ) {
     localStorage.removeItem(key);
   }
 }
