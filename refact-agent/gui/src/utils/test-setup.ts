@@ -12,6 +12,15 @@ beforeAll(() => {
   stubResizeObserver();
   stubIntersectionObserver();
   Element.prototype.scrollIntoView = vi.fn();
+  
+  // Mock localStorage for tests
+  const localStorageMock = {
+    getItem: vi.fn(),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+    clear: vi.fn(),
+  };
+  global.localStorage = localStorageMock as Storage;
 });
 
 afterEach(() => {
