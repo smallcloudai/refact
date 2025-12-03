@@ -8,7 +8,12 @@ import {
   UserMessageResponse,
   type ToolCall,
 } from "../../../services/refact";
-import { mergeToolCalls, formatChatResponse, consumeStream, postProcessMessagesAfterStreaming } from "./utils";
+import {
+  mergeToolCalls,
+  formatChatResponse,
+  consumeStream,
+  postProcessMessagesAfterStreaming,
+} from "./utils";
 
 describe("formatChatResponse", () => {
   test("it should replace the last user message", () => {
@@ -1760,14 +1765,14 @@ describe("postProcessMessagesAfterStreaming", () => {
     ];
 
     const result = postProcessMessagesAfterStreaming(messages);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0].role).toBe("assistant");
     if ("tool_calls" in result[0] && "content" in result[0]) {
       expect(result[0].tool_calls).toHaveLength(1);
       expect(result[0].tool_calls?.[0].function.name).toBe("str_replace");
       expect(result[0].content).toBe(
-        'I\'ll search for the weather.\n\n---\n\n☁️ **web_search**`({"query": "weather in Adelaide"})` was called on the cloud'
+        'I\'ll search for the weather.\n\n---\n\n☁️ **web_search**`({"query": "weather in Adelaide"})` was called on the cloud',
       );
     }
   });
@@ -1791,12 +1796,12 @@ describe("postProcessMessagesAfterStreaming", () => {
     ];
 
     const result = postProcessMessagesAfterStreaming(messages);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0].role).toBe("assistant");
     if ("content" in result[0]) {
       expect(result[0].content).toBe(
-        'Searching for information.\n\n---\n\n☁️ **web_search**`({"query": "test"})` was called on the cloud'
+        'Searching for information.\n\n---\n\n☁️ **web_search**`({"query": "test"})` was called on the cloud',
       );
     }
     if ("tool_calls" in result[0]) {
@@ -1818,7 +1823,7 @@ describe("postProcessMessagesAfterStreaming", () => {
     ];
 
     const result = postProcessMessagesAfterStreaming(messages);
-    
+
     expect(result).toEqual(messages);
   });
 
@@ -1841,7 +1846,7 @@ describe("postProcessMessagesAfterStreaming", () => {
     ];
 
     const result = postProcessMessagesAfterStreaming(messages);
-    
+
     expect(result).toEqual(messages);
   });
 
@@ -1880,13 +1885,15 @@ describe("postProcessMessagesAfterStreaming", () => {
     ];
 
     const result = postProcessMessagesAfterStreaming(messages);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0].role).toBe("assistant");
     if ("tool_calls" in result[0]) {
       expect(result[0].tool_calls).toHaveLength(2);
       expect(result[0].tool_calls?.[0].id).toBe("call_123");
-      expect(result[0].tool_calls?.[0].function.arguments).toBe('{"path": "/src"}');
+      expect(result[0].tool_calls?.[0].function.arguments).toBe(
+        '{"path": "/src"}',
+      );
       expect(result[0].tool_calls?.[1].id).toBe("call_456");
     }
   });
@@ -1934,14 +1941,16 @@ describe("postProcessMessagesAfterStreaming", () => {
     ];
 
     const result = postProcessMessagesAfterStreaming(messages);
-    
+
     expect(result).toHaveLength(1);
     if ("tool_calls" in result[0] && "content" in result[0]) {
       expect(result[0].tool_calls).toHaveLength(1);
       expect(result[0].tool_calls?.[0].id).toBe("call_456");
       expect(result[0].tool_calls?.[0].function.name).toBe("tree");
-      expect(result[0].tool_calls?.[0].function.arguments).toBe('{"path": "/"}');
-      expect(result[0].content).toContain('web_search');
+      expect(result[0].tool_calls?.[0].function.arguments).toBe(
+        '{"path": "/"}',
+      );
+      expect(result[0].content).toContain("web_search");
       expect(result[0].content).toContain('{"query": "test search"}');
     }
   });

@@ -241,7 +241,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.streaming = false;
     state.waiting_for_response = false;
     state.thread.read = true;
-    state.thread.messages = postProcessMessagesAfterStreaming(state.thread.messages);
+    state.thread.messages = postProcessMessagesAfterStreaming(
+      state.thread.messages,
+    );
   });
 
   builder.addCase(setAutomaticPatch, (state, action) => {
@@ -324,7 +326,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
       new_chat_suggested: { wasSuggested: false },
       ...mostUptoDateThread,
     };
-    state.thread.messages = postProcessMessagesAfterStreaming(state.thread.messages);
+    state.thread.messages = postProcessMessagesAfterStreaming(
+      state.thread.messages,
+    );
     state.thread.tool_use = state.thread.tool_use ?? state.tool_use;
     if (action.payload.mode && !isLspChatMode(action.payload.mode)) {
       state.thread.mode = "AGENT";

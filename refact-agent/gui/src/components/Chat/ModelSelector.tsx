@@ -38,7 +38,11 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ disabled }) => {
       >
         <Select.Trigger
           variant="ghost"
-          title={disabled ? "Cannot change model while streaming" : "Click to change model"}
+          title={
+            disabled
+              ? "Cannot change model while streaming"
+              : "Click to change model"
+          }
           style={{
             cursor: disabled ? "not-allowed" : "pointer",
             padding: "0 4px",

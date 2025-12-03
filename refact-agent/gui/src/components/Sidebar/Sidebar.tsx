@@ -16,7 +16,6 @@ import classNames from "classnames";
 import { selectHost } from "../../features/Config/configSlice";
 import styles from "./Sidebar.module.css";
 
-
 export type SidebarProps = {
   takingNotes: boolean;
   className?: string;

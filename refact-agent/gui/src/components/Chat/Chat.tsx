@@ -125,7 +125,9 @@ export const Chat: React.FC<ChatProps> = ({
             <Flex align="center" justify="between" width="100%">
               <Flex align="center" gap="2">
                 <ModelSelector />
-                <Text size="1" color="gray">•</Text>
+                <Text size="1" color="gray">
+                  •
+                </Text>
                 <Text
                   size="1"
                   color="gray"
