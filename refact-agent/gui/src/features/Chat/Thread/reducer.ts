@@ -41,6 +41,8 @@ import {
   setIncreaseMaxTokens,
   setAreFollowUpsEnabled,
   setIsTitleGenerationEnabled,
+  setIncludeProjectInfo,
+  setContextTokensCap,
 } from "./actions";
 import { formatChatResponse, postProcessMessagesAfterStreaming } from "./utils";
 import {
@@ -80,6 +82,8 @@ const createChatThread = (
     boost_reasoning: false,
     automatic_patch: false,
     increase_max_tokens: false,
+    include_project_info: true,
+    context_tokens_cap: undefined,
   };
   return chat;
 };
@@ -159,6 +163,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setChatModel, (state, action) => {
+    state.thread.model = action.payload;
     state.thread.model = action.payload;
   });
 
@@ -437,6 +442,16 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.thread.increase_max_tokens = action.payload;
   });
 
+  builder.addCase(setIncludeProjectInfo, (state, action) => {
+    if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.include_project_info = action.payload.value;
+  });
+
+  builder.addCase(setContextTokensCap, (state, action) => {
+    if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.context_tokens_cap = action.payload.value;
+  });
+
   builder.addMatcher(
     capsApi.endpoints.getCaps.matchFulfilled,
     (state, action) => {
@@ -450,6 +465,13 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
       state.thread.currentMaximumContextTokens =
         currentModelMaximumContextTokens;
+
+      if (
+        state.thread.context_tokens_cap === undefined ||
+        state.thread.context_tokens_cap > currentModelMaximumContextTokens
+      ) {
+        state.thread.context_tokens_cap = currentModelMaximumContextTokens;
+      }
     },
   );
 

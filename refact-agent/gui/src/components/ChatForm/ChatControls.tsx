@@ -9,7 +9,6 @@ import {
   Switch,
   Badge,
   Button,
-  DataList,
 } from "@radix-ui/themes";
 import { Select, type SelectProps } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
@@ -45,9 +44,9 @@ import {
 } from "../../features/Chat/Thread";
 import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
-import { toPascalCase } from "../../utils/toPascalCase";
-import { Coin } from "../../images";
 import { push } from "../../features/Pages/pagesSlice";
+import { RichModelSelectItem } from "../Select/RichModelSelectItem";
+import { enrichAndGroupModels } from "../../utils/enrichModels";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -322,45 +321,49 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
   );
 
   const optionsWithToolTips: SelectProps["options"] = useMemo(() => {
-    // Map existing models with tooltips
-    const modelOptions = caps.usableModelsForPlan.map((option) => {
-      if (!caps.data) return option;
-      if (!caps.data.metadata) return option;
-      if (!caps.data.metadata.pricing) return option;
-      if (!option.value.startsWith("refact/")) return option;
-      const key = option.value.replace("refact/", "");
-      if (!(key in caps.data.metadata.pricing)) return option;
-      const pricingForModel = caps.data.metadata.pricing[key];
-      const tooltip = (
-        <Flex direction="column" gap="4">
-          <Text size="1">Cost per Million Tokens</Text>
-          <DataList.Root size="1" trim="both" className={styles.data_list}>
-            {Object.entries(pricingForModel).map(([key, value]) => {
-              return (
-                <DataList.Item key={key} align="stretch">
-                  <DataList.Label minWidth="88px">
-                    {toPascalCase(key)}
-                  </DataList.Label>
-                  <DataList.Value className={styles.data_list__value}>
-                    <Flex justify="between" align="center" gap="2">
-                      {value * 1_000} <Coin width="12px" height="12px" />
-                    </Flex>
-                  </DataList.Value>
-                </DataList.Item>
-              );
-            })}
-          </DataList.Root>
-        </Flex>
-      );
-      return {
-        ...option,
-        tooltip,
-        // title,
-      };
+    const groupedModels = enrichAndGroupModels(
+      caps.usableModelsForPlan,
+      caps.data,
+    );
+
+    if (groupedModels.length === 0) {
+      return [
+        ...caps.usableModelsForPlan,
+        { type: "separator" },
+        {
+          value: "add-new-model",
+          textValue: "Add new model",
+        },
+      ];
+    }
+
+    const flatOptions: SelectProps["options"] = [];
+    groupedModels.forEach((group, index) => {
+      if (index > 0) {
+        flatOptions.push({ type: "separator" });
+      }
+      group.models.forEach((model) => {
+        flatOptions.push({
+          value: model.value,
+          textValue: model.displayName,
+          disabled: model.disabled,
+          children: (
+            <RichModelSelectItem
+              displayName={model.displayName}
+              pricing={model.pricing}
+              nCtx={model.nCtx}
+              capabilities={model.capabilities}
+              isDefault={model.isDefault}
+              isThinking={model.isThinking}
+              isLight={model.isLight}
+            />
+          ),
+        });
+      });
     });
 
     return [
-      ...modelOptions,
+      ...flatOptions,
       { type: "separator" },
       {
         value: "add-new-model",

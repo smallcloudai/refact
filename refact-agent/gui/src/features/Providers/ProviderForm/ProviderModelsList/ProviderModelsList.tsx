@@ -1,4 +1,4 @@
-import { useCallback, type FC } from "react";
+import { useCallback, useMemo, type FC } from "react";
 import { Flex, Heading, Separator, Text } from "@radix-ui/themes";
 
 import type { ProviderFormProps } from "../ProviderForm";
@@ -8,7 +8,8 @@ import { ModelCard } from "./ModelCard";
 import { AddModelButton } from "./components";
 
 import { useGetModelsByProviderNameQuery } from "../../../../hooks/useModelsQuery";
-import { ModelsResponse } from "../../../../services/refact";
+import { ModelsResponse, useGetCapsQuery } from "../../../../services/refact";
+import { groupModelsWithPricing } from "./utils/groupModelsWithPricing";
 
 export type ProviderModelsListProps = {
   provider: ProviderFormProps["currentProvider"];
@@ -33,6 +34,9 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
     providerName: provider.name,
   });
 
+  // Fetch capabilities & pricing; UI will gracefully degrade if this fails.
+  const { data: capsData, isError: capsError } = useGetCapsQuery(undefined);
+
   const getModelNames = useCallback((modelsData: ModelsResponse) => {
     const currentChatModelNames = modelsData.chat_models.map((m) => m.name);
     const currentCompletionModelNames = modelsData.completion_models.map(
@@ -44,6 +48,29 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
       currentCompletionModelNames,
     };
   }, []);
+
+  // Compute groups early so hooks are always called in the same order
+  const chatGroups = useMemo(
+    () =>
+      modelsData?.chat_models
+        ? groupModelsWithPricing(modelsData.chat_models, {
+            caps: capsError ? undefined : capsData,
+            modelType: "chat",
+          })
+        : [],
+    [modelsData?.chat_models, capsData, capsError],
+  );
+
+  const completionGroups = useMemo(
+    () =>
+      modelsData?.completion_models
+        ? groupModelsWithPricing(modelsData.completion_models, {
+            caps: capsError ? undefined : capsData,
+            modelType: "completion",
+          })
+        : [],
+    [modelsData?.completion_models, capsData, capsError],
+  );
 
   if (isLoading) return <Spinner spinning />;
 
@@ -60,25 +87,37 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
         Models list
       </Heading>
       <Separator size="4" />
+
+      {/* Chat models section */}
       <Heading as="h6" size="2" my="2">
         Chat Models
       </Heading>
+
       {chat_models.length > 0 ? (
-        chat_models.map((m) => {
-          return (
-            <ModelCard
-              key={`${m.name}_chat`}
-              model={m}
-              providerName={provider.name}
-              modelType="chat"
-              isReadonlyProvider={provider.readonly}
-              currentModelNames={currentChatModelNames}
-            />
-          );
-        })
+        chatGroups.map((group) => (
+          <Flex key={group.id} direction="column" gap="1" my="1">
+            {chatGroups.length > 1 && (
+              <Text as="span" size="1" color="gray" weight="medium">
+                {group.title}
+                {group.description ? ` — ${group.description}` : ""}
+              </Text>
+            )}
+            {group.models.map((m) => (
+              <ModelCard
+                key={`${m.name}_chat`}
+                model={m}
+                providerName={provider.name}
+                modelType="chat"
+                isReadonlyProvider={provider.readonly}
+                currentModelNames={currentChatModelNames}
+              />
+            ))}
+          </Flex>
+        ))
       ) : (
         <NoModelsText />
       )}
+
       {!provider.readonly && (
         <AddModelButton
           modelType="chat"
@@ -86,27 +125,38 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
           currentModelNames={currentChatModelNames}
         />
       )}
+
+      {/* Completion models section */}
       {provider.supports_completion && (
         <>
           <Heading as="h6" size="2" my="2">
             Completion Models
           </Heading>
           {completion_models.length > 0 ? (
-            completion_models.map((m) => {
-              return (
-                <ModelCard
-                  key={`${m.name}_completion`}
-                  model={m}
-                  providerName={provider.name}
-                  modelType="completion"
-                  isReadonlyProvider={provider.readonly}
-                  currentModelNames={currentCompletionModelNames}
-                />
-              );
-            })
+            completionGroups.map((group) => (
+              <Flex key={group.id} direction="column" gap="1" my="1">
+                {completionGroups.length > 1 && (
+                  <Text as="span" size="1" color="gray" weight="medium">
+                    {group.title}
+                    {group.description ? ` — ${group.description}` : ""}
+                  </Text>
+                )}
+                {group.models.map((m) => (
+                  <ModelCard
+                    key={`${m.name}_completion`}
+                    model={m}
+                    providerName={provider.name}
+                    modelType="completion"
+                    isReadonlyProvider={provider.readonly}
+                    currentModelNames={currentCompletionModelNames}
+                  />
+                ))}
+              </Flex>
+            ))
           ) : (
             <NoModelsText />
           )}
+
           {!provider.readonly && (
             <AddModelButton
               modelType="completion"
@@ -116,11 +166,8 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
           )}
         </>
       )}
-      {/* TODO: do we want to expose embedding model configuration updates? */}
-      {/* <Heading as="h6" size="2">
-        Embedding Model
-      </Heading>
-      <div>{modelsData.embedding_model.name}</div> */}
+
+      {/* Embedding model could be handled in a similar way in the future */}
     </Flex>
   );
 };

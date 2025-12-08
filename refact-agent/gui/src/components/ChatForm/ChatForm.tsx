@@ -8,6 +8,8 @@ import {
   BackToSideBarButton,
   AgentIntegrationsButton,
   ThinkingButton,
+  ProjectInfoButton,
+  ContextCapButton,
 } from "../Buttons";
 import { TextArea } from "../TextArea";
 import { Form } from "./Form";
@@ -282,9 +284,21 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   if (globalError) {
     return (
-      <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
-        {globalError}
-      </ErrorCallout>
+      <Flex direction="column" mt="2" gap="2">
+        <ErrorCallout onClick={onClearError} timeout={null}>
+          {globalError}
+        </ErrorCallout>
+      </Flex>
+    );
+  }
+
+  if (chatError) {
+    return (
+      <Flex direction="column" mt="2" gap="2">
+        <ErrorCallout onClick={onClearError} timeout={null}>
+          {chatError}
+        </ErrorCallout>
+      </Flex>
     );
   }
 
@@ -366,10 +380,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               />
             )}
           />
-          <Flex gap="1" wrap="wrap" py="1" px="2">
+          <Flex gap="2" wrap="wrap" py="1" px="2" align="center">
             {isModelSelectVisible && <CapsSelect />}
+            <ContextCapButton />
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
+              <ProjectInfoButton />
               <ThinkingButton />
               <TokensPreview
                 currentMessageQuery={attachedFiles.addFilesToInput(value)}

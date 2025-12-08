@@ -22,7 +22,7 @@ import {
 
 import styles from "./UsageCounter.module.css";
 import { Coin } from "../../images";
-import { Usage } from "../../services/refact";
+import { CompressionStrength, Usage } from "../../services/refact";
 
 type UsageCounterProps =
   | {
@@ -281,10 +281,35 @@ const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
   );
 };
 
+const formatCompressionStage = (
+  strength: CompressionStrength | null | undefined,
+): string | null => {
+  switch (strength) {
+    case "low":
+      return "1/3";
+    case "medium":
+      return "2/3";
+    case "high":
+      return "3/3";
+    case "absent":
+    default:
+      return null;
+  }
+};
+
 const DefaultHoverTriggerContent: React.FC<{
   inputTokens: number;
   outputTokens: number;
-}> = ({ inputTokens, outputTokens }) => {
+  currentSessionTokens: number;
+  compressionStrength?: CompressionStrength | null;
+}> = ({
+  inputTokens,
+  outputTokens,
+  currentSessionTokens,
+  compressionStrength,
+}) => {
+  const compressionLabel = formatCompressionStage(compressionStrength);
+
   return (
     <>
       {inputTokens !== 0 && (
@@ -299,6 +324,30 @@ const DefaultHoverTriggerContent: React.FC<{
           <Text size="1">{formatNumberToFixed(outputTokens)}</Text>
         </Flex>
       )}
+      {currentSessionTokens !== 0 && (
+        <Flex align="center" gap="1">
+          <Text size="1" color="gray" title="Current context window usage">
+            ctx: {formatNumberToFixed(currentSessionTokens)}
+          </Text>
+        </Flex>
+      )}
+      {compressionLabel && (
+        <Flex align="center">
+          <Text
+            size="1"
+            color={
+              compressionStrength === "high"
+                ? "red"
+                : compressionStrength === "medium"
+                  ? "yellow"
+                  : "gray"
+            }
+            title="Compression stage"
+          >
+            ⚡{compressionLabel}
+          </Text>
+        </Flex>
+      )}
     </>
   );
 };
@@ -309,7 +358,13 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const maybeAttachedImages = useAppSelector(selectAllImages);
-  const { currentThreadUsage, isOverflown, isWarning } = useUsageCounter();
+  const {
+    currentThreadUsage,
+    isOverflown,
+    isWarning,
+    compressionStrength,
+    currentSessionTokens,
+  } = useUsageCounter();
   const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
   const meteringTokens = useTotalTokenMeteringForChat();
 
@@ -391,6 +446,8 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
             <DefaultHoverTriggerContent
               inputTokens={inputTokens}
               outputTokens={outputTokens}
+              currentSessionTokens={currentSessionTokens}
+              compressionStrength={compressionStrength}
             />
           )}
         </Card>

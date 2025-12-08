@@ -26,6 +26,12 @@ export const selectCheckpointsEnabled = (state: RootState) =>
 export const selectThreadBoostReasoning = (state: RootState) =>
   state.chat.thread.boost_reasoning;
 
+export const selectIncludeProjectInfo = (state: RootState) =>
+  state.chat.thread.include_project_info;
+
+export const selectContextTokensCap = (state: RootState) =>
+  state.chat.thread.context_tokens_cap;
+
 // TBD: only used when `/links` suggests a new chat.
 export const selectThreadNewChatSuggested = (state: RootState) =>
   state.chat.thread.new_chat_suggested;

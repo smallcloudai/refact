@@ -24,7 +24,7 @@ import { DropzoneProvider } from "../Dropzone";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
 import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
-import { ModelSelector } from "./ModelSelector";
+import { EnhancedModelSelector } from "./EnhancedModelSelector";
 
 export type ChatProps = {
   host: Config["host"];
@@ -60,7 +60,7 @@ export const Chat: React.FC<ChatProps> = ({
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
-  const handleSummit = useCallback(
+  const handleSubmit = useCallback(
     (value: string) => {
       submit({ question: value });
       if (isViewingRawJSON) {
@@ -114,7 +114,7 @@ export const Chat: React.FC<ChatProps> = ({
 
         <ChatForm
           key={chatId} // TODO: think of how can we not trigger re-render on chatId change (checkboxes)
-          onSubmit={handleSummit}
+          onSubmit={handleSubmit}
           onClose={maybeSendToSidebar}
           unCalledTools={unCalledTools}
         />
@@ -124,7 +124,7 @@ export const Chat: React.FC<ChatProps> = ({
           {messages.length > 0 && (
             <Flex align="center" justify="between" width="100%">
               <Flex align="center" gap="2">
-                <ModelSelector />
+                <EnhancedModelSelector disabled={isStreaming} />
                 <Text size="1" color="gray">
                   •
                 </Text>

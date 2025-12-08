@@ -206,6 +206,11 @@ function renderMessages(
         reasoningContent={head.reasoning_content}
         toolCalls={head.tool_calls}
         isLast={isLast}
+        usage={head.usage}
+        metering_coins_prompt={head.metering_coins_prompt}
+        metering_coins_generated={head.metering_coins_generated}
+        metering_coins_cache_creation={head.metering_coins_cache_creation}
+        metering_coins_cache_read={head.metering_coins_cache_read}
       />,
     ];
 
