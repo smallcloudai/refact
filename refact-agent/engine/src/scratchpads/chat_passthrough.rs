@@ -185,7 +185,26 @@ impl ScratchpadAbstract for ChatPassthrough {
         let model_record_mb = resolve_chat_model(caps, &self.post.model).ok();
         let mut supports_reasoning = None;
         if let Some(model_record) = &model_record_mb {
-            n_ctx = model_record.base.n_ctx.clone();
+            let mut effective_n_ctx = model_record.base.n_ctx;
+            if let Some(cap) = self.post.meta.context_tokens_cap {
+                if cap == 0 {
+                    tracing::warn!(
+                        "Ignoring context_tokens_cap=0 for passthrough model {}; using n_ctx={}",
+                        model_record.base.id,
+                        effective_n_ctx
+                    );
+                } else if cap < effective_n_ctx {
+                    tracing::info!(
+                        "Applying context_tokens_cap in passthrough for model {}: n_ctx {} -> {}",
+                        model_record.base.id,
+                        effective_n_ctx,
+                        cap
+                    );
+                    effective_n_ctx = cap;
+                }
+            }
+
+            n_ctx = effective_n_ctx;
             supports_reasoning = model_record.supports_reasoning.clone();
         }
 

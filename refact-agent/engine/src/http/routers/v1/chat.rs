@@ -98,7 +98,31 @@ async fn _chat(
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
     let model_rec = resolve_chat_model(caps, &chat_post.model)
             .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
-    fill_sampling_params(&mut chat_post, model_rec.base.n_ctx, &model_rec.base.id);
+
+    let effective_n_ctx = if let Some(cap) = chat_post.meta.context_tokens_cap {
+        if cap == 0 {
+            tracing::warn!(
+                "Ignoring context_tokens_cap=0 for model {}; using n_ctx={}",
+                model_rec.base.id,
+                model_rec.base.n_ctx
+            );
+            model_rec.base.n_ctx
+        } else if cap < model_rec.base.n_ctx {
+            tracing::info!(
+                "Applying context_tokens_cap for model {}: n_ctx {} -> {}",
+                model_rec.base.id,
+                model_rec.base.n_ctx,
+                cap
+            );
+            cap
+        } else {
+            model_rec.base.n_ctx
+        }
+    } else {
+        model_rec.base.n_ctx
+    };
+
+    fill_sampling_params(&mut chat_post, effective_n_ctx, &model_rec.base.id);
 
     // extra validation to catch {"query": "Frog", "scope": "workspace"}{"query": "Toad", "scope": "workspace"}
     let re = regex::Regex::new(r"\{.*?\}").unwrap();
@@ -204,7 +228,7 @@ async fn _chat(
     // }
     let mut ccx = AtCommandsContext::new(
         gcx.clone(),
-        model_rec.base.n_ctx,
+        effective_n_ctx,
         CHAT_TOP_N,
         false,
         messages.clone(),

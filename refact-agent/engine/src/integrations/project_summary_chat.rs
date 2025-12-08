@@ -39,13 +39,14 @@ pub async fn mix_project_summary_messages(
     }
 
     sp_text = system_prompt_add_extra_instructions(
-        gcx.clone(), 
-        sp_text, 
+        gcx.clone(),
+        sp_text,
         get_available_tools_by_chat_mode(gcx.clone(), chat_meta.chat_mode)
             .await
             .into_iter()
             .map(|t| t.tool_description().name)
             .collect(),
+        chat_meta,
     ).await;    // print inside
 
     let system_message = ChatMessage {

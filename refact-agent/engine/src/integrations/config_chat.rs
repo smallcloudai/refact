@@ -152,13 +152,14 @@ pub async fn mix_config_messages(
         role: "system".to_string(),
         content: ChatContent::SimpleText(
             crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions(
-                gcx.clone(), 
+                gcx.clone(),
                 sp.text.clone(),
                 get_available_tools_by_chat_mode(gcx.clone(), chat_meta.chat_mode)
                     .await
                     .into_iter()
                     .map(|t| t.tool_description().name)
                     .collect(),
+                chat_meta,
             ).await
         ),
         ..Default::default()

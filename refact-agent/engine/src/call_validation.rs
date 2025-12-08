@@ -260,7 +260,7 @@ pub struct ChatPost {
     pub style: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatMeta {
     #[serde(default)]
     pub chat_id: String,
@@ -272,6 +272,24 @@ pub struct ChatMeta {
     pub chat_mode: ChatMode,
     #[serde(default)]
     pub current_config_file: String,
+    #[serde(default = "default_true")]
+    pub include_project_info: bool,
+    #[serde(default)]
+    pub context_tokens_cap: Option<usize>,
+}
+
+impl Default for ChatMeta {
+    fn default() -> Self {
+        ChatMeta {
+            chat_id: String::new(),
+            request_attempt_id: String::new(),
+            chat_remote: false,
+            chat_mode: ChatMode::default(),
+            current_config_file: String::new(),
+            include_project_info: true,
+            context_tokens_cap: None,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Copy)]

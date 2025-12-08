@@ -192,11 +192,17 @@ pub async fn run_tools(
             }
         };
 
-        let args = match serde_json::from_str::<HashMap<String, Value>>(&t_call.function.arguments) {
+        let arguments = if t_call.function.arguments.is_empty() {
+            "{}".to_string()
+        } else {
+            t_call.function.arguments.clone()
+        };
+        
+        let args = match serde_json::from_str::<HashMap<String, Value>>(&arguments) {
             Ok(args) => args,
             Err(e) => {
                 let tool_failed_message = tool_answer_err(
-                    format!("Tool use: couldn't parse arguments: {}. Error:\n{}", t_call.function.arguments, e), t_call.id.to_string()
+                    format!("Tool use: couldn't parse arguments: {}. Error:\n{}", arguments, e), t_call.id.to_string()
                 );
                 generated_tool.push(tool_failed_message);
                 continue;

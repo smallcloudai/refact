@@ -413,7 +413,7 @@ async fn initialize_thread(
         .collect::<Vec<_>>();
     crate::cloud::threads_req::set_thread_toolset(gcx.clone(), &thread.ft_id, tool_descriptions).await?;
     let updated_system_prompt = crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions(
-        gcx.clone(), expert.fexp_system_prompt.clone(), HashSet::new()
+        gcx.clone(), expert.fexp_system_prompt.clone(), HashSet::new(), &crate::call_validation::ChatMeta::default()
     ).await;
     let last_message = thread_messages.last().unwrap();
     let output_thread_messages = vec![ThreadMessage {

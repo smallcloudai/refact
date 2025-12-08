@@ -125,7 +125,9 @@ pub async fn system_prompt_add_extra_instructions(
     gcx: Arc<ARwLock<GlobalContext>>,
     system_prompt: String,
     tool_names: HashSet<String>,
+    chat_meta: &call_validation::ChatMeta,
 ) -> String {
+    let include_project_info = chat_meta.include_project_info;
     async fn workspace_files_info(gcx: &Arc<ARwLock<GlobalContext>>) -> (Vec<String>, Option<PathBuf>) {
         let gcx_locked = gcx.read().await;
         let documents_state = &gcx_locked.documents_state;
@@ -145,81 +147,109 @@ pub async fn system_prompt_add_extra_instructions(
 
     // New: %ENVIRONMENT_INFO% - Detected environments and usage instructions
     if system_prompt.contains("%ENVIRONMENT_INFO%") {
-        let project_dirs = get_project_dirs(gcx.clone()).await;
-        let environments = system_context::detect_environments(&project_dirs).await;
-        let env_instructions = system_context::generate_environment_instructions(&environments);
-        system_prompt = system_prompt.replace("%ENVIRONMENT_INFO%", &env_instructions);
+        if include_project_info {
+            let project_dirs = get_project_dirs(gcx.clone()).await;
+            let environments = system_context::detect_environments(&project_dirs).await;
+            let env_instructions = system_context::generate_environment_instructions(&environments);
+            system_prompt = system_prompt.replace("%ENVIRONMENT_INFO%", &env_instructions);
+        } else {
+            system_prompt = system_prompt.replace("%ENVIRONMENT_INFO%", "");
+        }
     }
 
     // New: %PROJECT_CONFIGS% - Detected project configuration files
     if system_prompt.contains("%PROJECT_CONFIGS%") {
-        let project_dirs = get_project_dirs(gcx.clone()).await;
-        let configs = system_context::find_project_configs(&project_dirs).await;
-        if !configs.is_empty() {
-            let config_list = configs
-                .iter()
-                .map(|c| format!("- {} ({})", c.file_name, c.category))
-                .collect::<Vec<_>>()
-                .join("\n");
-            let config_section = format!("## Project Configuration Files\n{}", config_list);
-            system_prompt = system_prompt.replace("%PROJECT_CONFIGS%", &config_section);
+        if include_project_info {
+            let project_dirs = get_project_dirs(gcx.clone()).await;
+            let configs = system_context::find_project_configs(&project_dirs).await;
+            if !configs.is_empty() {
+                let config_list = configs
+                    .iter()
+                    .map(|c| format!("- {} ({})", c.file_name, c.category))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                let config_section = format!("## Project Configuration Files\n{}", config_list);
+                system_prompt = system_prompt.replace("%PROJECT_CONFIGS%", &config_section);
+            } else {
+                system_prompt = system_prompt.replace("%PROJECT_CONFIGS%", "");
+            }
         } else {
             system_prompt = system_prompt.replace("%PROJECT_CONFIGS%", "");
         }
     }
 
     if system_prompt.contains("%PROJECT_TREE%") {
-        match system_context::generate_compact_project_tree(gcx.clone(), 4).await {
-            Ok(tree) if !tree.is_empty() => {
-                let tree_section = format!("## Project Structure\n```\n{}```", tree);
-                system_prompt = system_prompt.replace("%PROJECT_TREE%", &tree_section);
+        if include_project_info {
+            match system_context::generate_compact_project_tree(gcx.clone(), 4).await {
+                Ok(tree) if !tree.is_empty() => {
+                    let tree_section = format!("## Project Structure\n```\n{}```", tree);
+                    system_prompt = system_prompt.replace("%PROJECT_TREE%", &tree_section);
+                }
+                _ => {
+                    system_prompt = system_prompt.replace("%PROJECT_TREE%", "");
+                }
             }
-            _ => {
-                system_prompt = system_prompt.replace("%PROJECT_TREE%", "");
-            }
+        } else {
+            system_prompt = system_prompt.replace("%PROJECT_TREE%", "");
         }
     }
 
     if system_prompt.contains("%GIT_INFO%") {
-        let project_dirs = get_project_dirs(gcx.clone()).await;
-        let git_infos = gather_git_info(&project_dirs).await;
-        let git_section = generate_git_info_prompt(&git_infos);
-        system_prompt = system_prompt.replace("%GIT_INFO%", &git_section);
+        if include_project_info {
+            let project_dirs = get_project_dirs(gcx.clone()).await;
+            let git_infos = gather_git_info(&project_dirs).await;
+            let git_section = generate_git_info_prompt(&git_infos);
+            system_prompt = system_prompt.replace("%GIT_INFO%", &git_section);
+        } else {
+            system_prompt = system_prompt.replace("%GIT_INFO%", "");
+        }
     }
 
     if system_prompt.contains("%WORKSPACE_INFO%") {
-        let (workspace_dirs, active_file_path) = workspace_files_info(&gcx).await;
-        let info = _workspace_info(&workspace_dirs, &active_file_path).await;
-        system_prompt = system_prompt.replace("%WORKSPACE_INFO%", &info);
+        if include_project_info {
+            let (workspace_dirs, active_file_path) = workspace_files_info(&gcx).await;
+            let info = _workspace_info(&workspace_dirs, &active_file_path).await;
+            system_prompt = system_prompt.replace("%WORKSPACE_INFO%", &info);
+        } else {
+            system_prompt = system_prompt.replace("%WORKSPACE_INFO%", "");
+        }
     }
     if system_prompt.contains("%KNOWLEDGE_INSTRUCTIONS%") {
-        let active_group_id = gcx.read().await.active_group_id.clone();
-        if active_group_id.is_some() {
-            let cfg = crate::yaml_configs::customization_loader::load_customization_compiled_in();
-            let mut knowledge_instructions = cfg.get("KNOWLEDGE_INSTRUCTIONS_META")
-                .map(|x| x.as_str().unwrap_or("").to_string()).unwrap_or("".to_string());
-            if let Some(core_memories) = crate::memories::memories_get_core(gcx.clone()).await.ok() {
-                knowledge_instructions.push_str("\nThere are some pre-existing core memories:\n");
-                for mem in core_memories {
-                    knowledge_instructions.push_str(&format!("🗃️\n{}\n\n", mem.iknow_memory));
+        if include_project_info {
+            let active_group_id = gcx.read().await.active_group_id.clone();
+            if active_group_id.is_some() {
+                let cfg = crate::yaml_configs::customization_loader::load_customization_compiled_in();
+                let mut knowledge_instructions = cfg.get("KNOWLEDGE_INSTRUCTIONS_META")
+                    .map(|x| x.as_str().unwrap_or("").to_string()).unwrap_or("".to_string());
+                if let Some(core_memories) = crate::memories::memories_get_core(gcx.clone()).await.ok() {
+                    knowledge_instructions.push_str("\nThere are some pre-existing core memories:\n");
+                    for mem in core_memories {
+                        knowledge_instructions.push_str(&format!("🗃️\n{}\n\n", mem.iknow_memory));
+                    }
                 }
+                system_prompt = system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", &knowledge_instructions);
+                tracing::info!("adding up extra knowledge instructions");
+            } else {
+                system_prompt = system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", "");
             }
-            system_prompt = system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", &knowledge_instructions);
-            tracing::info!("adding up extra knowledge instructions");
         } else {
             system_prompt = system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", "");
         }
     }
     
     if system_prompt.contains("%PROJECT_SUMMARY%") {
-        let (exists, summary_path_option) = dig_for_project_summarization_file(gcx.clone()).await;
-        if exists {
-            if let Some(summary_path) = summary_path_option {
-                if let Some(project_info) = _read_project_summary(summary_path).await {
-                    system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", &project_info);
-                } else {
-                    system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", "");
+        if include_project_info {
+            let (exists, summary_path_option) = dig_for_project_summarization_file(gcx.clone()).await;
+            if exists {
+                if let Some(summary_path) = summary_path_option {
+                    if let Some(project_info) = _read_project_summary(summary_path).await {
+                        system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", &project_info);
+                    } else {
+                        system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", "");
+                    }
                 }
+            } else {
+                system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", "");
             }
         } else {
             system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", "");
@@ -300,6 +330,7 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
                 gcx.clone(),
                 get_default_system_prompt(gcx.clone(), chat_meta.chat_mode.clone()).await,
                 tool_names,
+                chat_meta,
             ).await;
             let msg = ChatMessage {
                 role: "system".to_string(),
@@ -327,11 +358,15 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
         },
     }
 
-    match gather_and_inject_system_context(&gcx, &mut messages, stream_back_to_user).await {
-        Ok(()) => {},
-        Err(e) => {
-            tracing::warn!("Failed to gather system context: {}", e);
-        },
+    if chat_meta.include_project_info {
+        match gather_and_inject_system_context(&gcx, &mut messages, stream_back_to_user).await {
+            Ok(()) => {},
+            Err(e) => {
+                tracing::warn!("Failed to gather system context: {}", e);
+            },
+        }
+    } else {
+        tracing::info!("Skipping project/system context injection (include_project_info=false)");
     }
 
     tracing::info!("\n\nSYSTEM PROMPT MIXER chat_mode={:?}\n{:#?}", chat_meta.chat_mode, messages);
