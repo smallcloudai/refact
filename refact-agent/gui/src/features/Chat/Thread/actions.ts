@@ -347,7 +347,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     // Check if there's only one user message (the current one being sent)
     const userMessageCount = messages.filter(isUserMessage).length;
     const includeProjectInfo =
-      userMessageCount <= 1 ? (thread?.include_project_info ?? true) : undefined;
+      userMessageCount <= 1 ? thread?.include_project_info ?? true : undefined;
 
     // Context tokens cap - send on every request, default to max if not set
     const contextTokensCap =
