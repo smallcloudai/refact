@@ -49,6 +49,9 @@ export const capsApi = createApi({
 
 export const capsEndpoints = capsApi.endpoints;
 
+// Export the generated RTK Query hook
+export const { useGetCapsQuery } = capsApi;
+
 export type CapCost = {
   prompt: number;
   generated: number;

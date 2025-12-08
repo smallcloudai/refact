@@ -7,19 +7,22 @@ import {
   Flex,
   IconButton,
   Text,
+  Tooltip,
 } from "@radix-ui/themes";
 import { DotsVerticalIcon } from "@radix-ui/react-icons";
 
 import { ModelCardPopup } from "./components/ModelCardPopup";
+import { CapabilityIcons } from "./components/CapabilityIcons";
 import { useModelDialogState } from "./hooks/useModelDialogState";
 
-import type { ModelType, SimplifiedModel } from "../../../../services/refact";
+import type { ModelType } from "../../../../services/refact";
+import type { UiModel } from "./utils/groupModelsWithPricing";
 
 import styles from "./ModelCard.module.css";
 import { useEventsBusForIDE } from "../../../../hooks";
 
 export type ModelCardProps = {
-  model: SimplifiedModel;
+  model: UiModel;
   providerName: string;
   modelType: ModelType;
   isReadonlyProvider: boolean;
@@ -129,13 +132,35 @@ export const ModelCard: FC<ModelCardProps> = ({
       )}
 
       <Flex align="center" justify="between">
-        <Flex gap="2" align="center">
-          <Text as="span" size="2">
-            {name}
-          </Text>
-          <Badge size="1" color={enabled ? "green" : "gray"}>
-            {enabled ? "Active" : "Inactive"}
-          </Badge>
+        <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
+          <Flex gap="2" align="center" wrap="wrap">
+            <Text as="span" size="2" weight="medium">
+              {name}
+            </Text>
+            <Badge size="1" color={enabled ? "green" : "gray"}>
+              {enabled ? "Active" : "Inactive"}
+            </Badge>
+          </Flex>
+
+          <Flex gap="2" align="center" wrap="wrap">
+            {model.pricingLabel && (
+              <Tooltip content="Price per 1M tokens (prompt/output)">
+                <Text as="span" size="1" color="gray">
+                  💰 {model.pricingLabel}
+                </Text>
+              </Tooltip>
+            )}
+            {model.nCtxLabel && (
+              <Tooltip content={`Context window: ${model.nCtx?.toLocaleString()} tokens`}>
+                <Text as="span" size="1" color="gray">
+                  📏 {model.nCtxLabel}
+                </Text>
+              </Tooltip>
+            )}
+            {model.capabilities && (
+              <CapabilityIcons capabilities={model.capabilities} size="1" />
+            )}
+          </Flex>
         </Flex>
 
         {dropdownOptionsCount > 0 && (
