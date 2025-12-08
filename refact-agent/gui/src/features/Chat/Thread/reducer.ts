@@ -164,7 +164,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setChatModel, (state, action) => {
     state.thread.model = action.payload;
-    state.thread.context_tokens_cap = undefined;
+    state.thread.model = action.payload;
   });
 
   builder.addCase(setSystemPrompt, (state, action) => {
