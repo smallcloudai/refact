@@ -87,8 +87,8 @@ impl Tool for ToolShell {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
-        let (command, workdir_maybe, custom_filter) = parse_args_with_filter(gcx.clone(), args).await?;
-        let timeout = self.cfg.timeout.parse::<u64>().unwrap_or(10);
+        let (command, workdir_maybe, custom_filter, timeout_override) = parse_args_with_filter(gcx.clone(), args).await?;
+        let timeout = timeout_override.unwrap_or_else(|| self.cfg.timeout.parse::<u64>().unwrap_or(10));
 
         let mut error_log = Vec::<YamlError>::new();
         let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone(), &mut error_log).await;
@@ -150,6 +150,11 @@ impl Tool for ToolShell {
                     name: "output_limit".to_string(),
                     param_type: "string".to_string(),
                     description: "Optional. Max lines to show (default: 40). Use higher values like '200' or 'all' to see more output.".to_string(),
+                },
+                ToolParam {
+                    name: "timeout".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Optional. Timeout in seconds for the command (default: 10). Use higher values for long-running commands.".to_string(),
                 },
             ],
             parameters_required: vec![
@@ -253,11 +258,11 @@ pub async fn execute_shell_command_raw(
 }
 
 async fn parse_args(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>), String> {
-    let (command, workdir, _) = parse_args_with_filter(gcx, args).await?;
+    let (command, workdir, _, _) = parse_args_with_filter(gcx, args).await?;
     Ok((command, workdir))
 }
 
-async fn parse_args_with_filter(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>, Option<OutputFilter>), String> {
+async fn parse_args_with_filter(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>, Option<OutputFilter>, Option<u64>), String> {
     let command = match args.get("command") {
         Some(Value::String(s)) => {
             if s.is_empty() {
@@ -284,7 +289,11 @@ async fn parse_args_with_filter(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap
 
     let custom_filter = parse_output_filter_args(args);
 
-    Ok((command, workdir, custom_filter))
+    let timeout_override = args.get("timeout")
+        .and_then(|v| v.as_str())
+        .and_then(|s| s.parse::<u64>().ok());
+
+    Ok((command, workdir, custom_filter, timeout_override))
 }
 
 fn parse_output_filter_args(args: &HashMap<String, Value>) -> Option<OutputFilter> {
