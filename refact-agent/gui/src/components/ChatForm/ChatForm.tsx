@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 
-import { Flex, Card, Text, IconButton } from "@radix-ui/themes";
+import { Flex, Card, Text, IconButton, Button } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import {
@@ -284,9 +284,31 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   if (globalError) {
     return (
-      <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
-        {globalError}
-      </ErrorCallout>
+      <Flex direction="column" mt="2" gap="2">
+        <ErrorCallout onClick={onClearError} timeout={null}>
+          {globalError}
+        </ErrorCallout>
+        <Flex justify="center" pb="2">
+          <Button color="red" variant="soft" onClick={onClearError}>
+            Try Again
+          </Button>
+        </Flex>
+      </Flex>
+    );
+  }
+
+  if (chatError) {
+    return (
+      <Flex direction="column" mt="2" gap="2">
+        <ErrorCallout onClick={onClearError} timeout={null}>
+          {chatError}
+        </ErrorCallout>
+        <Flex justify="center" pb="2">
+          <Button color="red" variant="soft" onClick={onClearError}>
+            Try Again
+          </Button>
+        </Flex>
+      </Flex>
     );
   }
 

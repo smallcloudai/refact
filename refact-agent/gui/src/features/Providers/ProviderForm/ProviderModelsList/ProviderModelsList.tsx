@@ -35,10 +35,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
   });
 
   // Fetch capabilities & pricing; UI will gracefully degrade if this fails.
-  const {
-    data: capsData,
-    isError: capsError,
-  } = useGetCapsQuery(undefined);
+  const { data: capsData, isError: capsError } = useGetCapsQuery(undefined);
 
   const getModelNames = useCallback((modelsData: ModelsResponse) => {
     const currentChatModelNames = modelsData.chat_models.map((m) => m.name);

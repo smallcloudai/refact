@@ -302,7 +302,12 @@ const DefaultHoverTriggerContent: React.FC<{
   outputTokens: number;
   currentSessionTokens: number;
   compressionStrength?: CompressionStrength | null;
-}> = ({ inputTokens, outputTokens, currentSessionTokens, compressionStrength }) => {
+}> = ({
+  inputTokens,
+  outputTokens,
+  currentSessionTokens,
+  compressionStrength,
+}) => {
   const compressionLabel = formatCompressionStage(compressionStrength);
 
   return (

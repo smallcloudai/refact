@@ -48,13 +48,13 @@ export const ContextCapButton: React.FC = () => {
     if (!capsQuery.data) return undefined;
 
     // Try thread model first
-    if (threadModel && capsQuery.data.chat_models[threadModel]) {
+    if (threadModel in capsQuery.data.chat_models) {
       return capsQuery.data.chat_models[threadModel].n_ctx;
     }
 
     // Fall back to default model
     const defaultModel = capsQuery.data.chat_default_model;
-    if (defaultModel && capsQuery.data.chat_models[defaultModel]) {
+    if (defaultModel in capsQuery.data.chat_models) {
       return capsQuery.data.chat_models[defaultModel].n_ctx;
     }
 

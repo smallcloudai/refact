@@ -151,7 +151,9 @@ export const ModelCard: FC<ModelCardProps> = ({
               </Tooltip>
             )}
             {model.nCtxLabel && (
-              <Tooltip content={`Context window: ${model.nCtx?.toLocaleString()} tokens`}>
+              <Tooltip
+                content={`Context window: ${model.nCtx?.toLocaleString()} tokens`}
+              >
                 <Text as="span" size="1" color="gray">
                   📏 {model.nCtxLabel}
                 </Text>

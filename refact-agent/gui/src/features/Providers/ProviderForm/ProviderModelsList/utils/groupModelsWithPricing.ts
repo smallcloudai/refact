@@ -38,7 +38,7 @@ export type ModelGroup = {
  */
 export function formatContextWindow(nCtx: number): string {
   if (nCtx >= 1_000_000) {
-    return `${(nCtx / 1_000_000).toFixed(1)}M`.replace('.0M', 'M');
+    return `${(nCtx / 1_000_000).toFixed(1)}M`.replace(".0M", "M");
   }
   if (nCtx >= 1_000) {
     return `${Math.round(nCtx / 1_000)}K`;
@@ -57,7 +57,8 @@ export function formatPricing(cost: CapCost, compact = true): string {
   const promptCoins = toCoins(cost.prompt);
   const generatedCoins = toCoins(cost.generated);
 
-  const fmt = (coins: number | null) => (coins !== null ? coins.toString() : "–");
+  const fmt = (coins: number | null) =>
+    coins !== null ? coins.toString() : "–";
 
   if (compact) {
     // Compact format for card display: "1000/5000 ⓒ" (prompt/output in coins)
@@ -133,10 +134,7 @@ function extractCapabilities(
  */
 export function attachPricingAndCapabilities(
   models: SimplifiedModel[],
-  {
-    caps,
-    modelType,
-  }: { caps?: CapsResponse; modelType: ModelType },
+  { caps, modelType }: { caps?: CapsResponse; modelType: ModelType },
 ): UiModel[] {
   if (!caps) {
     // No caps → only attach modelType
@@ -179,9 +177,7 @@ export function attachPricingAndCapabilities(
       uiModel.isThinking = caps.chat_thinking_model === `refact/${m.name}`;
 
       if (typeof capsModel === "object") {
-        uiModel.capabilities = extractCapabilities(
-          capsModel as CodeChatModel,
-        );
+        uiModel.capabilities = extractCapabilities(capsModel as CodeChatModel);
       }
     }
 

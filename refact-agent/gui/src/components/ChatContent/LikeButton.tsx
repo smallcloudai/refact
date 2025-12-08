@@ -1,5 +1,5 @@
 import React from "react";
-import { IconButton, Flex } from "@radix-ui/themes";
+import { IconButton } from "@radix-ui/themes";
 import classnames from "classnames";
 import { knowledgeApi } from "../../services/refact/knowledge";
 import { useAppSelector } from "../../hooks";
@@ -38,22 +38,21 @@ function useCreateMemory() {
 export const LikeButton = () => {
   const { submitLike, likeResponse, shouldShow } = useCreateMemory();
 
-  if (!shouldShow) return false;
+  if (!shouldShow) return null;
   return (
-    <Flex justify="end" px="2" minHeight="28px">
-      <IconButton
-        title="Create a trajectory from this chat"
-        variant="ghost"
-        onClick={submitLike}
-        disabled={likeResponse.isLoading || likeResponse.isSuccess}
-        loading={likeResponse.isLoading}
-        className={classnames(
-          likeResponse.isSuccess && styles.like__button__success,
-        )}
-      >
-        <ThumbIcon />
-      </IconButton>
-    </Flex>
+    <IconButton
+      title="Create a trajectory from this chat"
+      variant="ghost"
+      onClick={submitLike}
+      disabled={likeResponse.isLoading || likeResponse.isSuccess}
+      loading={likeResponse.isLoading}
+      size="2"
+      className={classnames(
+        likeResponse.isSuccess && styles.like__button__success,
+      )}
+    >
+      <ThumbIcon />
+    </IconButton>
   );
 };
 

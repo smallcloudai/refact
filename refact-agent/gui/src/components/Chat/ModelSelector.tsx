@@ -68,7 +68,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ disabled }) => {
                   disabled={model.disabled}
                   textValue={model.displayName}
                 >
-                  <span className={styles.trigger_only}>{model.displayName}</span>
+                  <span className={styles.trigger_only}>
+                    {model.displayName}
+                  </span>
                   <span className={styles.dropdown_only}>
                     <RichModelSelectItem
                       displayName={model.displayName}

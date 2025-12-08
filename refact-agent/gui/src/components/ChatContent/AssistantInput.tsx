@@ -1,19 +1,26 @@
 import React, { useCallback } from "react";
 import { Markdown } from "../Markdown";
 
-import { Container, Box } from "@radix-ui/themes";
-import { ToolCall } from "../../services/refact";
+import { Container, Box, Flex } from "@radix-ui/themes";
+import { ToolCall, Usage } from "../../services/refact";
 import { ToolContent } from "./ToolsContent";
 import { fallbackCopying } from "../../utils/fallbackCopying";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { LikeButton } from "./LikeButton";
+import { ResendButton } from "./ResendButton";
 import { ReasoningContent } from "./ReasoningContent";
+import { MessageUsageInfo } from "./MessageUsageInfo";
 
 type ChatInputProps = {
   message: string | null;
   reasoningContent?: string | null;
   toolCalls?: ToolCall[] | null;
   isLast?: boolean;
+  usage?: Usage | null;
+  metering_coins_prompt?: number;
+  metering_coins_generated?: number;
+  metering_coins_cache_creation?: number;
+  metering_coins_cache_read?: number;
 };
 
 export const AssistantInput: React.FC<ChatInputProps> = ({
@@ -21,6 +28,11 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
   reasoningContent,
   toolCalls,
   isLast,
+  usage,
+  metering_coins_prompt,
+  metering_coins_generated,
+  metering_coins_cache_creation,
+  metering_coins_cache_read,
 }) => {
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
@@ -60,8 +72,18 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
     [sendTelemetryEvent],
   );
 
+  const hasMessageFirst = !reasoningContent && message;
+
   return (
     <Container position="relative">
+      <MessageUsageInfo
+        usage={usage}
+        metering_coins_prompt={metering_coins_prompt}
+        metering_coins_generated={metering_coins_generated}
+        metering_coins_cache_creation={metering_coins_cache_creation}
+        metering_coins_cache_read={metering_coins_cache_read}
+        topOffset={hasMessageFirst ? "var(--space-4)" : "0"}
+      />
       {reasoningContent && (
         <ReasoningContent
           reasoningContent={reasoningContent}
@@ -76,7 +98,12 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
         </Box>
       )}
       {toolCalls && <ToolContent toolCalls={toolCalls} />}
-      {isLast && <LikeButton />}
+      {isLast && (
+        <Flex justify="end" px="2" gap="2" align="center">
+          <ResendButton />
+          <LikeButton />
+        </Flex>
+      )}
     </Container>
   );
 };

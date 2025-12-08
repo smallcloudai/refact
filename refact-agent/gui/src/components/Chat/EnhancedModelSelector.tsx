@@ -39,8 +39,6 @@ type EnrichedModel = {
   isLight?: boolean;
 };
 
-
-
 /**
  * Extract capabilities from chat model
  */
@@ -327,7 +325,9 @@ const ModelCard: React.FC<ModelCardProps> = ({
             )}
 
             {model.nCtx && (
-              <Tooltip content={`Context window: ${model.nCtx.toLocaleString()} tokens`}>
+              <Tooltip
+                content={`Context window: ${model.nCtx.toLocaleString()} tokens`}
+              >
                 <Flex align="center" gap="1">
                   <Text size="1" color="gray">
                     {formatContextWindow(model.nCtx)}
