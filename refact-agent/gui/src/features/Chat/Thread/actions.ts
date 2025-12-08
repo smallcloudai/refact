@@ -8,6 +8,7 @@ import {
   LspChatMode,
   PayloadWithChatAndMessageId,
   PayloadWithChatAndBoolean,
+  PayloadWithChatAndNumber,
 } from "./types";
 import {
   isAssistantDelta,
@@ -172,6 +173,14 @@ export const setIncreaseMaxTokens = createAction<boolean>(
   "chatThread/setIncreaseMaxTokens",
 );
 
+export const setIncludeProjectInfo = createAction<PayloadWithChatAndBoolean>(
+  "chatThread/setIncludeProjectInfo",
+);
+
+export const setContextTokensCap = createAction<PayloadWithChatAndNumber>(
+  "chatThread/setContextTokensCap",
+);
+
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
   state: RootState;
@@ -334,6 +343,15 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     const maybeLastUserMessageId = thread?.last_user_message_id;
     const boostReasoning = thread?.boost_reasoning ?? false;
     const increaseMaxTokens = thread?.increase_max_tokens ?? false;
+    // Only send include_project_info on the first message of a chat
+    // Check if there's only one user message (the current one being sent)
+    const userMessageCount = messages.filter(isUserMessage).length;
+    const includeProjectInfo =
+      userMessageCount <= 1 ? (thread?.include_project_info ?? true) : undefined;
+
+    // Context tokens cap - send on every request, default to max if not set
+    const contextTokensCap =
+      thread?.context_tokens_cap ?? thread?.currentMaximumContextTokens;
 
     return sendChat({
       messages: messagesForLsp,
@@ -350,6 +368,8 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       integration: thread?.integration,
       mode: realMode,
       boost_reasoning: boostReasoning,
+      include_project_info: includeProjectInfo,
+      context_tokens_cap: contextTokensCap,
     })
       .then(async (response) => {
         if (!response.ok) {
