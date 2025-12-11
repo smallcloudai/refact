@@ -1738,14 +1738,14 @@ describe("consumeStream", () => {
 });
 
 describe("postProcessMessagesAfterStreaming", () => {
-  test("should filter out web_search tool calls and append to message", () => {
+  test("should filter out server-executed tool calls and store in server_executed_tools", () => {
     const messages: ChatMessages = [
       {
         role: "assistant",
         content: "I'll search for the weather.",
         tool_calls: [
           {
-            id: "call_123",
+            id: "srvtoolu_123",
             index: 0,
             function: {
               name: "web_search",
@@ -1768,23 +1768,23 @@ describe("postProcessMessagesAfterStreaming", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].role).toBe("assistant");
-    if ("tool_calls" in result[0] && "content" in result[0]) {
+    if ("tool_calls" in result[0] && "content" in result[0] && "server_executed_tools" in result[0]) {
       expect(result[0].tool_calls).toHaveLength(1);
       expect(result[0].tool_calls?.[0].function.name).toBe("str_replace");
-      expect(result[0].content).toBe(
-        'I\'ll search for the weather.\n\n---\n\n☁️ **web_search**`({"query": "weather in Adelaide"})` was called on the cloud',
-      );
+      expect(result[0].content).toBe("I'll search for the weather.");
+      expect(result[0].server_executed_tools).toHaveLength(1);
+      expect(result[0].server_executed_tools?.[0].function.name).toBe("web_search");
     }
   });
 
-  test("should remove tool_calls when all are filtered and append info", () => {
+  test("should remove tool_calls when all are server-executed and store in server_executed_tools", () => {
     const messages: ChatMessages = [
       {
         role: "assistant",
         content: "Searching for information.",
         tool_calls: [
           {
-            id: "call_123",
+            id: "srvtoolu_123",
             index: 0,
             function: {
               name: "web_search",
@@ -1799,10 +1799,10 @@ describe("postProcessMessagesAfterStreaming", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].role).toBe("assistant");
-    if ("content" in result[0]) {
-      expect(result[0].content).toBe(
-        'Searching for information.\n\n---\n\n☁️ **web_search**`({"query": "test"})` was called on the cloud',
-      );
+    if ("content" in result[0] && "server_executed_tools" in result[0]) {
+      expect(result[0].content).toBe("Searching for information.");
+      expect(result[0].server_executed_tools).toHaveLength(1);
+      expect(result[0].server_executed_tools?.[0].function.name).toBe("web_search");
     }
     if ("tool_calls" in result[0]) {
       expect(result[0].tool_calls).toBeUndefined();
@@ -1905,7 +1905,7 @@ describe("postProcessMessagesAfterStreaming", () => {
         content: "Let me search and check the files.",
         tool_calls: [
           {
-            id: "call_123",
+            id: "srvtoolu_123",
             index: 0,
             function: {
               name: "web_search",
@@ -1913,7 +1913,7 @@ describe("postProcessMessagesAfterStreaming", () => {
             },
           },
           {
-            id: "call_123",
+            id: "srvtoolu_123",
             index: 1,
             function: {
               name: "web_search",
@@ -1943,15 +1943,17 @@ describe("postProcessMessagesAfterStreaming", () => {
     const result = postProcessMessagesAfterStreaming(messages);
 
     expect(result).toHaveLength(1);
-    if ("tool_calls" in result[0] && "content" in result[0]) {
+    if ("tool_calls" in result[0] && "content" in result[0] && "server_executed_tools" in result[0]) {
       expect(result[0].tool_calls).toHaveLength(1);
       expect(result[0].tool_calls?.[0].id).toBe("call_456");
       expect(result[0].tool_calls?.[0].function.name).toBe("tree");
       expect(result[0].tool_calls?.[0].function.arguments).toBe(
         '{"path": "/"}',
       );
-      expect(result[0].content).toContain("web_search");
-      expect(result[0].content).toContain('{"query": "test search"}');
+      expect(result[0].content).toBe("Let me search and check the files.");
+      expect(result[0].server_executed_tools).toHaveLength(1);
+      expect(result[0].server_executed_tools?.[0].function.name).toBe("web_search");
+      expect(result[0].server_executed_tools?.[0].function.arguments).toBe('{"query": "test search"}');
     }
   });
 });

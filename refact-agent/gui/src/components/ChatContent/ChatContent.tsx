@@ -205,6 +205,8 @@ function renderMessages(
         message={head.content}
         reasoningContent={head.reasoning_content}
         toolCalls={head.tool_calls}
+        serverExecutedTools={head.server_executed_tools}
+        citations={head.citations}
         isLast={isLast}
         usage={head.usage}
         metering_coins_prompt={head.metering_coins_prompt}

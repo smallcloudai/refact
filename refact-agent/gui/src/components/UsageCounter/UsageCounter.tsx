@@ -302,26 +302,26 @@ const DefaultHoverTriggerContent: React.FC<{
   outputTokens: number;
   currentSessionTokens: number;
   compressionStrength?: CompressionStrength | null;
+  totalCoins?: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
 }> = ({
   inputTokens,
   outputTokens,
   currentSessionTokens,
   compressionStrength,
+  totalCoins,
+  cacheReadTokens,
+  cacheWriteTokens,
 }) => {
   const compressionLabel = formatCompressionStage(compressionStrength);
 
   return (
     <>
-      {inputTokens !== 0 && (
-        <Flex align="center">
-          <ArrowUpIcon width="12" height="12" />
-          <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
-        </Flex>
-      )}
-      {outputTokens !== 0 && (
-        <Flex align="center">
-          <ArrowDownIcon width="12" height="12" />
-          <Text size="1">{formatNumberToFixed(outputTokens)}</Text>
+      {totalCoins !== undefined && totalCoins > 0 && (
+        <Flex align="center" gap="1" title="Total coins spent">
+          <Text size="1">{Math.round(totalCoins)}</Text>
+          <Coin width="12px" height="12px" />
         </Flex>
       )}
       {currentSessionTokens !== 0 && (
@@ -329,6 +329,35 @@ const DefaultHoverTriggerContent: React.FC<{
           <Text size="1" color="gray" title="Current context window usage">
             ctx: {formatNumberToFixed(currentSessionTokens)}
           </Text>
+        </Flex>
+      )}
+      {(inputTokens !== 0 || outputTokens !== 0) && (
+        <Flex align="center" gap="1" title="Total tokens: input ↑ / output ↓ / cache read 📖 / cache write ✏️">
+          <Text size="1" color="gray">Σ</Text>
+          {inputTokens !== 0 && (
+            <Flex align="center">
+              <ArrowUpIcon width="12" height="12" />
+              <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
+            </Flex>
+          )}
+          {outputTokens !== 0 && (
+            <Flex align="center">
+              <ArrowDownIcon width="12" height="12" />
+              <Text size="1">{formatNumberToFixed(outputTokens)}</Text>
+            </Flex>
+          )}
+          {cacheReadTokens !== undefined && cacheReadTokens > 0 && (
+            <Flex align="center" gap="1" title="Cache read tokens">
+              <Text size="1">📖</Text>
+              <Text size="1">{formatNumberToFixed(cacheReadTokens)}</Text>
+            </Flex>
+          )}
+          {cacheWriteTokens !== undefined && cacheWriteTokens > 0 && (
+            <Flex align="center" gap="1" title="Cache write tokens">
+              <Text size="1">✏️</Text>
+              <Text size="1">{formatNumberToFixed(cacheWriteTokens)}</Text>
+            </Flex>
+          )}
         </Flex>
       )}
       {compressionLabel && (
@@ -367,6 +396,16 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
   } = useUsageCounter();
   const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
   const meteringTokens = useTotalTokenMeteringForChat();
+  const cost = useTotalCostForChat();
+
+  const totalCoins = useMemo(() => {
+    return (
+      (cost?.metering_coins_prompt ?? 0) +
+      (cost?.metering_coins_generated ?? 0) +
+      (cost?.metering_coins_cache_creation ?? 0) +
+      (cost?.metering_coins_cache_read ?? 0)
+    );
+  }, [cost]);
 
   const messageTokens = useMemo(() => {
     if (isMessageEmpty && maybeAttachedImages.length === 0) return 0;
@@ -382,6 +421,20 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
       meteringTokens.metering_prompt_tokens_n
     );
   }, [meteringTokens]);
+
+  const cacheReadTokens = useMemo(() => {
+    if (meteringTokens !== null) {
+      return meteringTokens.metering_cache_read_tokens_n;
+    }
+    return currentThreadUsage?.cache_read_input_tokens;
+  }, [meteringTokens, currentThreadUsage]);
+
+  const cacheWriteTokens = useMemo(() => {
+    if (meteringTokens !== null) {
+      return meteringTokens.metering_cache_creation_tokens_n;
+    }
+    return currentThreadUsage?.cache_creation_input_tokens;
+  }, [meteringTokens, currentThreadUsage]);
 
   const outputMeteringTokens = useMemo(() => {
     if (meteringTokens === null) return null;
@@ -448,6 +501,9 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
               outputTokens={outputTokens}
               currentSessionTokens={currentSessionTokens}
               compressionStrength={compressionStrength}
+              totalCoins={totalCoins}
+              cacheReadTokens={cacheReadTokens}
+              cacheWriteTokens={cacheWriteTokens}
             />
           )}
         </Card>

@@ -1,8 +1,8 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Markdown } from "../Markdown";
 
-import { Container, Box, Flex } from "@radix-ui/themes";
-import { ToolCall, Usage } from "../../services/refact";
+import { Container, Box, Flex, Text, Link, Card } from "@radix-ui/themes";
+import { ToolCall, Usage, WebSearchCitation } from "../../services/refact";
 import { ToolContent } from "./ToolsContent";
 import { fallbackCopying } from "../../utils/fallbackCopying";
 import { telemetryApi } from "../../services/refact/telemetry";
@@ -15,6 +15,8 @@ type ChatInputProps = {
   message: string | null;
   reasoningContent?: string | null;
   toolCalls?: ToolCall[] | null;
+  serverExecutedTools?: ToolCall[] | null; // Tools that were executed by the provider (srvtoolu_*)
+  citations?: WebSearchCitation[] | null;
   isLast?: boolean;
   usage?: Usage | null;
   metering_coins_prompt?: number;
@@ -27,6 +29,8 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
   message,
   reasoningContent,
   toolCalls,
+  serverExecutedTools,
+  citations,
   isLast,
   usage,
   metering_coins_prompt,
@@ -36,6 +40,15 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
 }) => {
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
+
+  // Get unique server-executed tool names for display
+  const serverToolNames = useMemo(() => {
+    if (!serverExecutedTools || serverExecutedTools.length === 0) return [];
+    const names = serverExecutedTools
+      .map((tool) => tool.function.name)
+      .filter((name): name is string => !!name);
+    return [...new Set(names)];
+  }, [serverExecutedTools]);
 
   const handleCopy = useCallback(
     (text: string) => {
@@ -97,9 +110,46 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
           </Markdown>
         </Box>
       )}
+      {/* Server-executed tools indicator with citations */}
+      {(serverToolNames.length > 0 || (citations && citations.length > 0)) && (
+        <Card my="3" style={{ backgroundColor: "var(--gray-a2)" }}>
+          <Flex direction="column" gap="2" p="2">
+            {serverToolNames.length > 0 && (
+              <Flex gap="2" align="center">
+                <Text size="2">☁️</Text>
+                <Text size="2" color="gray">
+                  {serverToolNames.join(", ")}
+                </Text>
+              </Flex>
+            )}
+            {citations && citations.length > 0 && (
+              <Flex direction="column" gap="1" style={{ maxHeight: "150px", overflowY: "auto" }}>
+                <Text size="1" weight="medium" color="gray">
+                  Sources:
+                </Text>
+                {citations
+                  .filter((citation, idx, arr) =>
+                    arr.findIndex((c) => c.url === citation.url) === idx
+                  )
+                  .map((citation, idx) => (
+                    <Link
+                      key={idx}
+                      href={citation.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      size="1"
+                    >
+                      {citation.title}
+                    </Link>
+                  ))}
+              </Flex>
+            )}
+          </Flex>
+        </Card>
+      )}
       {toolCalls && <ToolContent toolCalls={toolCalls} />}
       {isLast && (
-        <Flex justify="end" px="2" gap="2" align="center">
+        <Flex justify="end" px="2" py="2" gap="2" align="center">
           <ResendButton />
           <LikeButton />
         </Flex>

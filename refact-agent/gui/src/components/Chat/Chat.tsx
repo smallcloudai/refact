@@ -79,11 +79,10 @@ export const Chat: React.FC<ChatProps> = ({
   return (
     <DropzoneProvider asChild>
       <Flex
-        style={style}
+        style={{ ...style, minHeight: 0 }}
         direction="column"
         flexGrow="1"
         width="100%"
-        overflowY="auto"
         justify="between"
         px="1"
       >

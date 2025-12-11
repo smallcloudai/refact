@@ -43,6 +43,7 @@ import {
   setIsTitleGenerationEnabled,
   setIncludeProjectInfo,
   setContextTokensCap,
+  setUseCompression,
 } from "./actions";
 import { formatChatResponse, postProcessMessagesAfterStreaming } from "./utils";
 import {
@@ -157,6 +158,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.title_generation_enabled = action.payload;
   });
 
+  builder.addCase(setUseCompression, (state, action) => {
+    state.use_compression = action.payload;
+  });
+
   builder.addCase(clearChatError, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
     state.error = null;
@@ -185,6 +190,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     next.checkpoints_enabled = state.checkpoints_enabled;
     next.follow_ups_enabled = state.follow_ups_enabled;
     next.title_generation_enabled = state.title_generation_enabled;
+    next.use_compression = state.use_compression;
     next.thread.boost_reasoning = state.thread.boost_reasoning;
     // next.thread.automatic_patch = state.thread.automatic_patch;
     if (action.payload?.messages) {
@@ -405,6 +411,13 @@ export const chatReducer = createReducer(initialState, (builder) => {
   // TBD: should be safe to remove?
   builder.addCase(setMaxNewTokens, (state, action) => {
     state.thread.currentMaximumContextTokens = action.payload;
+    // Also adjust context_tokens_cap if it exceeds the new max
+    if (
+      state.thread.context_tokens_cap === undefined ||
+      state.thread.context_tokens_cap > action.payload
+    ) {
+      state.thread.context_tokens_cap = action.payload;
+    }
   });
 
   builder.addCase(fixBrokenToolMessages, (state, action) => {

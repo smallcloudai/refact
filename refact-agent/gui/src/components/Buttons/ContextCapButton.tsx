@@ -4,7 +4,6 @@ import {
   selectChatId,
   selectContextTokensCap,
   selectModel,
-  selectThreadMaximumTokens,
   setContextTokensCap,
 } from "../../features/Chat/Thread";
 
@@ -38,28 +37,25 @@ export const ContextCapButton: React.FC = () => {
   const dispatch = useAppDispatch();
   const chatId = useAppSelector(selectChatId);
   const contextCap = useAppSelector(selectContextTokensCap);
-  const threadMaxTokens = useAppSelector(selectThreadMaximumTokens);
   const threadModel = useAppSelector(selectModel);
   const capsQuery = useGetCapsQuery();
 
-  // Use thread max tokens, or fall back to current model's n_ctx from caps
+  // Derive maxTokens directly from caps data and current model
+  // This avoids timing issues with threadMaxTokens state updates
   const maxTokens = useMemo(() => {
-    if (threadMaxTokens) return threadMaxTokens;
     if (!capsQuery.data) return undefined;
 
-    // Try thread model first
-    if (threadModel in capsQuery.data.chat_models) {
-      return capsQuery.data.chat_models[threadModel].n_ctx;
-    }
+    // Use thread model if available in caps
+    const modelToUse = threadModel && threadModel in capsQuery.data.chat_models
+      ? threadModel
+      : capsQuery.data.chat_default_model;
 
-    // Fall back to default model
-    const defaultModel = capsQuery.data.chat_default_model;
-    if (defaultModel in capsQuery.data.chat_models) {
-      return capsQuery.data.chat_models[defaultModel].n_ctx;
+    if (modelToUse in capsQuery.data.chat_models) {
+      return capsQuery.data.chat_models[modelToUse].n_ctx;
     }
 
     return undefined;
-  }, [threadMaxTokens, capsQuery.data, threadModel]);
+  }, [capsQuery.data, threadModel]);
 
   const capOptions: SelectProps["options"] = useMemo(() => {
     if (!maxTokens) return [];
@@ -101,18 +97,44 @@ export const ContextCapButton: React.FC = () => {
     [dispatch, chatId],
   );
 
+  // Compute a safe default value that's guaranteed to exist in options
+  const safeDefaultValue = useMemo(() => {
+    if (!maxTokens || capOptions.length === 0) return undefined;
+
+    // Get all valid option values as numbers
+    const optionValues = capOptions
+      .filter((opt): opt is SelectProps["options"][number] & { value: string } =>
+        typeof opt === "object" && "value" in opt
+      )
+      .map((opt) => Number(opt.value));
+
+    const desiredValue = contextCap ?? maxTokens;
+
+    // If desired value exists in options, use it
+    if (optionValues.includes(desiredValue)) {
+      return String(desiredValue);
+    }
+
+    // Otherwise fall back to maxTokens (always the first option)
+    return String(maxTokens);
+  }, [capOptions, contextCap, maxTokens]);
+
   // Show skeleton while loading caps
   if (capsQuery.isLoading || capsQuery.isFetching) {
     return <Skeleton width="80px" height="24px" />;
   }
 
-  if (!maxTokens || capOptions.length === 0) return null;
+  if (!maxTokens || capOptions.length === 0 || !safeDefaultValue) return null;
+
+  // Use model + maxTokens as key to force remount when either changes
+  const selectKey = `${threadModel}-${maxTokens}`;
 
   return (
     <Select
+      key={selectKey}
       title="Context cap"
       options={capOptions}
-      value={String(contextCap ?? maxTokens)}
+      defaultValue={safeDefaultValue}
       onChange={handleCapChange}
     />
   );

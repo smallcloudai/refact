@@ -70,6 +70,7 @@ type SendChatArgs = {
   increase_max_tokens?: boolean;
   include_project_info?: boolean;
   context_tokens_cap?: number;
+  use_compression?: boolean;
 } & StreamArgs;
 
 type GetChatTitleArgs = {
@@ -162,6 +163,7 @@ export async function sendChat({
   increase_max_tokens = false,
   include_project_info,
   context_tokens_cap,
+  use_compression,
 }: SendChatArgs): Promise<Response> {
   // const toolsResponse = await getAvailableTools();
 
@@ -193,6 +195,7 @@ export async function sendChat({
       ...(integration?.path ? { current_config_file: integration.path } : {}),
       ...(include_project_info !== undefined ? { include_project_info } : {}),
       ...(context_tokens_cap !== undefined ? { context_tokens_cap } : {}),
+      ...(use_compression !== undefined ? { use_compression } : {}),
     },
   });
 
