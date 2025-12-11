@@ -54,6 +54,7 @@ export type Chat = {
   send_immediately: boolean;
   follow_ups_enabled?: boolean;
   title_generation_enabled?: boolean;
+  use_compression?: boolean;
 };
 
 export type PayloadWithId = { id: string };
@@ -73,15 +74,36 @@ export type PayloadWithIdAndTitle = {
 
 export type DetailMessage = { detail: string };
 
+// LiteLLM streaming error format: {"error": {"message": "...", "type": "...", "code": "..."}}
+export type StreamingErrorChunk = {
+  error: {
+    message: string;
+    type: string;
+    code?: string;
+  };
+};
+
 function isDetailMessage(json: unknown): json is DetailMessage {
   if (!json) return false;
   if (typeof json !== "object") return false;
   return "detail" in json && typeof json.detail === "string";
 }
 
+function isStreamingError(json: unknown): json is StreamingErrorChunk {
+  if (!json || typeof json !== "object") return false;
+  const obj = json as Record<string, unknown>;
+  if (!obj.error || typeof obj.error !== "object") return false;
+  const err = obj.error as Record<string, unknown>;
+  return typeof err.message === "string";
+}
+
 export function checkForDetailMessage(str: string): DetailMessage | false {
   const json = parseOrElse(str, {});
   if (isDetailMessage(json)) return json;
+  // Handle LiteLLM error format by converting it to DetailMessage
+  if (isStreamingError(json)) {
+    return { detail: json.error.message };
+  }
   return false;
 }
 
@@ -126,4 +148,10 @@ export function chatModeToLspMode({
   if (toolUse === "agent") return "AGENT";
   if (toolUse === "quick") return "NO_TOOLS";
   return "EXPLORE";
+}
+
+// Helper to detect server-executed tools (already executed by LLM provider)
+// These tools have IDs starting with "srvtoolu_" and should NOT be sent to backend for execution
+export function isServerExecutedTool(toolCallId: string | undefined): boolean {
+  return toolCallId?.startsWith("srvtoolu_") ?? false;
 }

@@ -124,6 +124,10 @@ export const setIsTitleGenerationEnabled = createAction<boolean>(
   "chat/setIsTitleGenerationEnabled",
 );
 
+export const setUseCompression = createAction<boolean>(
+  "chat/setUseCompression",
+);
+
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
 
 export const setEnabledCheckpoints = createAction<boolean>(
@@ -353,6 +357,9 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     const contextTokensCap =
       thread?.context_tokens_cap ?? thread?.currentMaximumContextTokens;
 
+    // Use compression - get from state
+    const useCompression = state.chat.use_compression;
+
     return sendChat({
       messages: messagesForLsp,
       last_user_message_id: maybeLastUserMessageId,
@@ -370,6 +377,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       boost_reasoning: boostReasoning,
       include_project_info: includeProjectInfo,
       context_tokens_cap: contextTokensCap,
+      use_compression: useCompression,
     })
       .then(async (response) => {
         if (!response.ok) {

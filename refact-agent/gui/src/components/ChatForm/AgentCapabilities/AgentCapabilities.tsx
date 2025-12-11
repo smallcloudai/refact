@@ -15,6 +15,8 @@ import {
   ApplyPatchSwitch,
   FollowUpsSwitch,
   TitleGenerationSwitch,
+  UseCompressionSwitch,
+  ProjectInfoSwitch,
 } from "../ChatControls";
 import { useAppSelector } from "../../../hooks";
 import {
@@ -22,6 +24,9 @@ import {
   selectAutomaticPatch,
   selectCheckpointsEnabled,
   selectIsTitleGenerationEnabled,
+  selectUseCompression,
+  selectIncludeProjectInfo,
+  selectMessages,
 } from "../../../features/Chat";
 import { Fragment, useMemo } from "react";
 import { ToolGroups } from "./ToolGroups";
@@ -33,6 +38,10 @@ export const AgentCapabilities = () => {
   const isTitleGenerationEnabled = useAppSelector(
     selectIsTitleGenerationEnabled,
   );
+  const useCompression = useAppSelector(selectUseCompression);
+  const includeProjectInfo = useAppSelector(selectIncludeProjectInfo);
+  const messages = useAppSelector(selectMessages);
+  const isNewChat = messages.length === 0;
 
   const agenticFeatures = useMemo(() => {
     return [
@@ -56,18 +65,34 @@ export const AgentCapabilities = () => {
         enabled: isTitleGenerationEnabled,
         switcher: <TitleGenerationSwitch />,
       },
+      {
+        name: "Compression",
+        enabled: useCompression,
+        switcher: <UseCompressionSwitch />,
+      },
+      {
+        name: "Project info",
+        enabled: includeProjectInfo ?? true,
+        switcher: <ProjectInfoSwitch />,
+        hide: !isNewChat,
+      },
     ];
   }, [
     isPatchAutomatic,
     isAgentRollbackEnabled,
     areFollowUpsEnabled,
     isTitleGenerationEnabled,
+    useCompression,
+    includeProjectInfo,
+    isNewChat,
   ]);
 
   const enabledAgenticFeatures = useMemo(
     () =>
       agenticFeatures
-        .filter((feature) => feature.enabled)
+        .filter(
+          (feature) => feature.enabled && !("hide" in feature && feature.hide),
+        )
         .map((feature) => feature.name)
         .join(", ") || "None",
     [agenticFeatures],
@@ -84,6 +109,7 @@ export const AgentCapabilities = () => {
         <Popover.Content side="top" alignOffset={-10} sideOffset={20}>
           <Flex gap="2" direction="column">
             {agenticFeatures.map((feature) => {
+              if ("hide" in feature && feature.hide) return null;
               return <Fragment key={feature.name}>{feature.switcher}</Fragment>;
             })}
             <Separator size="4" mt="2" mb="1" />

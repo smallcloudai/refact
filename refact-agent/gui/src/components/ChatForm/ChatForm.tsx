@@ -8,7 +8,6 @@ import {
   BackToSideBarButton,
   AgentIntegrationsButton,
   ThinkingButton,
-  ProjectInfoButton,
   ContextCapButton,
 } from "../Buttons";
 import { TextArea } from "../TextArea";
@@ -385,7 +384,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             <ContextCapButton />
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
-              <ProjectInfoButton />
               <ThinkingButton />
               <TokensPreview
                 currentMessageQuery={attachedFiles.addFilesToInput(value)}

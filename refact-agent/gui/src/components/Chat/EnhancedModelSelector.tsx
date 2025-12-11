@@ -202,15 +202,18 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
       </Dialog.Trigger>
 
       <Dialog.Content
-        style={{ maxWidth: 700, maxHeight: "80vh" }}
+        style={{
+          maxWidth: 700,
+          maxHeight: "80vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
         aria-describedby={undefined}
       >
         <Dialog.Title>Select Model</Dialog.Title>
 
-        <ScrollArea
-          style={{ maxHeight: "calc(80vh - 120px)" }}
-          scrollbars="vertical"
-        >
+        <ScrollArea style={{ flex: 1, minHeight: 0 }} scrollbars="vertical">
           <Flex direction="column" gap="4" py="2">
             {groupedModels.map((group) => (
               <Flex key={group.provider} direction="column" gap="2">
@@ -236,7 +239,7 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
           </Flex>
         </ScrollArea>
 
-        <Flex gap="3" mt="4" justify="end">
+        <Flex gap="3" mt="4" justify="end" style={{ flexShrink: 0 }}>
           <Dialog.Close>
             <Button variant="soft" color="gray">
               Close
