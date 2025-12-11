@@ -124,7 +124,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         } else {
             (self.messages.clone(), false)
         };
-        let (limited_msgs, _compression_strength) = fix_and_limit_messages_history(&self.t, &messages, sampling_parameters_to_patch, n_ctx, None, self.post.model.as_str())?;
+        let (limited_msgs, _compression_strength) = fix_and_limit_messages_history(&self.t, &messages, sampling_parameters_to_patch, n_ctx, None, self.post.model.as_str(), self.post.meta.use_compression)?;
         // if self.supports_tools {
         // };
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();

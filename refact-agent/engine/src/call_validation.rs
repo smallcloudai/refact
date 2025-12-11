@@ -276,6 +276,8 @@ pub struct ChatMeta {
     pub include_project_info: bool,
     #[serde(default)]
     pub context_tokens_cap: Option<usize>,
+    #[serde(default)]
+    pub use_compression: bool,
 }
 
 impl Default for ChatMeta {
@@ -288,6 +290,7 @@ impl Default for ChatMeta {
             current_config_file: String::new(),
             include_project_info: true,
             context_tokens_cap: None,
+            use_compression: false,
         }
     }
 }

@@ -1,10 +1,12 @@
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::process::Stdio;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{Value, json};
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+use tokio::io::{AsyncBufReadExt, BufReader};
 use async_trait::async_trait;
 use tokio::process::Command;
 
@@ -86,7 +88,10 @@ impl Tool for ToolShell {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let gcx = ccx.lock().await.global_context.clone();
+        let (gcx, subchat_tx) = {
+            let ccx_lock = ccx.lock().await;
+            (ccx_lock.global_context.clone(), ccx_lock.subchat_tx.clone())
+        };
         let (command, workdir_maybe, custom_filter, timeout_override) = parse_args_with_filter(gcx.clone(), args).await?;
         let timeout = timeout_override.unwrap_or_else(|| self.cfg.timeout.parse::<u64>().unwrap_or(10));
 
@@ -95,12 +100,14 @@ impl Tool for ToolShell {
 
         let output_filter = custom_filter.unwrap_or_else(|| self.cfg.output_filter.clone());
 
-        let tool_output = execute_shell_command_raw(
+        let tool_output = execute_shell_command_with_streaming(
             &command,
             &workdir_maybe,
             timeout,
             &env_variables,
             gcx.clone(),
+            &subchat_tx,
+            tool_call_id,
         ).await?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {
@@ -129,7 +136,7 @@ impl Tool for ToolShell {
             },
             agentic: true,
             experimental: false,
-            description: "Execute a single command, using the \"sh\" on unix-like systems and \"powershell.exe\" on windows. Use it for one-time tasks like dependencies installation. Don't call this unless you have to. Not suitable for regular work because it requires a confirmation at each step. Output is compressed by default - use output_filter and output_limit parameters to see specific parts if needed.".to_string(),
+            description: "Execute a single command, using the \"sh\" on unix-like systems and \"powershell.exe\" on windows. Use it for one-time tasks like dependencies installation. Don't call this unless you have to. Not suitable for regular work because it requires a confirmation at each step. Output is compressed by default - use output_filter and output_limit parameters to see specific parts if needed. Note: sudo commands cannot be run - if you need elevated privileges, ask the user to run them directly.".to_string(),
             parameters: vec![
                 ToolParam {
                     name: "command".to_string(),
@@ -217,12 +224,117 @@ impl Tool for ToolShell {
     }
 }
 
-pub async fn execute_shell_command_raw(
+fn send_streaming_update(
+    subchat_tx: &Arc<AMutex<tokio::sync::mpsc::UnboundedSender<serde_json::Value>>>,
+    tool_call_id: &str,
+    content: &str,
+) {
+    let streaming_msg = json!({
+        "tool_call_id": tool_call_id,
+        "subchat_id": content,
+        "add_message": {
+            "role": "assistant",
+            "content": content
+        }
+    });
+    if let Ok(tx) = subchat_tx.try_lock() {
+        let _ = tx.send(streaming_msg);
+    }
+}
+
+fn spawn_output_streaming_task(
+    subchat_tx: Arc<AMutex<tokio::sync::mpsc::UnboundedSender<serde_json::Value>>>,
+    tool_call_id: String,
+    stdout: tokio::process::ChildStdout,
+    stderr: tokio::process::ChildStderr,
+    cancel_token: tokio_util::sync::CancellationToken,
+    output_collector: Arc<AMutex<(Vec<String>, Vec<String>)>>,
+) {
+    tokio::spawn(async move {
+        let mut stdout_reader = BufReader::new(stdout).lines();
+        let mut stderr_reader = BufReader::new(stderr).lines();
+        let mut last_update = tokio::time::Instant::now();
+        let update_interval = tokio::time::Duration::from_secs(2);
+
+        loop {
+            tokio::select! {
+                _ = cancel_token.cancelled() => {
+                    break;
+                }
+                result = stdout_reader.next_line() => {
+                    match result {
+                        Ok(Some(line)) => {
+                            let stripped = strip_ansi_escapes::strip(line.as_bytes());
+                            let clean_line = String::from_utf8_lossy(&stripped).to_string();
+                            {
+                                let mut collector = output_collector.lock().await;
+                                collector.0.push(clean_line);
+                            }
+                            if last_update.elapsed() >= update_interval {
+                                let collector = output_collector.lock().await;
+                                let total_lines = collector.0.len();
+                                let preview: String = if total_lines > 3 {
+                                    collector.0[total_lines-3..].join("\n")
+                                } else {
+                                    collector.0.join("\n")
+                                };
+                                drop(collector);
+                                send_streaming_update(
+                                    &subchat_tx,
+                                    &tool_call_id,
+                                    &format!("📤 stdout ({} lines):\n```\n{}\n```", total_lines, preview)
+                                );
+                                last_update = tokio::time::Instant::now();
+                            }
+                        }
+                        Ok(None) => {
+                            // stdout closed
+                            break;
+                        }
+                        Err(e) => {
+                            tracing::warn!("Error reading stdout: {}", e);
+                            break;
+                        }
+                    }
+                }
+                result = stderr_reader.next_line() => {
+                    match result {
+                        Ok(Some(line)) => {
+                            let stripped = strip_ansi_escapes::strip(line.as_bytes());
+                            let clean_line = String::from_utf8_lossy(&stripped).to_string();
+                            {
+                                let mut collector = output_collector.lock().await;
+                                collector.1.push(clean_line.clone());
+                            }
+                            if !clean_line.trim().is_empty() {
+                                send_streaming_update(
+                                    &subchat_tx,
+                                    &tool_call_id,
+                                    &format!("⚠️ stderr: {}", clean_line)
+                                );
+                            }
+                        }
+                        Ok(None) => {
+                            // stderr closed, but keep reading stdout
+                        }
+                        Err(e) => {
+                            tracing::warn!("Error reading stderr: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+pub async fn execute_shell_command_with_streaming(
     command: &str,
     workdir_maybe: &Option<PathBuf>,
     timeout: u64,
     env_variables: &HashMap<String, String>,
     gcx: Arc<ARwLock<GlobalContext>>,
+    subchat_tx: &Arc<AMutex<tokio::sync::mpsc::UnboundedSender<serde_json::Value>>>,
+    tool_call_id: &str,
 ) -> Result<String, String> {
     let shell = if cfg!(target_os = "windows") { "powershell.exe" } else { "sh" };
     let shell_arg = if cfg!(target_os = "windows") { "-Command" } else { "-c" };
@@ -241,19 +353,67 @@ pub async fn execute_shell_command_raw(
     }
 
     cmd.arg(shell_arg).arg(command);
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
 
     tracing::info!("SHELL: running command directory {:?}\n{:?}", workdir_maybe, command);
+
+    send_streaming_update(subchat_tx, tool_call_id, &format!("🔧 Running: {}", command));
+
     let t0 = tokio::time::Instant::now();
-    let output = execute_command(cmd, timeout, command).await?;
+    let mut child = cmd.spawn().map_err(|e| format!("Failed to spawn command: {}", e))?;
+
+    let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+    let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
+
+    let output_collector: Arc<AMutex<(Vec<String>, Vec<String>)>> = Arc::new(AMutex::new((Vec::new(), Vec::new())));
+    let cancel_token = tokio_util::sync::CancellationToken::new();
+
+    spawn_output_streaming_task(
+        subchat_tx.clone(),
+        tool_call_id.to_string(),
+        stdout,
+        stderr,
+        cancel_token.clone(),
+        output_collector.clone(),
+    );
+
+    let timeout_duration = tokio::time::Duration::from_secs(timeout);
+    let wait_result = tokio::time::timeout(timeout_duration, child.wait()).await;
+
+    cancel_token.cancel();
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
     let duration = t0.elapsed();
     tracing::info!("SHELL: /finished in {:.3}s", duration.as_secs_f64());
 
-    let stdout = output.stdout.to_string_lossy_and_strip_ansi();
-    let stderr = output.stderr.to_string_lossy_and_strip_ansi();
+    let exit_status = match wait_result {
+        Ok(Ok(status)) => status,
+        Ok(Err(e)) => return Err(format!("Failed to wait for command: {}", e)),
+        Err(_) => {
+            let _ = child.kill().await;
+            return Err(format!("Command '{}' timed out after {} seconds", command, timeout));
+        }
+    };
 
-    let mut out = crate::integrations::integr_cmdline::format_output(&stdout, &stderr);
-    let exit_code = output.status.code().unwrap_or_default();
+    let (stdout_lines, stderr_lines) = {
+        let collector = output_collector.lock().await;
+        (collector.0.clone(), collector.1.clone())
+    };
+
+    let stdout_str = stdout_lines.join("\n");
+    let stderr_str = stderr_lines.join("\n");
+
+    let mut out = crate::integrations::integr_cmdline::format_output(&stdout_str, &stderr_str);
+    let exit_code = exit_status.code().unwrap_or_default();
     out.push_str(&format!("The command was running {:.3}s, finished with exit code {exit_code}\n", duration.as_secs_f64()));
+
+    send_streaming_update(
+        subchat_tx,
+        tool_call_id,
+        &format!("✅ Finished (exit code: {}, {:.1}s)", exit_code, duration.as_secs_f64())
+    );
+
     Ok(out)
 }
 

@@ -49,7 +49,7 @@ pub fn get_model_token_params(model_id: &str) -> (i32, f32) {
     let model_lower = model_id.to_lowercase();
     match model_lower.as_str() {
         // Claude 3-4 Sonnet models need higher token overhead
-        m if m.contains("claude") => (150, 0.2),
+        m if m.contains("claude") => (150, 0.1),
 
         // Default values for all other models
         _ => (3, 0.0),
@@ -552,15 +552,30 @@ pub fn fix_and_limit_messages_history(
     n_ctx: usize,
     tools_description: Option<String>,
     model_id: &str,
+    use_compression: bool,
 ) -> Result<(Vec<ChatMessage>, CompressionStrength), String> {
     let start_time = Instant::now();
-    
+
     if n_ctx <= sampling_parameters_to_patch.max_new_tokens {
         return Err(format!("bad input, n_ctx={}, max_new_tokens={}", n_ctx, sampling_parameters_to_patch.max_new_tokens));
     }
+
+    // If compression is disabled, just validate and return messages as-is
+    if !use_compression {
+        tracing::info!("Compression disabled, skipping all compression stages");
+        let mut mutable_messages = messages.clone();
+        replace_broken_tool_call_messages(
+            &mut mutable_messages,
+            sampling_parameters_to_patch,
+            16000
+        );
+        remove_invalid_tool_calls_and_tool_calls_results(&mut mutable_messages);
+        return validate_chat_history(&mutable_messages).map(|msgs| (msgs, CompressionStrength::Absent));
+    }
+
     let mut mutable_messages = messages.clone();
     let mut highest_compression_stage = 0;
-    
+
     // STAGE 0: Compress duplicated ContextFiles
     // This is done before token calculation to reduce the number of messages that need to be tokenized
     let mut preserve_in_later_stages = vec![false; mutable_messages.len()];

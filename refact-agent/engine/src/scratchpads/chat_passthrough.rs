@@ -214,7 +214,8 @@ impl ScratchpadAbstract for ChatPassthrough {
             sampling_parameters_to_patch,
             n_ctx,
             big_json.get("tools").map(|x| x.to_string()),
-            self.post.model.as_str()
+            self.post.model.as_str(),
+            self.post.meta.use_compression,
         ) {
             Ok((limited_msgs, compression_strength)) => (limited_msgs, compression_strength),
             Err(e) => {

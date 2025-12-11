@@ -7,7 +7,8 @@ use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 use axum::http::StatusCode;
 use crate::subchat::subchat_single;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType, MatchConfirmDeny, MatchConfirmDenyResult};
+use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
@@ -338,5 +339,44 @@ impl Tool for ToolStrategicPlanning {
 
     fn tool_depends_on(&self) -> Vec<String> {
         vec![]
+    }
+
+    async fn command_to_match_against_confirm_deny(
+        &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
+        args: &HashMap<String, Value>,
+    ) -> Result<String, String> {
+        let paths = match args.get("important_paths") {
+            Some(Value::String(s)) => s.clone(),
+            _ => return Ok("".to_string()),
+        };
+        let truncated_paths = if paths.len() > 100 {
+            format!("{}...", &paths[..100])
+        } else {
+            paths
+        };
+        Ok(format!("strategic_planning \"{}\"", truncated_paths))
+    }
+
+    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
+        Some(IntegrationConfirmation {
+            ask_user: vec!["*".to_string()],
+            deny: vec![],
+        })
+    }
+
+    async fn match_against_confirm_deny(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        args: &HashMap<String, Value>,
+    ) -> Result<MatchConfirmDeny, String> {
+        let command_to_match = self.command_to_match_against_confirm_deny(ccx.clone(), &args).await.map_err(|e| {
+            format!("Error getting tool command to match: {}", e)
+        })?;
+        Ok(MatchConfirmDeny {
+            result: MatchConfirmDenyResult::CONFIRMATION,
+            command: command_to_match,
+            rule: "default".to_string(),
+        })
     }
 }
