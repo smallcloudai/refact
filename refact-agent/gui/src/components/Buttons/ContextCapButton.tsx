@@ -46,9 +46,10 @@ export const ContextCapButton: React.FC = () => {
     if (!capsQuery.data) return undefined;
 
     // Use thread model if available in caps
-    const modelToUse = threadModel && threadModel in capsQuery.data.chat_models
-      ? threadModel
-      : capsQuery.data.chat_default_model;
+    const modelToUse =
+      threadModel && threadModel in capsQuery.data.chat_models
+        ? threadModel
+        : capsQuery.data.chat_default_model;
 
     if (modelToUse in capsQuery.data.chat_models) {
       return capsQuery.data.chat_models[modelToUse].n_ctx;
@@ -103,8 +104,9 @@ export const ContextCapButton: React.FC = () => {
 
     // Get all valid option values as numbers
     const optionValues = capOptions
-      .filter((opt): opt is SelectProps["options"][number] & { value: string } =>
-        typeof opt === "object" && "value" in opt
+      .filter(
+        (opt): opt is SelectProps["options"][number] & { value: string } =>
+          typeof opt === "object" && "value" in opt,
       )
       .map((opt) => Number(opt.value));
 

@@ -42,7 +42,9 @@ import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
 import { checkForDetailMessage, isServerExecutedTool } from "./types";
 
-function extractCitationFromDelta(delta: unknown): WebSearchCitation | undefined {
+function extractCitationFromDelta(
+  delta: unknown,
+): WebSearchCitation | undefined {
   if (!delta || typeof delta !== "object") return undefined;
   const d = delta as Record<string, unknown>;
   const psf = d.provider_specific_fields;
@@ -52,7 +54,11 @@ function extractCitationFromDelta(delta: unknown): WebSearchCitation | undefined
   if (!citation || typeof citation !== "object") return undefined;
   const c = citation as Record<string, unknown>;
   // Validate it's a web search citation
-  if (c.type === "web_search_result_location" && typeof c.url === "string" && typeof c.title === "string") {
+  if (
+    c.type === "web_search_result_location" &&
+    typeof c.url === "string" &&
+    typeof c.title === "string"
+  ) {
     return citation as WebSearchCitation;
   }
   return undefined;

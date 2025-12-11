@@ -90,7 +90,9 @@ export const AgentCapabilities = () => {
   const enabledAgenticFeatures = useMemo(
     () =>
       agenticFeatures
-        .filter((feature) => feature.enabled && !("hide" in feature && feature.hide))
+        .filter(
+          (feature) => feature.enabled && !("hide" in feature && feature.hide),
+        )
         .map((feature) => feature.name)
         .join(", ") || "None",
     [agenticFeatures],

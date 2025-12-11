@@ -1768,12 +1768,18 @@ describe("postProcessMessagesAfterStreaming", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].role).toBe("assistant");
-    if ("tool_calls" in result[0] && "content" in result[0] && "server_executed_tools" in result[0]) {
+    if (
+      "tool_calls" in result[0] &&
+      "content" in result[0] &&
+      "server_executed_tools" in result[0]
+    ) {
       expect(result[0].tool_calls).toHaveLength(1);
       expect(result[0].tool_calls?.[0].function.name).toBe("str_replace");
       expect(result[0].content).toBe("I'll search for the weather.");
       expect(result[0].server_executed_tools).toHaveLength(1);
-      expect(result[0].server_executed_tools?.[0].function.name).toBe("web_search");
+      expect(result[0].server_executed_tools?.[0].function.name).toBe(
+        "web_search",
+      );
     }
   });
 
@@ -1802,7 +1808,9 @@ describe("postProcessMessagesAfterStreaming", () => {
     if ("content" in result[0] && "server_executed_tools" in result[0]) {
       expect(result[0].content).toBe("Searching for information.");
       expect(result[0].server_executed_tools).toHaveLength(1);
-      expect(result[0].server_executed_tools?.[0].function.name).toBe("web_search");
+      expect(result[0].server_executed_tools?.[0].function.name).toBe(
+        "web_search",
+      );
     }
     if ("tool_calls" in result[0]) {
       expect(result[0].tool_calls).toBeUndefined();
@@ -1943,7 +1951,11 @@ describe("postProcessMessagesAfterStreaming", () => {
     const result = postProcessMessagesAfterStreaming(messages);
 
     expect(result).toHaveLength(1);
-    if ("tool_calls" in result[0] && "content" in result[0] && "server_executed_tools" in result[0]) {
+    if (
+      "tool_calls" in result[0] &&
+      "content" in result[0] &&
+      "server_executed_tools" in result[0]
+    ) {
       expect(result[0].tool_calls).toHaveLength(1);
       expect(result[0].tool_calls?.[0].id).toBe("call_456");
       expect(result[0].tool_calls?.[0].function.name).toBe("tree");
@@ -1952,8 +1964,12 @@ describe("postProcessMessagesAfterStreaming", () => {
       );
       expect(result[0].content).toBe("Let me search and check the files.");
       expect(result[0].server_executed_tools).toHaveLength(1);
-      expect(result[0].server_executed_tools?.[0].function.name).toBe("web_search");
-      expect(result[0].server_executed_tools?.[0].function.arguments).toBe('{"query": "test search"}');
+      expect(result[0].server_executed_tools?.[0].function.name).toBe(
+        "web_search",
+      );
+      expect(result[0].server_executed_tools?.[0].function.arguments).toBe(
+        '{"query": "test search"}',
+      );
     }
   });
 });

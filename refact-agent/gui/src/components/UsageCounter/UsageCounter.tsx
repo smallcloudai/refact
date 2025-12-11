@@ -332,8 +332,14 @@ const DefaultHoverTriggerContent: React.FC<{
         </Flex>
       )}
       {(inputTokens !== 0 || outputTokens !== 0) && (
-        <Flex align="center" gap="1" title="Total tokens: input ↑ / output ↓ / cache read 📖 / cache write ✏️">
-          <Text size="1" color="gray">Σ</Text>
+        <Flex
+          align="center"
+          gap="1"
+          title="Total tokens: input ↑ / output ↓ / cache read 📖 / cache write ✏️"
+        >
+          <Text size="1" color="gray">
+            Σ
+          </Text>
           {inputTokens !== 0 && (
             <Flex align="center">
               <ArrowUpIcon width="12" height="12" />

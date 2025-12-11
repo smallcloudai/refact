@@ -213,10 +213,7 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
       >
         <Dialog.Title>Select Model</Dialog.Title>
 
-        <ScrollArea
-          style={{ flex: 1, minHeight: 0 }}
-          scrollbars="vertical"
-        >
+        <ScrollArea style={{ flex: 1, minHeight: 0 }} scrollbars="vertical">
           <Flex direction="column" gap="4" py="2">
             {groupedModels.map((group) => (
               <Flex key={group.provider} direction="column" gap="2">

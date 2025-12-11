@@ -123,13 +123,18 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
               </Flex>
             )}
             {citations && citations.length > 0 && (
-              <Flex direction="column" gap="1" style={{ maxHeight: "150px", overflowY: "auto" }}>
+              <Flex
+                direction="column"
+                gap="1"
+                style={{ maxHeight: "150px", overflowY: "auto" }}
+              >
                 <Text size="1" weight="medium" color="gray">
                   Sources:
                 </Text>
                 {citations
-                  .filter((citation, idx, arr) =>
-                    arr.findIndex((c) => c.url === citation.url) === idx
+                  .filter(
+                    (citation, idx, arr) =>
+                      arr.findIndex((c) => c.url === citation.url) === idx,
                   )
                   .map((citation, idx) => (
                     <Link
