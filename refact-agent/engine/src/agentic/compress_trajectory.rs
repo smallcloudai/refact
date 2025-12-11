@@ -100,7 +100,7 @@ pub async fn compress_trajectory(
     }
     let (model_id, n_ctx) = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => {
-            let model_id = caps.defaults.chat_default_model.clone();
+            let model_id = caps.defaults.chat_light_model.clone();
             if let Some(model_rec) = caps.chat_models.get(&strip_model_from_finetune(&model_id)) {
                 Ok((model_id, model_rec.base.n_ctx))
             } else {

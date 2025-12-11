@@ -21,7 +21,6 @@ use crate::files_correction::get_project_dirs;
 use crate::files_correction::preprocess_path_for_normalization;
 use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
-use crate::integrations::process_io_utils::{execute_command, AnsiStrippable};
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, ToolSource, ToolSourceType, MatchConfirmDeny, MatchConfirmDenyResult};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::OutputFilter;

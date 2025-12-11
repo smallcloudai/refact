@@ -223,7 +223,7 @@ mod problem_highlighting_tests {
         ];
 
         let expected_overhead = 150;
-        let expected_budget_offset = 0.2;
+        let expected_budget_offset = 0.15;
 
         for model in &claude_variants {
             let (overhead, budget_offset) = get_model_token_params(model);

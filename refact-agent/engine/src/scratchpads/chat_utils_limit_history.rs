@@ -49,7 +49,7 @@ pub fn get_model_token_params(model_id: &str) -> (i32, f32) {
     let model_lower = model_id.to_lowercase();
     match model_lower.as_str() {
         // Claude 3-4 Sonnet models need higher token overhead
-        m if m.contains("claude") => (150, 0.1),
+        m if m.contains("claude") => (150, 0.15),
 
         // Default values for all other models
         _ => (3, 0.0),
