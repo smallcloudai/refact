@@ -95,7 +95,7 @@ async fn get_builtin_tools(
         Box::new(crate::tools::file_edit::tool_create_textdoc::ToolCreateTextDoc{config_path: config_path.clone()}),
         Box::new(crate::tools::file_edit::tool_update_textdoc::ToolUpdateTextDoc{config_path: config_path.clone()}),
         Box::new(crate::tools::file_edit::tool_update_textdoc_by_lines::ToolUpdateTextDocByLines{config_path: config_path.clone()}),
-        Box::new(crate::tools::file_edit::tool_update_textdoc_regex::ToolUpdateTextDocRegex{config_path: config_path.clone()}),
+        // Box::new(crate::tools::file_edit::tool_update_textdoc_regex::ToolUpdateTextDocRegex{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_rm::ToolRm{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_mv::ToolMv{config_path: config_path.clone()}),
     ];
