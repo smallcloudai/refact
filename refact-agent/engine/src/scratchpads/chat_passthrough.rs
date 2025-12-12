@@ -303,15 +303,9 @@ fn _adapt_for_reasoning_models(
             if supports_boost_reasoning && sampling_parameters.boost_reasoning {
                 sampling_parameters.reasoning_effort = Some(ReasoningEffort::Medium);
             }
+            sampling_parameters.max_new_tokens = sampling_parameters.max_new_tokens * 2;
             sampling_parameters.temperature = default_temperature;
-
-            // NOTE: OpenAI prefer user message over system
-            messages.into_iter().map(|mut msg| {
-                if msg.role == "system" {
-                    msg.role = "user".to_string();
-                }
-                msg
-            }).collect()
+            messages
         },
         "anthropic" => {
             let budget_tokens = if sampling_parameters.max_new_tokens > MIN_BUDGET_TOKENS {
