@@ -92,22 +92,9 @@ export const MessageUsageInfo: React.FC<MessageUsageInfoProps> = ({
               cursor: "pointer",
             }}
           >
-            <Flex align="center" gap="2">
-              {totalCoins > 0 && (
-                <Flex align="center" gap="1">
-                  <Text size="1">{Math.round(totalCoins)}</Text>
-                  <Coin width="10px" height="10px" />
-                </Flex>
-              )}
-              {contextTokens > 0 && (
-                <Text
-                  size="1"
-                  color="gray"
-                  title="Context tokens for this message"
-                >
-                  ctx: {formatNumberToFixed(contextTokens)}
-                </Text>
-              )}
+            <Flex align="center" gap="1">
+              <Text size="1">{Math.round(totalCoins)}</Text>
+              <Coin width="10px" height="10px" />
             </Flex>
           </Card>
         </HoverCard.Trigger>
