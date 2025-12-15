@@ -104,7 +104,7 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
         />
       )}
       {message && (
-        <Box py="4">
+        <Box py="4" style={{ paddingRight: "50px" }}>
           <Markdown canHaveInteractiveElements={true} onCopyClick={handleCopy}>
             {message}
           </Markdown>

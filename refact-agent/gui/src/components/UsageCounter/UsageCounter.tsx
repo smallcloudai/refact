@@ -303,43 +303,52 @@ const DefaultHoverTriggerContent: React.FC<{
   currentSessionTokens: number;
   compressionStrength?: CompressionStrength | null;
   totalCoins?: number;
-  cacheReadTokens?: number;
-  cacheWriteTokens?: number;
 }> = ({
   inputTokens,
   outputTokens,
   currentSessionTokens,
   compressionStrength,
   totalCoins,
-  cacheReadTokens,
-  cacheWriteTokens,
 }) => {
   const compressionLabel = formatCompressionStage(compressionStrength);
+  const hasCoinsOrContext =
+    (totalCoins !== undefined && totalCoins > 0) || currentSessionTokens !== 0;
+  const hasInputOutput = inputTokens !== 0 || outputTokens !== 0;
 
   return (
-    <>
-      {totalCoins !== undefined && totalCoins > 0 && (
-        <Flex align="center" gap="1" title="Total coins spent">
-          <Text size="1">{Math.round(totalCoins)}</Text>
-          <Coin width="12px" height="12px" />
+    <Flex direction="column" align="end" gap="1">
+      {hasCoinsOrContext && (
+        <Flex align="center" gap="2">
+          {totalCoins !== undefined && totalCoins > 0 && (
+            <Flex align="center" gap="1" title="Total coins spent">
+              <Text size="1">{Math.round(totalCoins)}</Text>
+              <Coin width="12px" height="12px" />
+            </Flex>
+          )}
+          {currentSessionTokens !== 0 && (
+            <Text size="1" color="gray" title="Current context window usage">
+              ctx: {formatNumberToFixed(currentSessionTokens)}
+            </Text>
+          )}
+          {compressionLabel && (
+            <Text
+              size="1"
+              color={
+                compressionStrength === "high"
+                  ? "red"
+                  : compressionStrength === "medium"
+                    ? "yellow"
+                    : "gray"
+              }
+              title="Compression stage"
+            >
+              ⚡{compressionLabel}
+            </Text>
+          )}
         </Flex>
       )}
-      {currentSessionTokens !== 0 && (
-        <Flex align="center" gap="1">
-          <Text size="1" color="gray" title="Current context window usage">
-            ctx: {formatNumberToFixed(currentSessionTokens)}
-          </Text>
-        </Flex>
-      )}
-      {(inputTokens !== 0 || outputTokens !== 0) && (
-        <Flex
-          align="center"
-          gap="1"
-          title="Total tokens: input ↑ / output ↓ / cache read 📖 / cache write ✏️"
-        >
-          <Text size="1" color="gray">
-            Σ
-          </Text>
+      {hasInputOutput && (
+        <Flex align="center" gap="2" title="Total tokens: input ↑ / output ↓">
           {inputTokens !== 0 && (
             <Flex align="center">
               <ArrowUpIcon width="12" height="12" />
@@ -352,38 +361,9 @@ const DefaultHoverTriggerContent: React.FC<{
               <Text size="1">{formatNumberToFixed(outputTokens)}</Text>
             </Flex>
           )}
-          {cacheReadTokens !== undefined && cacheReadTokens > 0 && (
-            <Flex align="center" gap="1" title="Cache read tokens">
-              <Text size="1">📖</Text>
-              <Text size="1">{formatNumberToFixed(cacheReadTokens)}</Text>
-            </Flex>
-          )}
-          {cacheWriteTokens !== undefined && cacheWriteTokens > 0 && (
-            <Flex align="center" gap="1" title="Cache write tokens">
-              <Text size="1">✏️</Text>
-              <Text size="1">{formatNumberToFixed(cacheWriteTokens)}</Text>
-            </Flex>
-          )}
         </Flex>
       )}
-      {compressionLabel && (
-        <Flex align="center">
-          <Text
-            size="1"
-            color={
-              compressionStrength === "high"
-                ? "red"
-                : compressionStrength === "medium"
-                  ? "yellow"
-                  : "gray"
-            }
-            title="Compression stage"
-          >
-            ⚡{compressionLabel}
-          </Text>
-        </Flex>
-      )}
-    </>
+    </Flex>
   );
 };
 
@@ -427,20 +407,6 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
       meteringTokens.metering_prompt_tokens_n
     );
   }, [meteringTokens]);
-
-  const cacheReadTokens = useMemo(() => {
-    if (meteringTokens !== null) {
-      return meteringTokens.metering_cache_read_tokens_n;
-    }
-    return currentThreadUsage?.cache_read_input_tokens;
-  }, [meteringTokens, currentThreadUsage]);
-
-  const cacheWriteTokens = useMemo(() => {
-    if (meteringTokens !== null) {
-      return meteringTokens.metering_cache_creation_tokens_n;
-    }
-    return currentThreadUsage?.cache_creation_input_tokens;
-  }, [meteringTokens, currentThreadUsage]);
 
   const outputMeteringTokens = useMemo(() => {
     if (meteringTokens === null) return null;
@@ -508,8 +474,6 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
               currentSessionTokens={currentSessionTokens}
               compressionStrength={compressionStrength}
               totalCoins={totalCoins}
-              cacheReadTokens={cacheReadTokens}
-              cacheWriteTokens={cacheWriteTokens}
             />
           )}
         </Card>
