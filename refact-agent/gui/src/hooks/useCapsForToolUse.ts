@@ -9,7 +9,7 @@ import {
   setToolUse,
   ToolUse,
 } from "../features/Chat";
-import { DEFAULT_MAX_NEW_TOKENS } from "../services/refact";
+
 
 // TODO: hard coded for now.
 export const PAID_AGENT_LIST = [
@@ -44,9 +44,10 @@ export function useCapsForToolUse() {
           : value;
       const action = setChatModel(model);
       dispatch(action);
-      const tokens =
-        caps.data?.chat_models[value]?.n_ctx ?? DEFAULT_MAX_NEW_TOKENS;
-      dispatch(setMaxNewTokens(tokens));
+      const tokens = caps.data?.chat_models[value]?.n_ctx;
+      if (tokens !== undefined) {
+        dispatch(setMaxNewTokens(tokens));
+      }
     },
     [caps.data?.chat_default_model, caps.data?.chat_models, dispatch],
   );

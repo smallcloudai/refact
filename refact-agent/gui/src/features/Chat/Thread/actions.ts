@@ -26,11 +26,7 @@ import {
 import type { AppDispatch, RootState } from "../../../app/store";
 import { type SystemPrompts } from "../../../services/refact/prompts";
 import { formatMessagesForLsp, consumeStream } from "./utils";
-import {
-  DEFAULT_MAX_NEW_TOKENS,
-  generateChatTitle,
-  sendChat,
-} from "../../../services/refact/chat";
+import { generateChatTitle, sendChat } from "../../../services/refact/chat";
 // import { ToolCommand, toolsApi } from "../../../services/refact/tools";
 import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 import { ChatHistoryItem } from "../../History/historySlice";
@@ -417,7 +413,6 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
         return thunkAPI.rejectWithValue(errorObject);
       })
       .finally(() => {
-        thunkAPI.dispatch(setMaxNewTokens(DEFAULT_MAX_NEW_TOKENS));
         thunkAPI.dispatch(doneStreaming({ id: chatId }));
       });
   },
