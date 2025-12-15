@@ -14,9 +14,7 @@ pub struct ToolDeepResearch {
     pub config_path: String,
 }
 
-static RESEARCHER_SYSTEM_PROMPT: &str = r#"You are a professional researcher preparing a structured, data-driven report. Your task is to analyze the research question the user poses.
-
-Do:
+static RESEARCHER_PROMPT: &str = r#"Do:
 - Focus on data-rich insights: include specific figures, trends, statistics, and measurable outcomes.
 - When appropriate, summarize data in a way that could be turned into charts or tables, and call this out in the response.
 - Prioritize reliable, up-to-date sources: official documentation, peer-reviewed research, reputable technical blogs, and official project repositories.
@@ -25,7 +23,7 @@ Do:
 Be analytical, avoid generalities, and ensure that each section supports data-backed reasoning that could inform technical decisions or implementation strategies."#;
 
 static ENTERTAINMENT_MESSAGES: &[&str] = &[
-    "🔬 Deep research in progress... This may take up to 20 minutes, please be patient!",
+    "🔬 Deep research in progress... This may take up to 30 minutes, please be patient!",
     "🌐 Browsing the web and gathering relevant sources...",
     "📚 Reading through documentation and articles...",
     "🔍 Cross-referencing information from multiple sources...",
@@ -90,7 +88,7 @@ async fn execute_deep_research(
     spawn_entertainment_task(subchat_tx, tool_call_id.clone(), cancel_token.clone());
 
     let messages = vec![
-        ChatMessage::new("system".to_string(), RESEARCHER_SYSTEM_PROMPT.to_string()),
+        ChatMessage::new("user".to_string(), RESEARCHER_PROMPT.to_string()),
         ChatMessage::new("user".to_string(), research_query.to_string()),
     ];
 

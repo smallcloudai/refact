@@ -303,7 +303,9 @@ fn _adapt_for_reasoning_models(
             if supports_boost_reasoning && sampling_parameters.boost_reasoning {
                 sampling_parameters.reasoning_effort = Some(ReasoningEffort::Medium);
             }
-            sampling_parameters.max_new_tokens = sampling_parameters.max_new_tokens * 2;
+            if sampling_parameters.max_new_tokens <= 8192 {
+                sampling_parameters.max_new_tokens = sampling_parameters.max_new_tokens * 2;
+            }
             sampling_parameters.temperature = default_temperature;
             messages
         },
