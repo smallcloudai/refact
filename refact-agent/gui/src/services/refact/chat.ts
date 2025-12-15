@@ -9,7 +9,7 @@ import {
   UserMessage,
 } from "./types";
 
-export const DEFAULT_MAX_NEW_TOKENS = 4096;
+export const DEFAULT_MAX_NEW_TOKENS = null;
 
 export type LspChatMessage =
   | {
