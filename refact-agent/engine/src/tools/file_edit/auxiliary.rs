@@ -169,6 +169,8 @@ pub async fn write_file(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf, file_t
             warn!("{err}");
             err
         })?;
+        // Invalidate stale cache entry so subsequent reads get fresh content from disk
+        gcx.write().await.documents_state.memory_document_map.remove(path);
     }
     
     Ok((before_text, file_text.to_string()))

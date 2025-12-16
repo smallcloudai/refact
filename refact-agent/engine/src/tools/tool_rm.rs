@@ -203,6 +203,18 @@ impl Tool for ToolRm {
             fs::remove_dir_all(&true_path).await.map_err(|e| {
                 format!("Failed to remove directory '{}': {}", corrected_path, e)
             })?;
+            // Invalidate cache entries for all files under the deleted directory
+            {
+                let mut gcx_write = gcx.write().await;
+                let paths_to_remove: Vec<_> = gcx_write.documents_state.memory_document_map
+                    .keys()
+                    .filter(|p| p.starts_with(&true_path))
+                    .cloned()
+                    .collect();
+                for p in paths_to_remove {
+                    gcx_write.documents_state.memory_document_map.remove(&p);
+                }
+            }
             messages.push(ContextEnum::ChatMessage(ChatMessage {
                 role: "tool".to_string(),
                 content: ChatContent::SimpleText(format!("Removed directory '{}'", corrected_path)),
@@ -224,6 +236,8 @@ impl Tool for ToolRm {
             fs::remove_file(&true_path).await.map_err(|e| {
                 format!("Failed to remove file '{}': {}", corrected_path, e)
             })?;
+            // Invalidate cache entry for the deleted file
+            gcx.write().await.documents_state.memory_document_map.remove(&true_path);
             if !file_content.is_empty() {
                 let diff_chunk = DiffChunk {
                     file_name: corrected_path.clone(),
