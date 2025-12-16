@@ -135,16 +135,6 @@
 
   /* tool output can be wide */
   overflow-x: auto;
-
-  /* "terminal-ish" feel - matches MarkdownCodeBlock */
-  font-family:
-    Consolas,
-    Monaco,
-    Lucida Console,
-    Liberation Mono,
-    DejaVu Sans Mono,
-    Bitstream Vera Sans Mono,
-    Courier New;
 }
 
 /* Preserve indentation/line breaks for plain text paragraphs */

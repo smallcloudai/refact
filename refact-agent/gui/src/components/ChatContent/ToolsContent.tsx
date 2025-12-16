@@ -37,7 +37,7 @@ import { selectFeatures } from "../../features/Config/configSlice";
 import { isRawTextDocToolCall } from "../Tools/types";
 import { TextDocTool } from "../Tools/Textdoc";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
-import { ToolMarkdown } from "../Markdown/ToolMarkdown";
+import { Markdown } from "../Markdown";
 import classNames from "classnames";
 import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
 import { FadedButton } from "../Buttons";
@@ -73,21 +73,12 @@ const Result: React.FC<ResultProps> = ({ children, onClose }) => {
   const shouldRenderMarkdown =
     children.length <= MAX_MD_RENDER_CHARS && looksLikeMarkdown(children);
 
-  // Extract base styles from resultStyle theme
-  const hljsBase = (resultStyle as unknown as { hljs?: React.CSSProperties })
-    .hljs;
-
   return (
     <Reveal defaultOpen={lines.length < 9} isRevealingCode onClose={onClose}>
       {shouldRenderMarkdown ? (
         <Text size="2">
-          <Box
-            className={classNames(styles.tool_result, styles.tool_result_markdown)}
-            style={hljsBase}
-          >
-            <ToolMarkdown style={resultStyle}>
-              {children}
-            </ToolMarkdown>
+          <Box className={classNames(styles.tool_result, styles.tool_result_markdown)}>
+            <Markdown style={resultStyle}>{children}</Markdown>
           </Box>
         </Text>
       ) : (
