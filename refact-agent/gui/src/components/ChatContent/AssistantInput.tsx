@@ -154,7 +154,7 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
       )}
       {toolCalls && <ToolContent toolCalls={toolCalls} />}
       {isLast && (
-        <Flex justify="end" px="2" py="2" gap="2" align="center">
+        <Flex justify="end" px="2" py="2" gap="2" align="center" pr="4">
           <ResendButton />
           <LikeButton />
         </Flex>
