@@ -51,7 +51,7 @@ type ResultProps = {
 
 function looksLikeMarkdown(text: string): boolean {
   // Strong signals to avoid false positives on logs/stack traces
-  if (/```/.test(text)) return true; // fenced code blocks
+  if (text.includes('```')) return true; // fenced code blocks
   if (/\[[^\]]+\]\([^)]+\)/.test(text)) return true; // [text](url)
   if (/^#{1,6}\s+\S/m.test(text)) return true; // headings
   if (/^\s*([-*+])\s+\S/m.test(text)) return true; // unordered lists

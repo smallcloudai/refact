@@ -31,6 +31,7 @@
 ### What is This?
 
 Refact Chat GUI is a **React-based AI coding assistant** that provides:
+
 - **Real-time streaming chat** with AI models
 - **Tool calling** for file operations, shell commands, and IDE integration
 - **Multi-host support**: Web, VSCode, JetBrains IDEs
@@ -55,13 +56,14 @@ dist/events/index.js       # TypeScript types for IDE integrations
 ```
 
 **Usage in browser:**
+
 ```html
 <script src="refact-chat-js/dist/chat/index.umd.cjs"></script>
 <script>
-  RefactChat.render(document.getElementById('root'), {
-    host: 'web',
+  RefactChat.render(document.getElementById("root"), {
+    host: "web",
     lspPort: 8001,
-    features: { statistics: true, vecdb: true, ast: true, images: true }
+    features: { statistics: true, vecdb: true, ast: true, images: true },
   });
 </script>
 ```
@@ -133,6 +135,7 @@ gui/
 ### Data Flow Patterns
 
 **1. User Action → State Update → UI Re-render**
+
 ```
 User clicks "Send"
   → dispatch(chatAskQuestionThunk)
@@ -144,6 +147,7 @@ User clicks "Send"
 ```
 
 **2. IDE Integration (postMessage)**
+
 ```
 IDE Extension ⇄ window.postMessage ⇄ GUI (iframe)
     │                                      │
@@ -153,6 +157,7 @@ IDE Extension ⇄ window.postMessage ⇄ GUI (iframe)
 ```
 
 **3. Tool Calling Flow**
+
 ```
 AI suggests tool_call
   → Confirmation popup (if not automatic)
@@ -168,35 +173,38 @@ AI suggests tool_call
 
 ### Core Technologies
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **UI Framework** | React 18.2 | Component-based UI |
-| **Language** | TypeScript 5.8 (strict mode) | Type safety |
-| **Build Tool** | Vite 5.0 + SWC | Fast dev server & bundling |
-| **State Management** | Redux Toolkit 2.2 | Global state + caching |
-| **Data Fetching** | RTK Query | API layer with auto-caching |
-| **GraphQL** | urql 4.2 (SmallCloud only) | Auth/user/teams queries |
-| **Styling** | CSS Modules + Radix Themes | Scoped styles + design system |
-| **UI Components** | Radix UI | Accessible primitives |
-| **Testing** | Vitest 3.1 + React Testing Library | Unit & integration tests |
-| **Mocking** | MSW 2.3 | API mocking for tests/stories |
-| **Storybook** | Storybook 7.6 | Component development |
+| Layer                | Technology                         | Purpose                       |
+| -------------------- | ---------------------------------- | ----------------------------- |
+| **UI Framework**     | React 18.2                         | Component-based UI            |
+| **Language**         | TypeScript 5.8 (strict mode)       | Type safety                   |
+| **Build Tool**       | Vite 5.0 + SWC                     | Fast dev server & bundling    |
+| **State Management** | Redux Toolkit 2.2                  | Global state + caching        |
+| **Data Fetching**    | RTK Query                          | API layer with auto-caching   |
+| **GraphQL**          | urql 4.2 (SmallCloud only)         | Auth/user/teams queries       |
+| **Styling**          | CSS Modules + Radix Themes         | Scoped styles + design system |
+| **UI Components**    | Radix UI                           | Accessible primitives         |
+| **Testing**          | Vitest 3.1 + React Testing Library | Unit & integration tests      |
+| **Mocking**          | MSW 2.3                            | API mocking for tests/stories |
+| **Storybook**        | Storybook 7.6                      | Component development         |
 
 ### Key Dependencies
 
 **State & Data**
+
 - `@reduxjs/toolkit` - Modern Redux with `combineSlices`, RTK Query, middleware
 - `redux-persist` - Persist chat history to localStorage
 - `urql` - GraphQL client (SmallCloud API only, not for chat)
 - `uuid` - Generate chat/message IDs
 
 **UI Components**
+
 - `@radix-ui/react-*` - Accordion, Toolbar, Collapsible, Icons
 - `@radix-ui/themes` - Design system (colors, spacing, typography)
 - `framer-motion` - Animations
 - `lottie-react` - Animated icons
 
 **Utilities**
+
 - `react-markdown` + `remark-gfm` + `rehype-katex` - Markdown rendering
 - `react-syntax-highlighter` - Code highlighting
 - `diff` - Generate diffs for file changes
@@ -207,6 +215,7 @@ AI suggests tool_call
 ### Build Configuration
 
 **Vite Config** (`vite.config.ts`)
+
 ```typescript
 {
   plugins: [react(), eslint(), dts()],
@@ -229,6 +238,7 @@ AI suggests tool_call
 **Dual Build**: Separate config for Node.js types (`vite.node.config.ts` → `dist/events/`)
 
 **TypeScript Config**
+
 ```typescript
 {
   compilerOptions: {
@@ -274,13 +284,14 @@ REFACT_LSP_URL="http://localhost:8001" npm run dev
 
 ### Environment Variables
 
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `REFACT_LSP_URL` | Dev proxy target | `http://127.0.0.1:8001` |
-| `DEBUG` | Enable debug logging | (unset) |
-| `REFACT_LSP_PORT` | Runtime LSP port | `8001` |
+| Variable          | Purpose              | Default                 |
+| ----------------- | -------------------- | ----------------------- |
+| `REFACT_LSP_URL`  | Dev proxy target     | `http://127.0.0.1:8001` |
+| `DEBUG`           | Enable debug logging | (unset)                 |
+| `REFACT_LSP_PORT` | Runtime LSP port     | `8001`                  |
 
 **Debug mode:**
+
 ```bash
 DEBUG=refact,app,integrations npm run dev
 ```
@@ -289,19 +300,19 @@ DEBUG=refact,app,integrations npm run dev
 
 ```json
 {
-  "dev": "vite",                           // Dev server (5173)
+  "dev": "vite", // Dev server (5173)
   "build": "tsc && vite build && vite build -c vite.node.config.ts",
-  "preview": "vite preview",               // Preview production build
-  "test": "vitest",                        // Run tests (watch mode)
-  "test:no-watch": "vitest run",           // CI tests
-  "test:ui": "vitest --ui",                // Visual test runner
-  "coverage": "vitest run --coverage",     // Coverage report
-  "storybook": "storybook dev -p 6006",    // Component explorer
-  "build-storybook": "storybook build",    // Static storybook
-  "lint": "eslint . --ext ts,tsx",         // Type-aware linting
-  "types": "tsc --noEmit",                 // Type checking only
-  "format": "prettier . --write",          // Auto-format
-  "generate:graphql": "graphql-codegen",   // Generate GraphQL types
+  "preview": "vite preview", // Preview production build
+  "test": "vitest", // Run tests (watch mode)
+  "test:no-watch": "vitest run", // CI tests
+  "test:ui": "vitest --ui", // Visual test runner
+  "coverage": "vitest run --coverage", // Coverage report
+  "storybook": "storybook dev -p 6006", // Component explorer
+  "build-storybook": "storybook build", // Static storybook
+  "lint": "eslint . --ext ts,tsx", // Type-aware linting
+  "types": "tsc --noEmit", // Type checking only
+  "format": "prettier . --write", // Auto-format
+  "generate:graphql": "graphql-codegen", // Generate GraphQL types
   "alpha:publish": "npm publish --tag alpha"
 }
 ```
@@ -337,6 +348,7 @@ gui/
 ```
 
 **Lint-staged** (pre-commit):
+
 ```json
 {
   "*.{ts,tsx}": ["prettier --write", "eslint --cache --fix"],
@@ -404,6 +416,7 @@ data: [DONE]\n\n
 ```
 
 **Special markers:**
+
 - `data: [DONE]` - Stream complete
 - `data: [ERROR]` - Generic error
 - `data: {"detail":"..."}` - Structured error (LiteLLM format)
@@ -414,6 +427,7 @@ data: [DONE]\n\n
 **Location**: `src/features/Chat/Thread/utils.ts:886`
 
 **Key features:**
+
 1. **Malformed chunk handling** - If buffer doesn't end with `\n\n`, combines with next chunk
 2. **Error detection** - Checks for `{"detail":...}` at byte level before parsing
 3. **Robust parsing** - Falls back to buffer combination on JSON parse errors
@@ -428,7 +442,10 @@ export function consumeStream(
 ) {
   const decoder = new TextDecoder();
 
-  function pump({done, value}: ReadableStreamReadResult<Uint8Array>): Promise<void> {
+  function pump({
+    done,
+    value,
+  }: ReadableStreamReadResult<Uint8Array>): Promise<void> {
     if (done) return Promise.resolve();
     if (signal.aborted) {
       onAbort();
@@ -439,7 +456,7 @@ export function consumeStream(
     const streamAsString = decoder.decode(value);
 
     // Split by SSE delimiter
-    const deltas = streamAsString.split("\n\n").filter(str => str.length > 0);
+    const deltas = streamAsString.split("\n\n").filter((str) => str.length > 0);
 
     for (const delta of deltas) {
       if (!delta.startsWith("data: ")) continue;
@@ -447,7 +464,8 @@ export function consumeStream(
       const maybeJsonString = delta.substring(6); // Remove "data: "
 
       if (maybeJsonString === "[DONE]") return Promise.resolve();
-      if (maybeJsonString === "[ERROR]") return Promise.reject(new Error("error from lsp"));
+      if (maybeJsonString === "[ERROR]")
+        return Promise.reject(new Error("error from lsp"));
 
       // Parse JSON
       const json = parseOrElse<Record<string, unknown>>(maybeJsonString, {});
@@ -469,16 +487,16 @@ export function consumeStream(
 
 **Response Types Handled:**
 
-| Type | Detection | Action |
-|------|-----------|--------|
-| `UserResponse` | `role: "user"` | Replace last user message (compression hint) |
-| `ContextFileResponse` | `role: "context_file"` | Append context files |
-| `SubchatResponse` | Has `subchat_id` | Update tool call with subchat ID |
-| `ToolResponse` | `role: "tool"` | Append tool result message |
-| `DiffResponse` | `role: "diff"` | Append diff chunks |
-| `PlainTextResponse` | `role: "plain_text"` | Append plain text message |
-| `SystemResponse` | `role: "system"` | **Prepend** to messages (goes first) |
-| **ChatResponseChoice** | Has `choices[]` | **Merge delta into assistant message** ⭐ |
+| Type                   | Detection              | Action                                       |
+| ---------------------- | ---------------------- | -------------------------------------------- |
+| `UserResponse`         | `role: "user"`         | Replace last user message (compression hint) |
+| `ContextFileResponse`  | `role: "context_file"` | Append context files                         |
+| `SubchatResponse`      | Has `subchat_id`       | Update tool call with subchat ID             |
+| `ToolResponse`         | `role: "tool"`         | Append tool result message                   |
+| `DiffResponse`         | `role: "diff"`         | Append diff chunks                           |
+| `PlainTextResponse`    | `role: "plain_text"`   | Append plain text message                    |
+| `SystemResponse`       | `role: "system"`       | **Prepend** to messages (goes first)         |
+| **ChatResponseChoice** | Has `choices[]`        | **Merge delta into assistant message** ⭐    |
 
 **Delta Types (in `choices[0].delta`):**
 
@@ -510,6 +528,7 @@ delta: {
 5. **Usage/Metering** - Take highest values (later chunks have final counts)
 
 **Post-processing** (`postProcessMessagesAfterStreaming`):
+
 - Deduplicate tool calls
 - Filter out server-executed tools (`srvtoolu_*` prefix)
 - Clean up incomplete tool calls
@@ -571,6 +590,7 @@ dispatch(chatError) →
 **Problem**: AI might call same tool repeatedly with same args (infinite loop)
 
 **Solution**: `checkForToolLoop(messages)` (actions.ts:293)
+
 - Scans recent assistant+tool messages
 - Detects duplicate tool calls with identical results
 - Sets `only_deterministic_messages: true` to stop streaming
@@ -584,7 +604,7 @@ type QueuedUserMessage = {
   id: string;
   message: UserMessage;
   createdAt: number;
-  priority?: boolean;  // Send immediately after current stream ends
+  priority?: boolean; // Send immediately after current stream ends
 };
 
 // Regular queue: waits for tools to complete
@@ -592,6 +612,7 @@ type QueuedUserMessage = {
 ```
 
 **Hook**: `useAutoSend()` in `useSendChatRequest.ts:362-477`
+
 - Monitors `queuedMessages`, `streaming`, `hasUnsentTools`
 - Auto-flushes when appropriate conditions met
 - Priority messages bypass tool completion wait
@@ -607,19 +628,19 @@ type QueuedUserMessage = {
 **Store Setup**: `src/app/store.ts`
 
 ```typescript
-import { combineSlices, configureStore } from '@reduxjs/toolkit'
-import { listenerMiddleware } from './middleware'
+import { combineSlices, configureStore } from "@reduxjs/toolkit";
+import { listenerMiddleware } from "./middleware";
 
 // Feature slices
-import { chatSlice } from '../features/Chat/Thread/reducer'
-import { historySlice } from '../features/History/historySlice'
-import { configSlice } from '../features/Config/configSlice'
-import { pagesSlice } from '../features/Pages/pagesSlice'
+import { chatSlice } from "../features/Chat/Thread/reducer";
+import { historySlice } from "../features/History/historySlice";
+import { configSlice } from "../features/Config/configSlice";
+import { pagesSlice } from "../features/Pages/pagesSlice";
 // ... 20+ more slices
 
 // RTK Query APIs
-import { capsApi } from '../services/refact/caps'
-import { commandsApi } from '../services/refact/commands'
+import { capsApi } from "../services/refact/caps";
+import { commandsApi } from "../services/refact/commands";
 // ... 15+ more APIs
 
 const rootReducer = combineSlices(
@@ -630,49 +651,49 @@ const rootReducer = combineSlices(
   capsApi,
   commandsApi,
   // ...
-)
+);
 
 export const store = configureStore({
   reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
       .prepend(listenerMiddleware.middleware)
-      .concat(capsApi.middleware, commandsApi.middleware, /* ... */)
-})
+      .concat(capsApi.middleware, commandsApi.middleware /* ... */),
+});
 ```
 
 ### Key Slices
 
-| Slice | Purpose | Location | State Keys |
-|-------|---------|----------|------------|
-| **chat** | Active thread + cache | `features/Chat/Thread/reducer.ts` | `thread`, `streaming`, `waiting_for_response`, `prevent_send`, `cache`, `queued_messages` |
-| **history** | Chat history (max 100) | `features/History/historySlice.ts` | `chats`, `selectedId` |
-| **config** | Global settings | `features/Config/configSlice.ts` | `host`, `lspPort`, `apiKey`, `features`, `themeProps` |
-| **pages** | Navigation stack | `features/Pages/pagesSlice.ts` | `pages` (array of page objects) |
-| **activeFile** | IDE context | `features/Chat/activeFile.ts` | `file_name`, `can_paste`, `cursor` |
-| **checkpoints** | Rollback UI state | `features/Checkpoints/checkpointsSlice.ts` | `previewData`, `restoreInProgress` |
-| **confirmation** | Tool pause reasons | `features/ToolConfirmation/confirmationSlice.ts` | `pauseReasons`, `wasInteracted`, `confirmationStatus` |
-| **errors** | Error messages | `features/Errors/errorsSlice.ts` | `errors` (array) |
-| **teams** | Active team/group | `features/Teams/teamsSlice.ts` | `activeGroup` |
+| Slice            | Purpose                | Location                                         | State Keys                                                                                |
+| ---------------- | ---------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| **chat**         | Active thread + cache  | `features/Chat/Thread/reducer.ts`                | `thread`, `streaming`, `waiting_for_response`, `prevent_send`, `cache`, `queued_messages` |
+| **history**      | Chat history (max 100) | `features/History/historySlice.ts`               | `chats`, `selectedId`                                                                     |
+| **config**       | Global settings        | `features/Config/configSlice.ts`                 | `host`, `lspPort`, `apiKey`, `features`, `themeProps`                                     |
+| **pages**        | Navigation stack       | `features/Pages/pagesSlice.ts`                   | `pages` (array of page objects)                                                           |
+| **activeFile**   | IDE context            | `features/Chat/activeFile.ts`                    | `file_name`, `can_paste`, `cursor`                                                        |
+| **checkpoints**  | Rollback UI state      | `features/Checkpoints/checkpointsSlice.ts`       | `previewData`, `restoreInProgress`                                                        |
+| **confirmation** | Tool pause reasons     | `features/ToolConfirmation/confirmationSlice.ts` | `pauseReasons`, `wasInteracted`, `confirmationStatus`                                     |
+| **errors**       | Error messages         | `features/Errors/errorsSlice.ts`                 | `errors` (array)                                                                          |
+| **teams**        | Active team/group      | `features/Teams/teamsSlice.ts`                   | `activeGroup`                                                                             |
 
 ### RTK Query APIs
 
 **All APIs** auto-generate hooks like `useGetCapsQuery`, `useUpdateModelMutation`
 
-| API | Base URL | Purpose | Key Endpoints |
-|-----|----------|---------|---------------|
-| **capsApi** | `/v1/caps` | Model capabilities | `getCaps` |
-| **commandsApi** | `/v1/at-command-completion` | Autocomplete | `getCompletion`, `getPreview` |
-| **toolsApi** | `/v1/tools` | Tool system | `getTools`, `checkForConfirmation` |
-| **dockerApi** | `/v1/docker-*` | Container mgmt | `getContainers`, `executeAction` |
-| **integrationsApi** | `/v1/integrations` | Config files | `getData`, `saveData` |
-| **modelsApi** | `/v1/customization` | Model config | `getModels`, `updateModel` |
-| **providersApi** | `/v1/customization` | Provider config | `getProviders`, `updateProvider` |
-| **checkpointsApi** | `/v1/*_checkpoints` | Workspace rollback | `preview`, `restore` |
-| **pathApi** | `/v1/*_path` | File paths | `getFullPath`, `customizationPath` |
-| **telemetryApi** | `/v1/telemetry` | Analytics | `sendChatEvent`, `sendNetEvent` |
-| **linksApi** | `/v1/links` | Smart links | `getLinks` |
-| **smallCloudApi** | `https://www.smallcloud.ai` | Auth/user | `getUser`, `getUserSurvey` (GraphQL) |
+| API                 | Base URL                    | Purpose            | Key Endpoints                        |
+| ------------------- | --------------------------- | ------------------ | ------------------------------------ |
+| **capsApi**         | `/v1/caps`                  | Model capabilities | `getCaps`                            |
+| **commandsApi**     | `/v1/at-command-completion` | Autocomplete       | `getCompletion`, `getPreview`        |
+| **toolsApi**        | `/v1/tools`                 | Tool system        | `getTools`, `checkForConfirmation`   |
+| **dockerApi**       | `/v1/docker-*`              | Container mgmt     | `getContainers`, `executeAction`     |
+| **integrationsApi** | `/v1/integrations`          | Config files       | `getData`, `saveData`                |
+| **modelsApi**       | `/v1/customization`         | Model config       | `getModels`, `updateModel`           |
+| **providersApi**    | `/v1/customization`         | Provider config    | `getProviders`, `updateProvider`     |
+| **checkpointsApi**  | `/v1/*_checkpoints`         | Workspace rollback | `preview`, `restore`                 |
+| **pathApi**         | `/v1/*_path`                | File paths         | `getFullPath`, `customizationPath`   |
+| **telemetryApi**    | `/v1/telemetry`             | Analytics          | `sendChatEvent`, `sendNetEvent`      |
+| **linksApi**        | `/v1/links`                 | Smart links        | `getLinks`                           |
+| **smallCloudApi**   | `https://www.smallcloud.ai` | Auth/user          | `getUser`, `getUserSurvey` (GraphQL) |
 
 **Note**: Chat is NOT an RTK Query API - uses manual `fetch` with custom streaming logic.
 
@@ -683,32 +704,32 @@ export const store = configureStore({
 ```typescript
 // src/features/Chat/Thread/selectors.ts
 
-export const selectThread = (state: RootState) => state.chat.thread
-export const selectMessages = (state: RootState) => state.chat.thread.messages
-export const selectIsStreaming = (state: RootState) => state.chat.streaming
-export const selectChatId = (state: RootState) => state.chat.thread.id
+export const selectThread = (state: RootState) => state.chat.thread;
+export const selectMessages = (state: RootState) => state.chat.thread.messages;
+export const selectIsStreaming = (state: RootState) => state.chat.streaming;
+export const selectChatId = (state: RootState) => state.chat.thread.id;
 
 // Memoized selectors with Reselect
 export const selectLastAssistantMessage = createSelector(
   [selectMessages],
   (messages) => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (isAssistantMessage(messages[i])) return messages[i]
+      if (isAssistantMessage(messages[i])) return messages[i];
     }
-    return null
-  }
-)
+    return null;
+  },
+);
 
 // Complex selectors
 export const selectHasUncalledTools = createSelector(
   [selectMessages],
   (messages) => {
-    const lastMsg = messages[messages.length - 1]
-    if (!isAssistantMessage(lastMsg)) return false
-    if (!lastMsg.tool_calls) return false
-    return lastMsg.tool_calls.some(tc => !isServerExecutedTool(tc.id))
-  }
-)
+    const lastMsg = messages[messages.length - 1];
+    if (!isAssistantMessage(lastMsg)) return false;
+    if (!lastMsg.tool_calls) return false;
+    return lastMsg.tool_calls.some((tc) => !isServerExecutedTool(tc.id));
+  },
+);
 ```
 
 **30+ selectors** in `selectors.ts` - use them for consistency!
@@ -718,31 +739,32 @@ export const selectHasUncalledTools = createSelector(
 **Location**: `src/app/storage.ts`
 
 ```typescript
-import { persistReducer } from 'redux-persist'
-import storage from 'redux-persist/lib/storage' // localStorage
+import { persistReducer } from "redux-persist";
+import storage from "redux-persist/lib/storage"; // localStorage
 
 const persistConfig = {
-  key: 'refact-chat',
+  key: "refact-chat",
   storage,
-  whitelist: ['history', 'config'],  // Only persist these slices
-  transforms: [pruneHistoryTransform],  // Limit to 100 chats
-}
+  whitelist: ["history", "config"], // Only persist these slices
+  transforms: [pruneHistoryTransform], // Limit to 100 chats
+};
 
 // Prune old chats on save
 const pruneHistoryTransform = createTransform(
   (inboundState: HistoryState) => {
-    if (inboundState.chats.length <= 100) return inboundState
+    if (inboundState.chats.length <= 100) return inboundState;
     return {
       ...inboundState,
-      chats: inboundState.chats.slice(-100)  // Keep last 100
-    }
+      chats: inboundState.chats.slice(-100), // Keep last 100
+    };
   },
   null,
-  { whitelist: ['history'] }
-)
+  { whitelist: ["history"] },
+);
 ```
 
 **Why only history + config?**
+
 - Active chat (`state.chat`) is ephemeral
 - Cache is cleared on app restart
 - Prevents localStorage quota issues
@@ -775,16 +797,16 @@ listenerMiddleware.startListening({
   actionCreator: ideToolCallResponse,
   effect: (action, listenerApi) => {
     const { toolCallId, chatId, accepted } = action.payload
-    
+
     // Update history
     listenerApi.dispatch(upsertToolCallIntoHistory({...}))
-    
+
     // Update active thread
     listenerApi.dispatch(upsertToolCall({...}))
-    
+
     // Remove pause reason for this tool
     listenerApi.dispatch(updateConfirmationAfterIdeToolUse({...}))
-    
+
     // Continue chat if no more pause reasons
     const state = listenerApi.getState()
     if (state.confirmation.pauseReasons.length === 0 && accepted) {
@@ -815,6 +837,7 @@ listenerMiddleware.startListening({
 ```
 
 **Key Pattern**: Use listeners for:
+
 - Side effects (postMessage, telemetry)
 - Cross-slice coordination
 - Reacting to RTK Query lifecycle
@@ -884,25 +907,25 @@ function renderMessages(
   index = 0
 ): React.ReactNode[] {
   if (messages.length === 0) return memo
-  
+
   const [head, ...tail] = messages
-  
+
   // Route by message type
   if (head.role === 'tool') {
     return renderMessages(tail, onRetry, waiting, memo, index + 1)  // Skip tools
   }
-  
+
   if (head.role === 'user') {
-    return renderMessages(tail, onRetry, waiting, 
+    return renderMessages(tail, onRetry, waiting,
       memo.concat(<UserInput key={index} message={head} index={index} />),
       index + 1
     )
   }
-  
+
   if (head.role === 'assistant') {
     // Group consecutive diffs + tools with this assistant message
     const [diffMessages, toolMessages, rest] = groupRelatedMessages(tail)
-    
+
     return renderMessages(rest, onRetry, waiting,
       memo.concat(
         <AssistantInput
@@ -916,13 +939,14 @@ function renderMessages(
       index + diffMessages.length + toolMessages.length + 1
     )
   }
-  
+
   // ... handle other types
   return renderMessages(tail, onRetry, waiting, memo, index + 1)
 }
 ```
 
 **Key Behavior**:
+
 - **Recursive** processing (not `map`)
 - **Groups** diffs + tools with assistant messages
 - **Skips** tool messages (shown inline in AssistantInput)
@@ -931,15 +955,17 @@ function renderMessages(
 ### UserInput Component
 
 **Props**:
+
 ```typescript
 interface UserInputProps {
-  message: UserMessage
-  index: number
-  onRetry?: (index: number, content: string) => void
+  message: UserMessage;
+  index: number;
+  onRetry?: (index: number, content: string) => void;
 }
 ```
 
 **Features**:
+
 - **Editable** via inline textarea (click to edit)
 - **Checkpoints** badge (if message has checkpoints)
 - **Image attachments** (multi-modal content parsing)
@@ -947,33 +973,36 @@ interface UserInputProps {
 - **Context files** 🗃️ icon (memories)
 
 **Content Types**:
+
 ```typescript
 type UserMessage = {
-  role: 'user'
-  content: string | UserMessageContent[]  // String or multi-modal
-  checkpoints?: Checkpoint[]
-  compression_strength?: 'absent' | 'weak' | 'strong'
-}
+  role: "user";
+  content: string | UserMessageContent[]; // String or multi-modal
+  checkpoints?: Checkpoint[];
+  compression_strength?: "absent" | "weak" | "strong";
+};
 
-type UserMessageContent = 
-  | { type: 'text', text: string }
-  | { type: 'image_url', image_url: { url: string } }
+type UserMessageContent =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
 ```
 
 ### AssistantInput Component
 
 **Props**:
+
 ```typescript
 interface AssistantInputProps {
-  message: AssistantMessage
-  diffMessages: DiffMessage[]
-  toolMessages: ToolMessage[]
-  waiting: boolean
-  onRetry?: () => void
+  message: AssistantMessage;
+  diffMessages: DiffMessage[];
+  toolMessages: ToolMessage[];
+  waiting: boolean;
+  onRetry?: () => void;
 }
 ```
 
 **Rendering Order**:
+
 1. **ReasoningContent** (thinking blocks) - collapsible
 2. **Main content** (Markdown) - with syntax highlighting
 3. **ToolsContent** (for each tool_call) - complex nested tree
@@ -983,6 +1012,7 @@ interface AssistantInputProps {
 7. **Usage info** (tokens, cost) - footer
 
 **Streaming Behavior**:
+
 - Shows streaming indicator while `waiting || content.endsWith('▍')`
 - Markdown renders incrementally (no flicker)
 - Tool calls appear as they arrive
@@ -992,12 +1022,14 @@ interface AssistantInputProps {
 **Location**: `src/components/ChatContent/ToolsContent.tsx` (668 lines!)
 
 **Why so complex?**
+
 - Handles 10+ tool types
 - Nested subchats (5 levels deep possible)
 - Multi-modal results (text, images, files)
 - Special cases: Knowledge, TextDoc browser
 
 **Visual Structure**:
+
 ```
 ToolsContent (one per tool_call)
 ├─ Header (tool name, status badge)
@@ -1016,6 +1048,7 @@ ToolsContent (one per tool_call)
 ```
 
 **Tool Status Badge**:
+
 - ⏳ `thinking` - Tool executing
 - ✅ `success` - Completed
 - ❌ `error` - Failed
@@ -1023,13 +1056,13 @@ ToolsContent (one per tool_call)
 
 **Special Tool Types**:
 
-| Tool Type | Component | Notes |
-|-----------|-----------|-------|
-| `knowledge` | KnowledgeResults | Shows search results with relevance scores |
-| `textdoc` | TextDocContent | Interactive file browser with navigation |
-| `subchat_*` | Nested ToolsContent | Recursive subchat rendering (max 5 deep) |
-| `patch`, `text_edit` | DiffContent | Shows in DiffContent, not ToolsContent |
-| Server tools | Badge only | `srvtoolu_*` prefix, no execution UI |
+| Tool Type            | Component           | Notes                                      |
+| -------------------- | ------------------- | ------------------------------------------ |
+| `knowledge`          | KnowledgeResults    | Shows search results with relevance scores |
+| `textdoc`            | TextDocContent      | Interactive file browser with navigation   |
+| `subchat_*`          | Nested ToolsContent | Recursive subchat rendering (max 5 deep)   |
+| `patch`, `text_edit` | DiffContent         | Shows in DiffContent, not ToolsContent     |
+| Server tools         | Badge only          | `srvtoolu_*` prefix, no execution UI       |
 
 ### DiffContent Component
 
@@ -1038,58 +1071,61 @@ ToolsContent (one per tool_call)
 **Purpose**: Group and display file changes with apply/reject controls
 
 **Grouping Logic**:
+
 ```typescript
 // Groups consecutive diffs by tool_call_id
 const groupedDiffs = diffMessages.reduce<GroupedDiffs>((acc, msg) => {
-  const key = msg.tool_call_id || 'ungrouped'
-  if (!acc[key]) acc[key] = []
-  acc[key].push(msg)
-  return acc
-}, {})
+  const key = msg.tool_call_id || "ungrouped";
+  if (!acc[key]) acc[key] = [];
+  acc[key].push(msg);
+  return acc;
+}, {});
 ```
 
 **Each Group Renders**:
+
 - **Header**: Tool name, file count, timestamps
 - **Diff Viewer**: Line-by-line changes with syntax highlighting
 - **Actions**: Apply All, Reject All (per group)
 - **IDE Link**: Clickable file paths (opens in IDE)
 
 **Diff Format**:
+
 ```typescript
 type DiffChunk = {
-  file_name: string
-  file_action: 'A' | 'M' | 'D'  // Added/Modified/Deleted
-  line1: number
-  line2: number
-  chunks: string  // Unified diff format
-}
+  file_name: string;
+  file_action: "A" | "M" | "D"; // Added/Modified/Deleted
+  line1: number;
+  line2: number;
+  chunks: string; // Unified diff format
+};
 ```
 
 ### Message Type Routing Summary
 
-| Role | Component | Skip Render? | Group With? |
-|------|-----------|--------------|-------------|
-| `user` | UserInput | No | - |
-| `assistant` | AssistantInput | No | diffs + tools |
-| `tool` | (inline in AssistantInput) | Yes | - |
-| `diff` | DiffContent | No (grouped) | assistant |
-| `context_file` | ContextFiles | No | - |
-| `system` | SystemInput | No | - |
-| `plain_text` | PlainText | No | - |
+| Role           | Component                  | Skip Render? | Group With?   |
+| -------------- | -------------------------- | ------------ | ------------- |
+| `user`         | UserInput                  | No           | -             |
+| `assistant`    | AssistantInput             | No           | diffs + tools |
+| `tool`         | (inline in AssistantInput) | Yes          | -             |
+| `diff`         | DiffContent                | No (grouped) | assistant     |
+| `context_file` | ContextFiles               | No           | -             |
+| `system`       | SystemInput                | No           | -             |
+| `plain_text`   | PlainText                  | No           | -             |
 
 ### Special Content Markers
 
 **In UI, look for these icons**:
 
-| Icon | Meaning | Location |
-|------|---------|----------|
-| 🗜️ | Compression hint (context too large) | UserInput |
-| 🗃️ | Memory/context files attached | UserInput |
-| ⏳ | Tool thinking | ToolsContent |
-| ✅ | Tool success | ToolsContent |
-| ❌ | Tool failed | ToolsContent |
-| ☁️ | Server-executed tool | ToolsContent |
-| 🔄 | Checkpoint reset available | CheckpointButton |
+| Icon | Meaning                              | Location         |
+| ---- | ------------------------------------ | ---------------- |
+| 🗜️   | Compression hint (context too large) | UserInput        |
+| 🗃️   | Memory/context files attached        | UserInput        |
+| ⏳   | Tool thinking                        | ToolsContent     |
+| ✅   | Tool success                         | ToolsContent     |
+| ❌   | Tool failed                          | ToolsContent     |
+| ☁️   | Server-executed tool                 | ToolsContent     |
+| 🔄   | Checkpoint reset available           | CheckpointButton |
 
 ---
 
@@ -1119,19 +1155,14 @@ CSS Modules (component-specific styles)
 ### Radix Design Tokens
 
 **Spacing** (based on 4px grid):
+
 ```css
---space-1: 4px
---space-2: 8px
---space-3: 12px
---space-4: 16px
---space-5: 20px
---space-6: 24px
---space-7: 28px
---space-8: 32px
---space-9: 36px
+--space-1: 4px --space-2: 8px --space-3: 12px --space-4: 16px --space-5: 20px
+  --space-6: 24px --space-7: 28px --space-8: 32px --space-9: 36px;
 ```
 
 **Colors** (semantic tokens):
+
 ```css
 --accent-1 through --accent-12  /* Primary brand color scale */
 --gray-1 through --gray-12      /* Neutral grays */
@@ -1141,15 +1172,14 @@ CSS Modules (component-specific styles)
 ```
 
 **Radii**:
+
 ```css
---radius-1: 4px
---radius-2: 6px
---radius-3: 8px
---radius-4: 12px
---radius-full: 9999px
+--radius-1: 4px --radius-2: 6px --radius-3: 8px --radius-4: 12px --radius-full:
+  9999px;
 ```
 
 **Typography**:
+
 ```css
 --font-size-1 through --font-size-9
 --line-height-1 through --line-height-9
@@ -1174,7 +1204,7 @@ interface ThemeProps {
 export function Theme({ children }: { children: React.ReactNode }) {
   const config = useConfig()
   const appearance = useAppearance()  // Listens to OS/IDE theme
-  
+
   return (
     <RadixTheme
       appearance={appearance}
@@ -1190,6 +1220,7 @@ export function Theme({ children }: { children: React.ReactNode }) {
 ```
 
 **Host-specific behavior**:
+
 - `host === 'web'`: Wrapper includes dev theme toggle
 - `host === 'vscode' | 'jetbrains'`: No wrapper, IDE controls theme
 - `document.body.className`: Set to `vscode-light` or `vscode-dark` by middleware
@@ -1199,6 +1230,7 @@ export function Theme({ children }: { children: React.ReactNode }) {
 **File naming**: `Component.module.css`
 
 **Example** (`ChatContent.module.css`):
+
 ```css
 .scroll_area {
   height: 100%;
@@ -1217,12 +1249,18 @@ export function Theme({ children }: { children: React.ReactNode }) {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 ```
 
 **Usage in component**:
+
 ```typescript
 import styles from './ChatContent.module.css'
 
@@ -1238,6 +1276,7 @@ export function ChatContent() {
 ```
 
 **Conditional classes**:
+
 ```typescript
 import classNames from 'classnames'
 
@@ -1251,6 +1290,7 @@ import classNames from 'classnames'
 ### Common Patterns
 
 **Layout with Radix**:
+
 ```typescript
 <Flex direction="column" gap="3" p="4">
   <Box>Header</Box>
@@ -1260,6 +1300,7 @@ import classNames from 'classnames'
 ```
 
 **Typography**:
+
 ```typescript
 <Text size="2" weight="medium" color="gray">
   Label text
@@ -1267,6 +1308,7 @@ import classNames from 'classnames'
 ```
 
 **Cards**:
+
 ```typescript
 <Card size="2" variant="surface">
   <Flex direction="column" gap="2">
@@ -1276,6 +1318,7 @@ import classNames from 'classnames'
 ```
 
 **Buttons**:
+
 ```typescript
 <Button size="2" variant="soft" onClick={handleClick}>
   Action
@@ -1287,9 +1330,12 @@ import classNames from 'classnames'
 **Minimal responsive styling** (app is designed for IDE sidebars)
 
 **Breakpoints** (when needed):
+
 ```css
 @media (max-width: 768px) {
-  .sidebar { display: none; }
+  .sidebar {
+    display: none;
+  }
 }
 ```
 
@@ -1298,17 +1344,20 @@ import classNames from 'classnames'
 ### Dark/Light Mode
 
 **How it works**:
+
 1. User/OS sets `appearance: 'light' | 'dark'`
 2. Radix Theme applies appropriate color scales
 3. All Radix tokens update automatically
 4. Custom CSS uses tokens, so it updates too
 
 **Testing dark mode**:
+
 - Web: Use theme toggle in UI
 - VSCode: Change VSCode theme
 - JetBrains: Change IDE theme
 
 **Custom dark mode overrides** (rare):
+
 ```css
 .my_component {
   background: var(--color-surface);
@@ -1323,6 +1372,7 @@ import classNames from 'classnames'
 ### Icons
 
 **Radix Icons**:
+
 ```typescript
 import { ChevronDownIcon, CheckIcon, Cross2Icon } from '@radix-ui/react-icons'
 
@@ -1330,6 +1380,7 @@ import { ChevronDownIcon, CheckIcon, Cross2Icon } from '@radix-ui/react-icons'
 ```
 
 **Custom icons** (rare):
+
 ```typescript
 // src/images/
 export function CustomIcon() {
@@ -1340,6 +1391,7 @@ export function CustomIcon() {
 ### Animations
 
 **Framer Motion** for complex animations:
+
 ```typescript
 import { motion } from 'framer-motion'
 
@@ -1353,10 +1405,15 @@ import { motion } from 'framer-motion'
 ```
 
 **CSS animations** for simple effects:
+
 ```css
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .fade_in {
@@ -1367,33 +1424,49 @@ import { motion } from 'framer-motion'
 ### Common Mistakes to Avoid
 
 ❌ **Using px values directly**:
+
 ```css
 /* Bad */
-.button { padding: 12px; }
+.button {
+  padding: 12px;
+}
 
 /* Good */
-.button { padding: var(--space-3); }
+.button {
+  padding: var(--space-3);
+}
 ```
 
 ❌ **Hardcoded colors**:
+
 ```css
 /* Bad */
-.text { color: #3b82f6; }
+.text {
+  color: #3b82f6;
+}
 
 /* Good */
-.text { color: var(--accent-9); }
+.text {
+  color: var(--accent-9);
+}
 ```
 
 ❌ **Global styles without scoping**:
+
 ```css
 /* Bad - affects everything */
-button { border-radius: 8px; }
+button {
+  border-radius: 8px;
+}
 
 /* Good - scoped to module */
-.my_button { border-radius: var(--radius-3); }
+.my_button {
+  border-radius: var(--radius-3);
+}
 ```
 
 ❌ **Ignoring Radix primitives**:
+
 ```tsx
 /* Bad - reinventing the wheel */
 <div style={{display: 'flex', gap: '12px'}}>
@@ -1433,6 +1506,7 @@ button { border-radius: 8px; }
 ```
 
 **Critical distinction**:
+
 - **Chat ALWAYS goes to LSP** (never SmallCloud)
 - LSP handles all AI operations
 - SmallCloud only for auth/user/team management
@@ -1441,26 +1515,26 @@ button { border-radius: 8px; }
 
 **Base URL**: `http://127.0.0.1:${lspPort}/v1/...`
 
-| Endpoint | Method | Purpose | RTK Query API |
-|----------|--------|---------|---------------|
-| `/v1/chat` | POST | **Streaming chat** | ❌ Manual fetch |
-| `/v1/caps` | GET | Model capabilities | `capsApi.getCaps` |
-| `/v1/at-command-completion` | POST | Autocomplete | `commandsApi.getCompletion` |
-| `/v1/at-command-preview` | POST | Preview command | `commandsApi.getPreview` |
-| `/v1/tools` | POST | Get available tools | `toolsApi.getTools` |
-| `/v1/tools/check_confirmation` | POST | Check tool approval | `toolsApi.checkForConfirmation` |
-| `/v1/docker-container-list` | POST | List containers | `dockerApi.getContainers` |
-| `/v1/docker-container-action` | POST | Execute action | `dockerApi.executeAction` |
-| `/v1/integrations-list` | GET | List integrations | `integrationsApi.getList` |
-| `/v1/integration-get` | POST | Get config | `integrationsApi.getData` |
-| `/v1/integration-save` | POST | Save config | `integrationsApi.saveData` |
-| `/v1/preview_checkpoints` | POST | Preview rollback | `checkpointsApi.preview` |
-| `/v1/restore_checkpoints` | POST | Apply rollback | `checkpointsApi.restore` |
-| `/v1/get_file_text` | POST | Read file | `pathApi.getFileText` |
-| `/v1/*_path` | GET | Get config paths | `pathApi.*Path` |
-| `/v1/customization` | POST | Model/provider config | `modelsApi`, `providersApi` |
-| `/v1/telemetry/chat` | POST | Send telemetry | `telemetryApi.sendChatEvent` |
-| `/v1/ping` | GET | Health check | `pingApi.getPing` |
+| Endpoint                       | Method | Purpose               | RTK Query API                   |
+| ------------------------------ | ------ | --------------------- | ------------------------------- |
+| `/v1/chat`                     | POST   | **Streaming chat**    | ❌ Manual fetch                 |
+| `/v1/caps`                     | GET    | Model capabilities    | `capsApi.getCaps`               |
+| `/v1/at-command-completion`    | POST   | Autocomplete          | `commandsApi.getCompletion`     |
+| `/v1/at-command-preview`       | POST   | Preview command       | `commandsApi.getPreview`        |
+| `/v1/tools`                    | POST   | Get available tools   | `toolsApi.getTools`             |
+| `/v1/tools/check_confirmation` | POST   | Check tool approval   | `toolsApi.checkForConfirmation` |
+| `/v1/docker-container-list`    | POST   | List containers       | `dockerApi.getContainers`       |
+| `/v1/docker-container-action`  | POST   | Execute action        | `dockerApi.executeAction`       |
+| `/v1/integrations-list`        | GET    | List integrations     | `integrationsApi.getList`       |
+| `/v1/integration-get`          | POST   | Get config            | `integrationsApi.getData`       |
+| `/v1/integration-save`         | POST   | Save config           | `integrationsApi.saveData`      |
+| `/v1/preview_checkpoints`      | POST   | Preview rollback      | `checkpointsApi.preview`        |
+| `/v1/restore_checkpoints`      | POST   | Apply rollback        | `checkpointsApi.restore`        |
+| `/v1/get_file_text`            | POST   | Read file             | `pathApi.getFileText`           |
+| `/v1/*_path`                   | GET    | Get config paths      | `pathApi.*Path`                 |
+| `/v1/customization`            | POST   | Model/provider config | `modelsApi`, `providersApi`     |
+| `/v1/telemetry/chat`           | POST   | Send telemetry        | `telemetryApi.sendChatEvent`    |
+| `/v1/ping`                     | GET    | Health check          | `pingApi.getPing`               |
 
 ### RTK Query API Pattern
 
@@ -1468,34 +1542,35 @@ button { border-radius: 8px; }
 
 ```typescript
 // src/services/refact/caps.ts
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const capsApi = createApi({
-  reducerPath: 'caps',
+  reducerPath: "caps",
   baseQuery: fetchBaseQuery({
     baseUrl: (_, api) => {
-      const state = api.getState() as RootState
-      return `http://127.0.0.1:${state.config.lspPort}`
+      const state = api.getState() as RootState;
+      return `http://127.0.0.1:${state.config.lspPort}`;
     },
     prepareHeaders: (headers, { getState }) => {
-      const state = getState() as RootState
+      const state = getState() as RootState;
       if (state.config.apiKey) {
-        headers.set('Authorization', `Bearer ${state.config.apiKey}`)
+        headers.set("Authorization", `Bearer ${state.config.apiKey}`);
       }
-      return headers
-    }
+      return headers;
+    },
   }),
   endpoints: (builder) => ({
     getCaps: builder.query<CapsResponse, void>({
-      query: () => '/v1/caps',
+      query: () => "/v1/caps",
     }),
   }),
-})
+});
 
-export const { useGetCapsQuery, useLazyGetCapsQuery } = capsApi
+export const { useGetCapsQuery, useLazyGetCapsQuery } = capsApi;
 ```
 
 **Key features**:
+
 - **Dynamic base URL** from Redux state
 - **Auto-injects auth** token if present
 - **Auto-generates hooks**: `useGetCapsQuery`, `useLazyGetCapsQuery`
@@ -1548,6 +1623,7 @@ export async function sendChat({
 ```
 
 **Response format** (SSE):
+
 ```
 data: {"choices":[{"delta":{"role":"assistant","content":"Hi"},...}]}\n\n
 data: {"choices":[{"delta":{"content":" there"},...}]}\n\n
@@ -1559,6 +1635,7 @@ data: [DONE]\n\n
 **Base URL**: `https://www.smallcloud.ai/v1/graphql`
 
 **Used for**:
+
 - User authentication (OAuth)
 - User profile
 - Team management
@@ -1568,17 +1645,17 @@ data: [DONE]\n\n
 
 ```typescript
 const client = createClient({
-  url: 'https://www.smallcloud.ai/v1/graphql',
+  url: "https://www.smallcloud.ai/v1/graphql",
   fetchOptions: () => {
-    const apiKey = store.getState().config.apiKey
+    const apiKey = store.getState().config.apiKey;
     return {
       headers: {
-        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
-      }
-    }
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      },
+    };
   },
-  exchanges: [cacheExchange, fetchExchange, subscriptionExchange]
-})
+  exchanges: [cacheExchange, fetchExchange, subscriptionExchange],
+});
 ```
 
 **Example queries** (generated from GraphQL schema):
@@ -1594,8 +1671,8 @@ const [result] = useQuery({
         has_valid_subscription
       }
     }
-  `)
-})
+  `),
+});
 ```
 
 **Note**: GraphQL codegen runs via `npm run generate:graphql`
@@ -1670,7 +1747,7 @@ export type DiffChunk = {
 }
 
 // Response types (streaming deltas)
-export type ChatResponse = 
+export type ChatResponse =
   | ChatResponseChoice
   | UserResponse
   | ContextFileResponse
@@ -1685,13 +1762,21 @@ export type ChatResponse =
 
 ```typescript
 export function isUserMessage(msg: unknown): msg is UserMessage {
-  return typeof msg === 'object' && msg !== null && 
-         'role' in msg && msg.role === 'user'
+  return (
+    typeof msg === "object" &&
+    msg !== null &&
+    "role" in msg &&
+    msg.role === "user"
+  );
 }
 
 export function isAssistantMessage(msg: unknown): msg is AssistantMessage {
-  return typeof msg === 'object' && msg !== null &&
-         'role' in msg && msg.role === 'assistant'
+  return (
+    typeof msg === "object" &&
+    msg !== null &&
+    "role" in msg &&
+    msg.role === "assistant"
+  );
 }
 
 // ... 20+ more type guards
@@ -1709,13 +1794,15 @@ listenerMiddleware.startListening({
     // ...
   ),
   effect: (action, listenerApi) => {
-    const error = action.error
-    listenerApi.dispatch(addError({
-      message: error.message ?? 'Unknown error',
-      type: 'GLOBAL'
-    }))
-  }
-})
+    const error = action.error;
+    listenerApi.dispatch(
+      addError({
+        message: error.message ?? "Unknown error",
+        type: "GLOBAL",
+      }),
+    );
+  },
+});
 ```
 
 **Chat errors** handled in thunk:
@@ -1762,39 +1849,39 @@ Handled by: `src/hooks/useEventBusForApp.ts`
 
 ```typescript
 export function useEventBusForApp() {
-  const dispatch = useAppDispatch()
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       // File context update
       if (setFileInfo.match(event.data)) {
-        dispatch(setFileInfo(event.data.payload))
+        dispatch(setFileInfo(event.data.payload));
       }
 
       // Selected code snippet
       if (setSelectedSnippet.match(event.data)) {
-        dispatch(setSelectedSnippet(event.data.payload))
+        dispatch(setSelectedSnippet(event.data.payload));
       }
 
       // New chat trigger
       if (newChatAction.match(event.data)) {
-        if (!isPageInHistory({ pages }, 'chat')) {
-          dispatch(push({ name: 'chat' }))
+        if (!isPageInHistory({ pages }, "chat")) {
+          dispatch(push({ name: "chat" }));
         }
-        dispatch(newChatAction(event.data.payload))
+        dispatch(newChatAction(event.data.payload));
       }
 
       // Tool approval response
       if (ideToolCallResponse.match(event.data)) {
-        dispatch(event.data)
+        dispatch(event.data);
       }
 
       // ... more handlers
-    }
+    };
 
-    window.addEventListener('message', listener)
-    return () => window.removeEventListener('message', listener)
-  }, [dispatch])
+    window.addEventListener("message", listener);
+    return () => window.removeEventListener("message", listener);
+  }, [dispatch]);
 }
 ```
 
@@ -1804,22 +1891,31 @@ Handled by: `src/hooks/useEventBusForIDE.ts`
 
 ```typescript
 export const useEventsBusForIDE = () => {
-  const postMessage = usePostMessage()
+  const postMessage = usePostMessage();
 
-  const openFile = useCallback((file: OpenFilePayload) => {
-    const action = ideOpenFile(file)
-    postMessage(action)
-  }, [postMessage])
+  const openFile = useCallback(
+    (file: OpenFilePayload) => {
+      const action = ideOpenFile(file);
+      postMessage(action);
+    },
+    [postMessage],
+  );
 
-  const diffPasteBack = useCallback((content: string, chatId?: string) => {
-    const action = ideDiffPasteBackAction({ content, chatId })
-    postMessage(action)
-  }, [postMessage])
+  const diffPasteBack = useCallback(
+    (content: string, chatId?: string) => {
+      const action = ideDiffPasteBackAction({ content, chatId });
+      postMessage(action);
+    },
+    [postMessage],
+  );
 
-  const sendToolCallToIde = useCallback((toolCall, edit, chatId) => {
-    const action = ideToolCall({ toolCall, edit, chatId })
-    postMessage(action)
-  }, [postMessage])
+  const sendToolCallToIde = useCallback(
+    (toolCall, edit, chatId) => {
+      const action = ideToolCall({ toolCall, edit, chatId });
+      postMessage(action);
+    },
+    [postMessage],
+  );
 
   // ... 20+ command functions
 
@@ -1828,8 +1924,8 @@ export const useEventsBusForIDE = () => {
     diffPasteBack,
     sendToolCallToIde,
     // ...
-  }
-}
+  };
+};
 ```
 
 ### postMessage Transport
@@ -1840,21 +1936,24 @@ export const useEventsBusForIDE = () => {
 
 ```typescript
 export function usePostMessage() {
-  const config = useConfig()
+  const config = useConfig();
 
-  return useCallback((message: unknown) => {
-    if (config.host === 'vscode') {
-      // VSCode uses acquireVsCodeApi
-      const vscode = window.acquireVsCodeApi?.()
-      vscode?.postMessage(message)
-    } else if (config.host === 'jetbrains') {
-      // JetBrains uses custom function
-      window.postIntellijMessage?.(message)
-    } else {
-      // Web/generic: use window.postMessage
-      window.postMessage(message, '*')
-    }
-  }, [config.host])
+  return useCallback(
+    (message: unknown) => {
+      if (config.host === "vscode") {
+        // VSCode uses acquireVsCodeApi
+        const vscode = window.acquireVsCodeApi?.();
+        vscode?.postMessage(message);
+      } else if (config.host === "jetbrains") {
+        // JetBrains uses custom function
+        window.postIntellijMessage?.(message);
+      } else {
+        // Web/generic: use window.postMessage
+        window.postMessage(message, "*");
+      }
+    },
+    [config.host],
+  );
 }
 ```
 
@@ -1864,50 +1963,50 @@ export function usePostMessage() {
 
 **Common events IDE → GUI**:
 
-| Event Type | Payload | Purpose |
-|------------|---------|---------|
-| `updateConfig` | `Partial<Config>` | Update global config |
-| `setFileInfo` | `{file_name, can_paste}` | Active file changed |
-| `setSelectedSnippet` | `{code, language}` | Code selection |
-| `newChatAction` | `Partial<ChatThread>` | Start new chat |
-| `ideToolCallResponse` | `{toolCallId, chatId, accepted}` | Tool approval |
-| `setCurrentProjectInfo` | `{name, path}` | Project context |
+| Event Type              | Payload                          | Purpose              |
+| ----------------------- | -------------------------------- | -------------------- |
+| `updateConfig`          | `Partial<Config>`                | Update global config |
+| `setFileInfo`           | `{file_name, can_paste}`         | Active file changed  |
+| `setSelectedSnippet`    | `{code, language}`               | Code selection       |
+| `newChatAction`         | `Partial<ChatThread>`            | Start new chat       |
+| `ideToolCallResponse`   | `{toolCallId, chatId, accepted}` | Tool approval        |
+| `setCurrentProjectInfo` | `{name, path}`                   | Project context      |
 
 **Common events GUI → IDE**:
 
-| Event Type | Payload | Purpose |
-|------------|---------|---------|
-| `ideOpenFile` | `{file_path, line?}` | Open file in editor |
-| `ideDiffPasteBack` | `{content, chatId}` | Apply code changes |
-| `ideToolCall` | `{toolCall, edit, chatId}` | Request tool execution |
-| `ideOpenSettings` | - | Open settings UI |
-| `ideNewFile` | `{content}` | Create new file |
-| `ideAnimateFileStart/Stop` | `{file_name}` | File activity indicator |
-| `ideChatPageChange` | `{page}` | Navigation event |
-| `ideSetCodeCompletionModel` | `{model}` | Update model |
-| `ideSetActiveTeamsGroup` | `{group}` | Set active team |
+| Event Type                  | Payload                    | Purpose                 |
+| --------------------------- | -------------------------- | ----------------------- |
+| `ideOpenFile`               | `{file_path, line?}`       | Open file in editor     |
+| `ideDiffPasteBack`          | `{content, chatId}`        | Apply code changes      |
+| `ideToolCall`               | `{toolCall, edit, chatId}` | Request tool execution  |
+| `ideOpenSettings`           | -                          | Open settings UI        |
+| `ideNewFile`                | `{content}`                | Create new file         |
+| `ideAnimateFileStart/Stop`  | `{file_name}`              | File activity indicator |
+| `ideChatPageChange`         | `{page}`                   | Navigation event        |
+| `ideSetCodeCompletionModel` | `{model}`                  | Update model            |
+| `ideSetActiveTeamsGroup`    | `{group}`                  | Set active team         |
 
 ### Host Mode Differences
 
 **Config**: `state.config.host: 'web' | 'vscode' | 'jetbrains' | 'ide'`
 
-| Feature | web | vscode | jetbrains | ide |
-|---------|-----|--------|-----------|-----|
-| **postMessage** | `window.postMessage` | `acquireVsCodeApi()` | `postIntellijMessage()` | Generic |
-| **Theme** | Toggle in UI | VSCode controls | JB controls | Generic |
-| **File links** | ❌ No-op | ✅ Opens in editor | ✅ Opens in IDE | ✅ Generic |
-| **Copy buttons** | ✅ Visible | ❌ Hidden | ❌ Hidden | ❌ Hidden |
-| **Tool execution** | LSP only | LSP + IDE | LSP + IDE | LSP + IDE |
-| **Paste to file** | ❌ No-op | ✅ Works | ✅ Works | ✅ Works |
-| **Project tree refresh** | N/A | N/A | ✅ Auto-refresh | N/A |
+| Feature                  | web                  | vscode               | jetbrains               | ide        |
+| ------------------------ | -------------------- | -------------------- | ----------------------- | ---------- |
+| **postMessage**          | `window.postMessage` | `acquireVsCodeApi()` | `postIntellijMessage()` | Generic    |
+| **Theme**                | Toggle in UI         | VSCode controls      | JB controls             | Generic    |
+| **File links**           | ❌ No-op             | ✅ Opens in editor   | ✅ Opens in IDE         | ✅ Generic |
+| **Copy buttons**         | ✅ Visible           | ❌ Hidden            | ❌ Hidden               | ❌ Hidden  |
+| **Tool execution**       | LSP only             | LSP + IDE            | LSP + IDE               | LSP + IDE  |
+| **Paste to file**        | ❌ No-op             | ✅ Works             | ✅ Works                | ✅ Works   |
+| **Project tree refresh** | N/A                  | N/A                  | ✅ Auto-refresh         | N/A        |
 
 **Host detection**:
 
 ```typescript
-const config = useConfig()
-const isIDE = config.host !== 'web'
-const isVSCode = config.host === 'vscode'
-const isJetBrains = config.host === 'jetbrains'
+const config = useConfig();
+const isIDE = config.host !== "web";
+const isVSCode = config.host === "vscode";
+const isJetBrains = config.host === "jetbrains";
 ```
 
 ### Tool Approval Flow (IDE-specific)
@@ -1966,8 +2065,8 @@ The tool calling system allows AI to execute functions (file operations, shell c
 
 ```typescript
 async function sendMessages(messages, maybeMode) {
-  dispatch(setIsWaitingForResponse(true))
-  const lastMessage = messages.slice(-1)[0]
+  dispatch(setIsWaitingForResponse(true));
+  const lastMessage = messages.slice(-1)[0];
 
   // Check if last message has tool_calls
   if (
@@ -1976,32 +2075,32 @@ async function sendMessages(messages, maybeMode) {
     isAssistantMessage(lastMessage) &&
     lastMessage.tool_calls
   ) {
-    const toolCalls = lastMessage.tool_calls
+    const toolCalls = lastMessage.tool_calls;
 
     // Check for automatic bypass
     if (
       toolCalls[0].function.name &&
       PATCH_LIKE_FUNCTIONS.includes(toolCalls[0].function.name) &&
-      isPatchAutomatic  // ← per-chat setting
+      isPatchAutomatic // ← per-chat setting
     ) {
       // Skip confirmation for patch-like tools in automatic mode
     } else {
       // Ask backend if confirmation needed
       const confirmationResponse = await triggerCheckForConfirmation({
         tool_calls: toolCalls,
-        messages: messages
-      }).unwrap()
+        messages: messages,
+      }).unwrap();
 
       if (confirmationResponse.pause) {
-        dispatch(setPauseReasons(confirmationResponse.pause_reasons))
-        return  // STOP - show confirmation UI
+        dispatch(setPauseReasons(confirmationResponse.pause_reasons));
+        return; // STOP - show confirmation UI
       }
     }
   }
 
   // Proceed with LSP call
-  dispatch(backUpMessages({ id: chatId, messages }))
-  dispatch(chatAskedQuestion({ id: chatId }))
+  dispatch(backUpMessages({ id: chatId, messages }));
+  dispatch(chatAskedQuestion({ id: chatId }));
   // ... sendChat()
 }
 ```
@@ -2012,14 +2111,14 @@ async function sendMessages(messages, maybeMode) {
 
 ```typescript
 export const PATCH_LIKE_FUNCTIONS = [
-  'patch',
-  'text_edit',
-  'create_textdoc',
-  'update_textdoc',
-  'replace_textdoc',
-  'update_textdoc_regex',
-  'update_textdoc_by_lines'
-]
+  "patch",
+  "text_edit",
+  "create_textdoc",
+  "update_textdoc",
+  "replace_textdoc",
+  "update_textdoc_regex",
+  "update_textdoc_by_lines",
+];
 ```
 
 ### Confirmation API
@@ -2027,6 +2126,7 @@ export const PATCH_LIKE_FUNCTIONS = [
 **Endpoint**: `POST /v1/tools/check_confirmation`
 
 **Request**:
+
 ```json
 {
   "tool_calls": [
@@ -2038,11 +2138,14 @@ export const PATCH_LIKE_FUNCTIONS = [
       }
     }
   ],
-  "messages": [/* full context */]
+  "messages": [
+    /* full context */
+  ]
 }
 ```
 
 **Response**:
+
 ```json
 {
   "pause": true,
@@ -2064,6 +2167,7 @@ export const PATCH_LIKE_FUNCTIONS = [
 **Location**: `src/components/ChatForm/ToolConfirmation.tsx`
 
 **UI shows**:
+
 - **Tool name** (e.g., "patch")
 - **Arguments** (collapsible JSON)
 - **Pause reason** (e.g., "requires approval")
@@ -2077,30 +2181,32 @@ export const PATCH_LIKE_FUNCTIONS = [
 ```typescript
 // Allow Once
 const confirmToolUsage = () => {
-  dispatch(clearPauseReasonsAndHandleToolsStatus({
-    wasInteracted: true,
-    confirmationStatus: true
-  }))
-  dispatch(setIsWaitingForResponse(false))
+  dispatch(
+    clearPauseReasonsAndHandleToolsStatus({
+      wasInteracted: true,
+      confirmationStatus: true,
+    }),
+  );
+  dispatch(setIsWaitingForResponse(false));
   // useAutoSend will detect clear and continue
-}
+};
 
 // Allow Chat
 const enableAutomaticPatch = () => {
-  dispatch(setAutomaticPatch({ chatId, value: true }))
-  confirmToolUsage()
-}
+  dispatch(setAutomaticPatch({ chatId, value: true }));
+  confirmToolUsage();
+};
 
 // Stop
 const rejectToolUsage = (toolCallIds) => {
-  toolCallIds.forEach(id => {
-    dispatch(upsertToolCall({ toolCallId: id, chatId, accepted: false }))
-  })
-  dispatch(resetConfirmationInteractedState())
-  dispatch(setIsWaitingForResponse(false))
-  dispatch(doneStreaming({ id: chatId }))
-  dispatch(setPreventSend({ id: chatId }))
-}
+  toolCallIds.forEach((id) => {
+    dispatch(upsertToolCall({ toolCallId: id, chatId, accepted: false }));
+  });
+  dispatch(resetConfirmationInteractedState());
+  dispatch(setIsWaitingForResponse(false));
+  dispatch(doneStreaming({ id: chatId }));
+  dispatch(setPreventSend({ id: chatId }));
+};
 ```
 
 ### Tool Execution Paths
@@ -2116,6 +2222,7 @@ GUI → LSP /v1/chat with tool_calls → LSP executes → Returns tool result
 **Examples**: `shell`, `read_file`, `search`, `web_search`, etc.
 
 **Result format**:
+
 ```json
 {
   "role": "tool",
@@ -2142,14 +2249,15 @@ GUI: Inserts tool result, continues chat
 ```
 
 **Edit format** (`ToolEditResult`):
+
 ```typescript
 type ToolEditResult = {
-  file_name: string
-  file_action: 'A' | 'M' | 'D'
-  line1: number
-  line2: number
-  chunks: string  // Unified diff
-}
+  file_name: string;
+  file_action: "A" | "M" | "D";
+  line1: number;
+  line2: number;
+  chunks: string; // Unified diff
+};
 ```
 
 ### Server-Executed Tools
@@ -2157,15 +2265,17 @@ type ToolEditResult = {
 **Special case**: Tools with `id.startsWith('srvtoolu_')`
 
 **Behavior**:
+
 - Already executed by LLM provider (e.g., Claude with computer use)
 - GUI shows badge: ☁️ "Server tool"
 - NOT sent to LSP for execution
 - Display only (no confirmation needed)
 
 **Detection**:
+
 ```typescript
 export function isServerExecutedTool(toolCallId?: string): boolean {
-  return toolCallId?.startsWith('srvtoolu_') ?? false
+  return toolCallId?.startsWith("srvtoolu_") ?? false;
 }
 ```
 
@@ -2177,35 +2287,49 @@ export function isServerExecutedTool(toolCallId?: string): boolean {
 listenerMiddleware.startListening({
   actionCreator: ideToolCallResponse,
   effect: (action, listenerApi) => {
-    const { toolCallId, chatId, accepted } = action.payload
+    const { toolCallId, chatId, accepted } = action.payload;
 
     // 1. Update history
-    listenerApi.dispatch(upsertToolCallIntoHistory({
-      toolCallId, chatId, accepted
-    }))
+    listenerApi.dispatch(
+      upsertToolCallIntoHistory({
+        toolCallId,
+        chatId,
+        accepted,
+      }),
+    );
 
     // 2. Insert/update tool result in messages
-    listenerApi.dispatch(upsertToolCall({
-      toolCallId, chatId, accepted
-    }))
+    listenerApi.dispatch(
+      upsertToolCall({
+        toolCallId,
+        chatId,
+        accepted,
+      }),
+    );
 
     // 3. Remove pause reason
-    listenerApi.dispatch(updateConfirmationAfterIdeToolUse({
-      toolCallId
-    }))
+    listenerApi.dispatch(
+      updateConfirmationAfterIdeToolUse({
+        toolCallId,
+      }),
+    );
 
     // 4. Continue chat if no more pauses
-    const state = listenerApi.getState()
+    const state = listenerApi.getState();
     if (state.confirmation.pauseReasons.length === 0 && accepted) {
-      listenerApi.dispatch(sendCurrentChatToLspAfterToolCallUpdate({
-        chatId, toolCallId
-      }))
+      listenerApi.dispatch(
+        sendCurrentChatToLspAfterToolCallUpdate({
+          chatId,
+          toolCallId,
+        }),
+      );
     }
-  }
-})
+  },
+});
 ```
 
 **Via streaming** (LSP returns tool message):
+
 - Handled by `formatChatResponse` in reducer
 - Tool message appended to `thread.messages`
 
@@ -2241,6 +2365,7 @@ function checkForToolLoop(messages): boolean {
 ```
 
 **If loop detected**:
+
 - Sets `only_deterministic_messages: true` in LSP request
 - Stops streaming to prevent infinite loop
 
@@ -2251,17 +2376,19 @@ function checkForToolLoop(messages): boolean {
 **Use case**: Multi-step research, recursive search
 
 **Flow**:
+
 ```
 Tool call → LSP creates subchat → Subchat executes → Files attached to parent tool
 ```
 
 **Message format**:
+
 ```typescript
 type SubchatResponse = {
-  subchat_id: string
-  tool_call_id: string
-  add_message: ContextFileResponse
-}
+  subchat_id: string;
+  tool_call_id: string;
+  add_message: ContextFileResponse;
+};
 ```
 
 **Rendering**: ToolsContent renders nested subchats recursively (max 5 deep)
@@ -2269,28 +2396,28 @@ type SubchatResponse = {
 ### Tool Status States
 
 ```typescript
-type ToolStatus = 
-  | 'thinking'    // ⏳ Executing
-  | 'success'     // ✅ Completed
-  | 'error'       // ❌ Failed
-  | 'server'      // ☁️ Server-executed (display only)
+type ToolStatus =
+  | "thinking" // ⏳ Executing
+  | "success" // ✅ Completed
+  | "error" // ❌ Failed
+  | "server"; // ☁️ Server-executed (display only)
 ```
 
 **Visual indicators** in ToolsContent component
 
 ### Common Tool Types
 
-| Tool | Purpose | Execution | Confirmation? |
-|------|---------|-----------|---------------|
-| `patch` | Edit files | IDE | Optional |
-| `text_edit` | Edit files | IDE | Optional |
-| `shell` | Run commands | LSP | Optional |
-| `read_file` | Read file | LSP | Rare |
-| `search` | Code search | LSP | No |
-| `web_search` | Search web | LSP | No |
-| `knowledge` | Vec DB search | LSP | No |
-| `textdoc` | Browse project | LSP | No |
-| `remember_how_to_use_tools` | Save notes | LSP | No |
+| Tool                        | Purpose        | Execution | Confirmation? |
+| --------------------------- | -------------- | --------- | ------------- |
+| `patch`                     | Edit files     | IDE       | Optional      |
+| `text_edit`                 | Edit files     | IDE       | Optional      |
+| `shell`                     | Run commands   | LSP       | Optional      |
+| `read_file`                 | Read file      | LSP       | Rare          |
+| `search`                    | Code search    | LSP       | No            |
+| `web_search`                | Search web     | LSP       | No            |
+| `knowledge`                 | Vec DB search  | LSP       | No            |
+| `textdoc`                   | Browse project | LSP       | No            |
+| `remember_how_to_use_tools` | Save notes     | LSP       | No            |
 
 ---
 
@@ -2299,55 +2426,58 @@ type ToolStatus =
 ### How to Add a New Redux Slice
 
 **1. Create slice file**:
+
 ```typescript
 // src/features/MyFeature/myFeatureSlice.ts
-import { createSlice } from '@reduxjs/toolkit'
+import { createSlice } from "@reduxjs/toolkit";
 
 export type MyFeatureState = {
-  data: string[]
-  loading: boolean
-}
+  data: string[];
+  loading: boolean;
+};
 
 const initialState: MyFeatureState = {
   data: [],
-  loading: false
-}
+  loading: false,
+};
 
 export const myFeatureSlice = createSlice({
-  name: 'myFeature',
+  name: "myFeature",
   initialState,
   reducers: {
     setData: (state, action: PayloadAction<string[]>) => {
-      state.data = action.payload
+      state.data = action.payload;
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
-      state.loading = action.payload
-    }
+      state.loading = action.payload;
+    },
   },
   selectors: {
     selectData: (state) => state.data,
-    selectLoading: (state) => state.loading
-  }
-})
+    selectLoading: (state) => state.loading,
+  },
+});
 
-export const { setData, setLoading } = myFeatureSlice.actions
-export const { selectData, selectLoading } = myFeatureSlice.selectors
+export const { setData, setLoading } = myFeatureSlice.actions;
+export const { selectData, selectLoading } = myFeatureSlice.selectors;
 ```
 
 **2. Register in store**:
+
 ```typescript
 // src/app/store.ts
-import { myFeatureSlice } from '../features/MyFeature/myFeatureSlice'
+import { myFeatureSlice } from "../features/MyFeature/myFeatureSlice";
 
 const rootReducer = combineSlices(
   chatSlice,
   historySlice,
-  myFeatureSlice,  // ← Add here
+  myFeatureSlice, // ← Add here
   // ...
-)
+);
 ```
 
 **3. Use in components**:
+
 ```typescript
 import { useAppSelector, useAppDispatch } from '@/hooks'
 import { selectData, setData } from '@/features/MyFeature/myFeatureSlice'
@@ -2369,51 +2499,54 @@ function MyComponent() {
 **Using RTK Query**:
 
 **1. Create API file**:
+
 ```typescript
 // src/services/refact/myApi.ts
-import { createApi } from '@reduxjs/toolkit/query/react'
-import { baseQueryWithAuth } from './index'
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithAuth } from "./index";
 
 export const myApi = createApi({
-  reducerPath: 'myApi',
+  reducerPath: "myApi",
   baseQuery: baseQueryWithAuth,
   endpoints: (builder) => ({
     getMyData: builder.query<MyDataResponse, { id: string }>({
-      query: ({ id }) => `/v1/my-endpoint/${id}`
+      query: ({ id }) => `/v1/my-endpoint/${id}`,
     }),
-    updateMyData: builder.mutation<void, { id: string, data: MyData }>({
+    updateMyData: builder.mutation<void, { id: string; data: MyData }>({
       query: ({ id, data }) => ({
         url: `/v1/my-endpoint/${id}`,
-        method: 'POST',
-        body: data
-      })
-    })
-  })
-})
+        method: "POST",
+        body: data,
+      }),
+    }),
+  }),
+});
 
-export const { useGetMyDataQuery, useUpdateMyDataMutation } = myApi
+export const { useGetMyDataQuery, useUpdateMyDataMutation } = myApi;
 ```
 
 **2. Register in store**:
+
 ```typescript
 // src/app/store.ts
-import { myApi } from '../services/refact/myApi'
+import { myApi } from "../services/refact/myApi";
 
 const rootReducer = combineSlices(
   // ... other slices
-  myApi  // ← RTK Query auto-registers
-)
+  myApi, // ← RTK Query auto-registers
+);
 
 const store = configureStore({
   reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
       .prepend(listenerMiddleware.middleware)
-      .concat(myApi.middleware)  // ← Add middleware
-})
+      .concat(myApi.middleware), // ← Add middleware
+});
 ```
 
 **3. Use in components**:
+
 ```typescript
 import { useGetMyDataQuery, useUpdateMyDataMutation } from '@/services/refact/myApi'
 
@@ -2434,6 +2567,7 @@ function MyComponent() {
 ### How to Add a New Component
 
 **1. Create component directory**:
+
 ```
 src/components/MyComponent/
 ├── MyComponent.tsx
@@ -2444,6 +2578,7 @@ src/components/MyComponent/
 ```
 
 **2. Component file**:
+
 ```typescript
 // MyComponent.tsx
 import React from 'react'
@@ -2470,6 +2605,7 @@ export function MyComponent({ title, onAction }: MyComponentProps) {
 ```
 
 **3. CSS Module**:
+
 ```css
 /* MyComponent.module.css */
 .container {
@@ -2493,70 +2629,75 @@ export function MyComponent({ title, onAction }: MyComponentProps) {
 ```
 
 **4. Storybook story**:
+
 ```typescript
 // MyComponent.stories.tsx
-import type { Meta, StoryObj } from '@storybook/react'
-import { MyComponent } from './MyComponent'
+import type { Meta, StoryObj } from "@storybook/react";
+import { MyComponent } from "./MyComponent";
 
 const meta: Meta<typeof MyComponent> = {
-  title: 'Components/MyComponent',
+  title: "Components/MyComponent",
   component: MyComponent,
-  tags: ['autodocs']
-}
+  tags: ["autodocs"],
+};
 
-export default meta
-type Story = StoryObj<typeof MyComponent>
+export default meta;
+type Story = StoryObj<typeof MyComponent>;
 
 export const Default: Story = {
   args: {
-    title: 'Example Title'
-  }
-}
+    title: "Example Title",
+  },
+};
 
 export const WithAction: Story = {
   args: {
-    title: 'Clickable',
-    onAction: () => alert('Clicked!')
-  }
-}
+    title: "Clickable",
+    onAction: () => alert("Clicked!"),
+  },
+};
 ```
 
 **5. Index file**:
+
 ```typescript
 // index.ts
-export { MyComponent } from './MyComponent'
-export type { MyComponentProps } from './MyComponent'
+export { MyComponent } from "./MyComponent";
+export type { MyComponentProps } from "./MyComponent";
 ```
 
 ### How to Add a New Hook
 
 **1. Create hook file**:
+
 ```typescript
 // src/hooks/useMyHook.ts
-import { useState, useEffect } from 'react'
-import { useAppSelector } from './useAppSelector'
+import { useState, useEffect } from "react";
+import { useAppSelector } from "./useAppSelector";
 
 export function useMyHook(param: string) {
-  const [result, setResult] = useState<string | null>(null)
-  const config = useAppSelector(state => state.config)
+  const [result, setResult] = useState<string | null>(null);
+  const config = useAppSelector((state) => state.config);
 
   useEffect(() => {
     // Hook logic here
-    const value = processParam(param, config)
-    setResult(value)
-  }, [param, config])
+    const value = processParam(param, config);
+    setResult(value);
+  }, [param, config]);
 
-  return result
+  return result;
 }
 ```
 
 **2. Export from index**:
+
 ```typescript
 // src/hooks/index.ts
-export * from './useMyHook'
+export * from "./useMyHook";
 ```
 
 **3. Use in components**:
+
 ```typescript
 import { useMyHook } from '@/hooks'
 
@@ -2569,6 +2710,7 @@ function MyComponent() {
 ### Project Conventions
 
 **File naming**:
+
 - Components: `PascalCase.tsx`
 - Hooks: `useCamelCase.ts`
 - Utilities: `camelCase.ts`
@@ -2576,6 +2718,7 @@ function MyComponent() {
 - CSS Modules: `PascalCase.module.css`
 
 **Import order**:
+
 1. React imports
 2. Third-party imports
 3. Internal imports (features, components, hooks)
@@ -2583,11 +2726,13 @@ function MyComponent() {
 5. Styles
 
 **TypeScript**:
+
 - Always use types/interfaces (no `any`)
 - Prefer `type` over `interface` (unless extending)
 - Export types from same file as implementation
 
 **Testing**:
+
 - Test files next to implementation: `MyComponent.test.tsx`
 - Use `describe` blocks for grouping
 - Mock external dependencies with MSW
@@ -2609,14 +2754,14 @@ function MyComponent() {
 **Global setup**: `src/utils/test-setup.ts`
 
 ```typescript
-import { beforeAll, afterEach, vi } from 'vitest'
-import { cleanup } from '@testing-library/react'
+import { beforeAll, afterEach, vi } from "vitest";
+import { cleanup } from "@testing-library/react";
 
 beforeAll(() => {
   // Stub browser APIs
-  stubResizeObserver()
-  stubIntersectionObserver()
-  Element.prototype.scrollIntoView = vi.fn()
+  stubResizeObserver();
+  stubIntersectionObserver();
+  Element.prototype.scrollIntoView = vi.fn();
 
   // Mock localStorage
   global.localStorage = {
@@ -2625,22 +2770,22 @@ beforeAll(() => {
     removeItem: vi.fn(),
     clear: vi.fn(),
     key: vi.fn(() => null),
-    length: 0
-  }
-})
+    length: 0,
+  };
+});
 
 afterEach(() => {
-  cleanup()  // Clean up React components
-})
+  cleanup(); // Clean up React components
+});
 
 // Mock lottie animations
-vi.mock('lottie-react', () => ({
+vi.mock("lottie-react", () => ({
   default: vi.fn(),
   useLottie: vi.fn(() => ({
-    View: React.createElement('div'),
-    playSegments: vi.fn()
-  }))
-}))
+    View: React.createElement("div"),
+    playSegments: vi.fn(),
+  })),
+}));
 ```
 
 ### Custom Render Function
@@ -2688,6 +2833,7 @@ export * from '@testing-library/react'
 ```
 
 **Usage**:
+
 ```typescript
 import { render, screen, waitFor } from '@/utils/test-utils'
 
@@ -2708,41 +2854,43 @@ test('renders chat', () => {
 **Handlers**: `src/__fixtures__/msw.ts`
 
 ```typescript
-import { setupServer } from 'msw/node'
-import { http, HttpResponse } from 'msw'
+import { setupServer } from "msw/node";
+import { http, HttpResponse } from "msw";
 
 export const handlers = [
-  http.get('http://127.0.0.1:8001/v1/caps', () => {
+  http.get("http://127.0.0.1:8001/v1/caps", () => {
     return HttpResponse.json({
-      chat_default_model: 'gpt-4',
+      chat_default_model: "gpt-4",
       chat_models: {
-        'gpt-4': { n_ctx: 8192 }
-      }
-    })
+        "gpt-4": { n_ctx: 8192 },
+      },
+    });
   }),
 
-  http.post('http://127.0.0.1:8001/v1/chat', async ({ request }) => {
-    const body = await request.json()
+  http.post("http://127.0.0.1:8001/v1/chat", async ({ request }) => {
+    const body = await request.json();
     // Return streaming response
     const stream = new ReadableStream({
       start(controller) {
-        controller.enqueue(new TextEncoder().encode('data: {"choices":[...]}\n\n'))
-        controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'))
-        controller.close()
-      }
-    })
+        controller.enqueue(
+          new TextEncoder().encode('data: {"choices":[...]}\n\n'),
+        );
+        controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+        controller.close();
+      },
+    });
     return new HttpResponse(stream, {
-      headers: { 'Content-Type': 'text/event-stream' }
-    })
-  })
-]
+      headers: { "Content-Type": "text/event-stream" },
+    });
+  }),
+];
 
-export const server = setupServer(...handlers)
+export const server = setupServer(...handlers);
 
 // Start server before tests
-beforeAll(() => server.listen())
-afterEach(() => server.resetHandlers())
-afterAll(() => server.close())
+beforeAll(() => server.listen());
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 ```
 
 ### Fixtures
@@ -2754,26 +2902,29 @@ afterAll(() => server.close())
 ```typescript
 // caps.ts
 export const STUB_CAPS_RESPONSE = {
-  chat_default_model: 'gpt-4',
-  chat_models: { /* ... */ }
-}
+  chat_default_model: "gpt-4",
+  chat_models: {
+    /* ... */
+  },
+};
 
 // chat.ts
 export const STUB_CHAT_MESSAGES = [
-  { role: 'user', content: 'Hello' },
-  { role: 'assistant', content: 'Hi there!' }
-]
+  { role: "user", content: "Hello" },
+  { role: "assistant", content: "Hi there!" },
+];
 
 // tools_response.ts
 export const STUB_TOOL_CALL = {
-  id: 'call_123',
-  function: { name: 'shell', arguments: '{"cmd":"ls"}' }
-}
+  id: "call_123",
+  function: { name: "shell", arguments: '{"cmd":"ls"}' },
+};
 ```
 
 ### Example Tests
 
 **Component test**:
+
 ```typescript
 // ChatForm.test.tsx
 import { render, screen, waitFor } from '@/utils/test-utils'
@@ -2803,22 +2954,23 @@ describe('ChatForm', () => {
 ```
 
 **Hook test**:
+
 ```typescript
 // useSendChatRequest.test.ts
-import { renderHook, waitFor } from '@testing-library/react'
-import { useSendChatRequest } from './useSendChatRequest'
+import { renderHook, waitFor } from "@testing-library/react";
+import { useSendChatRequest } from "./useSendChatRequest";
 
-test('submit sends message', async () => {
-  const { result } = renderHook(() => useSendChatRequest())
+test("submit sends message", async () => {
+  const { result } = renderHook(() => useSendChatRequest());
 
   act(() => {
-    result.current.submit({ question: 'Test' })
-  })
+    result.current.submit({ question: "Test" });
+  });
 
   await waitFor(() => {
-    expect(result.current.isWaiting).toBe(true)
-  })
-})
+    expect(result.current.isWaiting).toBe(true);
+  });
+});
 ```
 
 ### Running Tests
@@ -2846,11 +2998,13 @@ npm run storybook  # Start on :6006
 ```
 
 **30+ stories** across components, showcasing:
+
 - Different states (loading, error, success)
 - Edge cases (empty, long text, special chars)
 - Interactive controls (change props live)
 
 **Stories use MSW** for API mocking:
+
 ```typescript
 // ChatContent.stories.tsx
 export const Streaming: Story = {
@@ -2871,11 +3025,13 @@ export const Streaming: Story = {
 ### Debug Mode
 
 **Enable logging**:
+
 ```bash
 DEBUG=refact,app,integrations npm run dev
 ```
 
 **Debug namespaces**:
+
 - `refact` - Core chat logic
 - `app` - Application lifecycle
 - `integrations` - Integration system
@@ -2884,14 +3040,14 @@ DEBUG=refact,app,integrations npm run dev
 **Location**: `src/debugConfig.ts`
 
 ```typescript
-import debug from 'debug'
+import debug from "debug";
 
-export const debugRefact = debug('refact')
-export const debugApp = debug('app')
-export const debugIntegrations = debug('integrations')
+export const debugRefact = debug("refact");
+export const debugApp = debug("app");
+export const debugIntegrations = debug("integrations");
 
 // Usage in code:
-debugRefact('Sending message: %O', message)
+debugRefact("Sending message: %O", message);
 ```
 
 ### Redux DevTools
@@ -2907,6 +3063,7 @@ const store = configureStore({
 ```
 
 **Features**:
+
 - Time-travel debugging
 - Action replay
 - State diff viewer
@@ -2917,15 +3074,17 @@ const store = configureStore({
 ### Console Logging Patterns
 
 **Guarded logs** (most of codebase):
+
 ```typescript
-if (process.env.NODE_ENV === 'development') {
-  console.log('Debug info:', data)
+if (process.env.NODE_ENV === "development") {
+  console.log("Debug info:", data);
 }
 ```
 
 **Production logs** (errors only):
+
 ```typescript
-console.error('Critical error:', error)
+console.error("Critical error:", error);
 ```
 
 **~5% of code has console.log** - minimal logging philosophy
@@ -2954,15 +3113,17 @@ telemetryApi.useSendTelemetryChatEventMutation()
 #### Issue: Messages not sending
 
 **Triage**:
+
 ```typescript
 // Check these selectors in Redux DevTools:
-state.chat.prevent_send           // Should be false
-state.chat.waiting_for_response   // Should be false when idle
-state.chat.streaming              // Should be false when idle
-state.confirmation.pauseReasons   // Should be empty []
+state.chat.prevent_send; // Should be false
+state.chat.waiting_for_response; // Should be false when idle
+state.chat.streaming; // Should be false when idle
+state.confirmation.pauseReasons; // Should be empty []
 ```
 
 **Fix**:
+
 - If `prevent_send: true` → Click "Retry" or start new chat
 - If paused → Check ToolConfirmation popup, confirm or reject
 - If streaming stuck → Reload app
@@ -2970,12 +3131,14 @@ state.confirmation.pauseReasons   // Should be empty []
 #### Issue: Tool confirmation stuck
 
 **Triage**:
+
 ```typescript
-state.confirmation.pauseReasons   // What's blocking?
-state.confirmation.wasInteracted  // Did user interact?
+state.confirmation.pauseReasons; // What's blocking?
+state.confirmation.wasInteracted; // Did user interact?
 ```
 
 **Fix**:
+
 - Check if IDE sent `ideToolCallResponse`
 - Check middleware listener is running
 - Confirm/reject manually in UI
@@ -2983,11 +3146,13 @@ state.confirmation.wasInteracted  // Did user interact?
 #### Issue: Streaming stopped mid-response
 
 **Triage**:
+
 - Check browser console for errors
 - Check Network tab for aborted requests
 - Check if `doneStreaming` was called prematurely
 
 **Fix**:
+
 - LSP server issue (restart LSP)
 - Network interruption (retry)
 - Check abort controller logic
@@ -2995,12 +3160,14 @@ state.confirmation.wasInteracted  // Did user interact?
 #### Issue: Dark mode not working
 
 **Triage**:
+
 ```typescript
-state.config.themeProps.appearance  // What's set?
-document.body.className             // Should be 'vscode-dark' or 'vscode-light'
+state.config.themeProps.appearance; // What's set?
+document.body.className; // Should be 'vscode-dark' or 'vscode-light'
 ```
 
 **Fix**:
+
 - Check middleware listener for appearance changes
 - Verify Radix Theme is wrapping app
 - Check if host is controlling theme
@@ -3008,13 +3175,15 @@ document.body.className             // Should be 'vscode-dark' or 'vscode-light'
 #### Issue: postMessage not working
 
 **Triage**:
+
 ```typescript
-state.config.host  // Should match actual host
-window.acquireVsCodeApi  // Exists in VSCode?
-window.postIntellijMessage  // Exists in JetBrains?
+state.config.host; // Should match actual host
+window.acquireVsCodeApi; // Exists in VSCode?
+window.postIntellijMessage; // Exists in JetBrains?
 ```
 
 **Fix**:
+
 - Verify host type is correct
 - Check IDE extension is sending messages
 - Check event listeners are attached
@@ -3022,11 +3191,13 @@ window.postIntellijMessage  // Exists in JetBrains?
 ### Performance Debugging
 
 **React DevTools Profiler**:
+
 - Record chat interaction
 - Look for long renders (>16ms)
 - Check component re-render count
 
 **Common bottlenecks**:
+
 - Large message arrays (use selectors, not direct state)
 - Markdown rendering (memoize with React.memo)
 - Recursive renderMessages (optimize with useCallback)
@@ -3035,13 +3206,14 @@ window.postIntellijMessage  // Exists in JetBrains?
 
 **Check requests in Network tab**:
 
-| Endpoint | Expected Response | Check |
-|----------|-------------------|-------|
-| `/v1/caps` | JSON | 200 OK |
-| `/v1/chat` | SSE stream | 200 OK, `text/event-stream` |
-| `/v1/tools` | JSON | 200 OK |
+| Endpoint    | Expected Response | Check                       |
+| ----------- | ----------------- | --------------------------- |
+| `/v1/caps`  | JSON              | 200 OK                      |
+| `/v1/chat`  | SSE stream        | 200 OK, `text/event-stream` |
+| `/v1/tools` | JSON              | 200 OK                      |
 
 **Common issues**:
+
 - CORS errors → LSP server not running
 - 401 Unauthorized → Check `state.config.apiKey`
 - Connection refused → Wrong LSP port
@@ -3090,6 +3262,7 @@ User message → AI makes changes → Checkpoint created
 ```
 
 **API Endpoints**:
+
 ```typescript
 // Preview what will change
 POST /v1/preview_checkpoints
@@ -3109,11 +3282,13 @@ POST /v1/restore_checkpoints
 ```
 
 **UI Components**:
+
 - `CheckpointButton` - Per-message reset button
 - `Checkpoints` modal - Shows file changes before apply
 - `CheckpointsStatusIndicator` - Visual feedback
 
 **State**:
+
 ```typescript
 state.checkpoints = {
   previewData: { files: [...], error_log: '' } | null,
@@ -3122,6 +3297,7 @@ state.checkpoints = {
 ```
 
 **After restore**:
+
 - Chat history truncates to checkpoint message
 - OR starts new chat with context
 - IDE reloads affected files (JetBrains auto-refresh)
@@ -3133,12 +3309,14 @@ state.checkpoints = {
 **Location**: `src/components/IntegrationsView/IntegrationDocker/`
 
 **Features**:
+
 - List containers by image/label
 - Start/Stop/Kill/Remove actions
 - View environment variables
 - SmartLinks for AI context
 
 **API**:
+
 ```typescript
 // List containers
 POST /v1/docker-container-list
@@ -3152,6 +3330,7 @@ POST /v1/docker-container-action
 ```
 
 **UI**:
+
 - `DockerContainerCard` - Shows container details
 - Actions dropdown: Start, Stop, Kill, Remove
 - Env vars collapsible
@@ -3166,19 +3345,23 @@ POST /v1/docker-container-action
 **Indicator**: 🗜️ icon on user messages
 
 **Detection**: LSP returns `compression_strength` in response:
+
 ```typescript
-type CompressionStrength = 'absent' | 'weak' | 'strong'
+type CompressionStrength = "absent" | "weak" | "strong";
 ```
 
 **When shown**:
+
 - `weak` - Context approaching limit
 - `strong` - Context exceeds recommended size
 
-**Action**: 
+**Action**:
+
 - Show "Start New Chat" suggestion
 - User can reject or accept suggestion
 
 **State**:
+
 ```typescript
 thread.new_chat_suggested = {
   wasSuggested: boolean,
@@ -3193,24 +3376,26 @@ thread.new_chat_suggested = {
 **Indicator**: 🗃️ icon on messages
 
 **How it works**:
-1. AI calls `remember_how_to_use_tools()` 
+
+1. AI calls `remember_how_to_use_tools()`
 2. Notes saved to vector DB
 3. Relevant notes attached to future messages
 4. Shows as `context_file` messages
 
 **Message type**:
+
 ```typescript
 type ContextFileMessage = {
-  role: 'context_file'
-  content: ChatContextFile[]
-}
+  role: "context_file";
+  content: ChatContextFile[];
+};
 
 type ChatContextFile = {
-  file_name: string
-  file_content: string
-  line1: number
-  line2: number
-}
+  file_name: string;
+  file_content: string;
+  line1: number;
+  line2: number;
+};
 ```
 
 **Rendering**: ContextFiles component shows attached files
@@ -3220,12 +3405,14 @@ type ChatContextFile = {
 **Purpose**: Send multiple messages while AI is responding
 
 **How it works**:
+
 - User sends message while streaming → Message queued
 - Queue has priority levels:
   - `priority: true` - Send immediately after current stream
   - `priority: false` - Send after tools complete
 
 **State**:
+
 ```typescript
 type QueuedUserMessage = {
   id: string
@@ -3244,6 +3431,7 @@ state.chat.queued_messages: QueuedUserMessage[]
 ### Multi-Modal Support
 
 **Images in user messages**:
+
 ```typescript
 {
   role: 'user',
@@ -3255,6 +3443,7 @@ state.chat.queued_messages: QueuedUserMessage[]
 ```
 
 **Images in tool results**:
+
 ```typescript
 {
   role: 'tool',
@@ -3271,6 +3460,7 @@ state.chat.queued_messages: QueuedUserMessage[]
 **Purpose**: Context-aware actions in chat
 
 **Format**: Special markdown links
+
 ```markdown
 [🔗 Open file.py:42](smartlink://open?file=file.py&line=42)
 ```
@@ -3278,6 +3468,7 @@ state.chat.queued_messages: QueuedUserMessage[]
 **Rendered by**: `SmartLink` component
 
 **Actions**:
+
 - Open file at line
 - Run command
 - Navigate to integration
@@ -3288,6 +3479,7 @@ state.chat.queued_messages: QueuedUserMessage[]
 **Shows in UI**: Token counts, cost estimates
 
 **Data sources**:
+
 ```typescript
 message.usage = {
   prompt_tokens: number,
@@ -3310,6 +3502,7 @@ message.metering_coins_*?: number
 **Feature**: Separate field for model's reasoning (Claude, o1, etc.)
 
 **Format**:
+
 ```typescript
 {
   role: 'assistant',
@@ -3326,11 +3519,11 @@ message.metering_coins_*?: number
 
 ```typescript
 type ThinkingBlock = {
-  thinking: string    // Reasoning text
-  signature?: string  // Model signature/metadata
-}
+  thinking: string; // Reasoning text
+  signature?: string; // Model signature/metadata
+};
 
-message.thinking_blocks = [{ thinking: '...', signature: '...' }]
+message.thinking_blocks = [{ thinking: "...", signature: "..." }];
 ```
 
 **Rendered in**: AssistantInput (collapsible)
@@ -3376,21 +3569,25 @@ npm run alpha:publish    # Publish to npm
 ### Important Patterns
 
 **Redux**:
+
 - Use selectors (don't access state directly)
 - Use RTK Query for APIs
 - Use listeners for cross-cutting concerns
 
 **Components**:
+
 - Use Radix primitives + CSS Modules
 - Use design tokens (no magic numbers)
 - Memoize expensive renders
 
 **Hooks**:
+
 - Export from `hooks/index.ts`
 - Use `useAppSelector`/`useAppDispatch` wrappers
 - Follow `use` prefix convention
 
 **Types**:
+
 - Use type guards for message routing
 - Export types with implementation
 - Strict TypeScript mode (no `any`)
@@ -3430,19 +3627,24 @@ lastMessage.tool_calls exists
 
 ```typescript
 // Check state in console:
-window.__REDUX_DEVTOOLS_EXTENSION__
+window.__REDUX_DEVTOOLS_EXTENSION__;
 
 // Force re-render:
-dispatch(newChatAction())
+dispatch(newChatAction());
 
 // Clear pause:
-dispatch(clearPauseReasonsAndHandleToolsStatus({ wasInteracted: false, confirmationStatus: true }))
+dispatch(
+  clearPauseReasonsAndHandleToolsStatus({
+    wasInteracted: false,
+    confirmationStatus: true,
+  }),
+);
 
 // Reset prevent_send:
-dispatch(enableSend({ id: chatId }))
+dispatch(enableSend({ id: chatId }));
 
 // Check LSP health:
-fetch('http://127.0.0.1:8001/v1/ping').then(r => r.json())
+fetch("http://127.0.0.1:8001/v1/ping").then((r) => r.json());
 ```
 
 ---
@@ -3452,6 +3654,7 @@ fetch('http://127.0.0.1:8001/v1/ping').then(r => r.json())
 ### When Modifying Message Flow
 
 **MUST CHECK**:
+
 1. State transitions (`waiting_for_response`, `streaming`, `prevent_send`)
 2. Tool confirmation logic (don't break pause system)
 3. Queue flush conditions (priority vs regular)
@@ -3462,6 +3665,7 @@ fetch('http://127.0.0.1:8001/v1/ping').then(r => r.json())
 ### When Adding Message Types
 
 **MUST DO**:
+
 1. Add type definition in `services/refact/types.ts`
 2. Add type guard (`isMyMessage`)
 3. Update `formatChatResponse` to handle it
@@ -3472,6 +3676,7 @@ fetch('http://127.0.0.1:8001/v1/ping').then(r => r.json())
 ### When Touching Redux
 
 **MUST DO**:
+
 1. Use selectors (create if missing)
 2. Use immutable updates (even though Immer allows mutations)
 3. Add to `combineSlices` if new slice
@@ -3481,6 +3686,7 @@ fetch('http://127.0.0.1:8001/v1/ping').then(r => r.json())
 ### When Modifying UI
 
 **MUST DO**:
+
 1. Use Radix primitives where possible
 2. Use CSS Modules (not inline styles)
 3. Use design tokens (not literals)
@@ -3491,6 +3697,7 @@ fetch('http://127.0.0.1:8001/v1/ping').then(r => r.json())
 ### Red Flags
 
 🚨 **STOP if you see**:
+
 - Direct state mutation outside reducers
 - Hardcoded colors (#hex) or spacing (px)
 - `any` types (use proper typing)
@@ -3506,6 +3713,7 @@ fetch('http://127.0.0.1:8001/v1/ping').then(r => r.json())
 **Current**: v2.0.10-alpha.3
 
 **Recent changes** (inferred from codebase):
+
 - Queued messages with priority system
 - Compression hints and new chat suggestions
 - Reasoning content support
@@ -3531,6 +3739,7 @@ fetch('http://127.0.0.1:8001/v1/ping').then(r => r.json())
 ### Commit Messages
 
 Follow conventional commits:
+
 ```
 feat: add queued messages
 fix: prevent double-send on tool confirmation
@@ -3544,12 +3753,14 @@ test: add tool loop prevention test
 ## Getting Help
 
 **Resources**:
+
 - README.md - Library API reference
 - Storybook - Component documentation (`:6006`)
 - Redux DevTools - State inspection
 - GitHub Issues - Bug reports
 
 **Community**:
+
 - GitHub: https://github.com/smallcloudai/refact
 - Discord: (check README)
 
@@ -3561,4 +3772,4 @@ test: add tool loop prevention test
 
 ---
 
-*This document is a living guide. If you find errors or omissions, please update it.*
+_This document is a living guide. If you find errors or omissions, please update it._
