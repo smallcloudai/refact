@@ -51,7 +51,7 @@ type ResultProps = {
 
 function looksLikeMarkdown(text: string): boolean {
   // Strong signals to avoid false positives on logs/stack traces
-  if (text.includes('```')) return true; // fenced code blocks
+  if (text.includes("```")) return true; // fenced code blocks
   if (/\[[^\]]+\]\([^)]+\)/.test(text)) return true; // [text](url)
   if (/^#{1,6}\s+\S/m.test(text)) return true; // headings
   if (/^\s*([-*+])\s+\S/m.test(text)) return true; // unordered lists
@@ -77,7 +77,12 @@ const Result: React.FC<ResultProps> = ({ children, onClose }) => {
     <Reveal defaultOpen={lines.length < 9} isRevealingCode onClose={onClose}>
       {shouldRenderMarkdown ? (
         <Text size="2">
-          <Box className={classNames(styles.tool_result, styles.tool_result_markdown)}>
+          <Box
+            className={classNames(
+              styles.tool_result,
+              styles.tool_result_markdown,
+            )}
+          >
             <Markdown style={resultStyle}>{children}</Markdown>
           </Box>
         </Text>

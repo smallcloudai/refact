@@ -16,7 +16,7 @@ export type ToolMarkdownProps = Pick<
 
 /**
  * ToolMarkdown - A specialized markdown renderer for tool outputs
- * 
+ *
  * Key differences from regular Markdown:
  * - All text renders at consistent size (terminal-like)
  * - Headings are bold but NOT larger (no scaling)

@@ -7,8 +7,8 @@
   font-size: var(--font-size-2);
   line-height: 1.5;
   /* Use monospace, monospace to fix Firefox font-size quirks */
-  font-family: Consolas, Monaco, 'Lucida Console', 'Liberation Mono',
-    'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Courier New', monospace,
+  font-family: Consolas, Monaco, "Lucida Console", "Liberation Mono",
+    "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New", monospace,
     monospace;
 }
 
