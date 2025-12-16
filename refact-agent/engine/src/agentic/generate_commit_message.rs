@@ -11,20 +11,64 @@ use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
 use crate::files_in_workspace::detect_vcs_for_a_file_path;
 
-const DIFF_ONLY_PROMPT: &str = r#"Analyze the given diff and generate a clear and descriptive commit message that explains the purpose of the changes. Your commit message should convey *why* the changes were made, *how* they improve the code, or what features or fixes are implemented, rather than just restating *what* the changes are. Aim for an informative, concise summary that would be easy for others to understand when reviewing the commit history.
+const DIFF_ONLY_PROMPT: &str = r#"Generate a commit message following the Conventional Commits specification.
+
+# Conventional Commits Format
+
+```
+<type>(<optional scope>): <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+## Commit Types (REQUIRED - choose exactly one)
+- `feat`: New feature (correlates with MINOR in SemVer)
+- `fix`: Bug fix (correlates with PATCH in SemVer)
+- `refactor`: Code restructuring without changing behavior
+- `perf`: Performance improvement
+- `docs`: Documentation only changes
+- `style`: Code style changes (formatting, whitespace, semicolons)
+- `test`: Adding or correcting tests
+- `build`: Changes to build system or dependencies
+- `ci`: Changes to CI configuration
+- `chore`: Maintenance tasks (tooling, configs, no production code change)
+- `revert`: Reverting a previous commit
+
+## Rules
+
+### Subject Line (REQUIRED)
+1. Format: `<type>(<scope>): <description>` or `<type>: <description>`
+2. Use imperative mood ("add" not "added" or "adds")
+3. Do NOT capitalize the first letter of description
+4. Do NOT end with a period
+5. Keep under 50 characters (hard limit: 72)
+6. Scope is optional but recommended for larger projects
+
+### Body (OPTIONAL - use for complex changes)
+1. Separate from subject with a blank line
+2. Wrap at 72 characters
+3. Explain WHAT and WHY, not HOW
+4. Use bullet points for multiple items
+
+### Footer (OPTIONAL)
+1. Reference issues: `Fixes #123`, `Closes #456`, `Refs #789`
+2. Breaking changes: Start with `BREAKING CHANGE:` or add `!` after type
+3. Co-authors: `Co-authored-by: Name <email>`
+
+## Breaking Changes
+- Add `!` after type/scope: `feat!:` or `feat(api)!:`
+- Or include `BREAKING CHANGE:` footer with explanation
 
 # Steps
-1. Analyze the code diff to understand the changes made.
-2. Determine the functionality added or removed, and the reason for these adjustments.
-3. Summarize the details of the change in an accurate and informative, yet concise way.
-4. Structure the message in a way that starts with a short summary line, followed by optional details if the change is complex.
 
-# Output Format
-
-The output should be a single commit message in the following format:
-- A **first line summarizing** the purpose of the change. This line should be concise.
-- Optionally, include a **second paragraph** with *additional context* if the change is complex or otherwise needs further clarification.
-  (e.g., if there's a bug fix, mention what problem was fixed and why the change works.)
+1. Analyze the diff to understand what changed
+2. Determine the PRIMARY type of change (feat, fix, refactor, etc.)
+3. Identify scope from affected files/modules (optional)
+4. Write description in imperative mood explaining the intent
+5. Add body only if the change is complex and needs explanation
+6. Add footer for issue references or breaking changes if applicable
 
 # Examples
 
@@ -32,23 +76,17 @@ The output should be a single commit message in the following format:
 ```diff
 - public class UserManager {
 -     private final UserDAO userDAO;
-
 + public class UserManager {
 +     private final UserService userService;
 +     private final NotificationService notificationService;
-
-  public UserManager(UserDAO userDAO) {
--     this.userDAO = userDAO;
-+     this.userService = new UserService();
-+     this.notificationService = new NotificationService();
-  }
 ```
 
-**Output (commit message)**:
+**Output**:
 ```
-Refactor `UserManager` to use `UserService` and `NotificationService`
+refactor(user): replace UserDAO with service-based architecture
 
-Replaced `UserDAO` with `UserService` and introduced `NotificationService` to improve separation of concerns and make user management logic reusable and extendable.
+Introduce UserService and NotificationService to improve separation of
+concerns and make user management logic more reusable.
 ```
 
 **Input (diff)**:
@@ -61,39 +99,142 @@ Replaced `UserDAO` with `UserService` and introduced `NotificationService` to im
 + accessAllowed = age > 17;
 ```
 
-**Output (commit message)**:
+**Output**:
 ```
-Simplify age check logic for accessing permissions by using a single expression
+refactor: simplify age check with ternary expression
 ```
 
-# Notes
-- Make sure the commit messages are descriptive enough to convey why the change is being made without being too verbose.
-- If applicable, add `Fixes #<issue-number>` or other references to link the commit to specific tickets.
-- Avoid wording: "Updated", "Modified", or "Changed" without explicitly stating *why*—focus on *intent*."#;
+**Input (diff)**:
+```diff
++ export async function fetchUserProfile(userId: string) {
++   const response = await api.get(`/users/${userId}`);
++   return response.data;
++ }
+```
 
-const DIFF_WITH_USERS_TEXT_PROMPT: &str = r#"Generate a commit message using the diff and the provided initial commit message as a template for context.
+**Output**:
+```
+feat(api): add user profile fetch endpoint
+```
 
-[Additional details as needed.]
+**Input (diff)**:
+```diff
+- const timeout = 5000;
++ const timeout = 30000;
+```
+
+**Output**:
+```
+fix(database): increase query timeout to prevent failures
+
+Extend timeout from 5s to 30s to resolve query failures during peak load.
+
+Fixes #234
+```
+
+**Input (breaking change)**:
+```diff
+- function getUser(id) { return users[id]; }
++ function getUser(id) { return { user: users[id], metadata: {} }; }
+```
+
+**Output**:
+```
+feat(api)!: wrap user response in object with metadata
+
+BREAKING CHANGE: getUser() now returns { user, metadata } instead of
+user directly. Update all callers to access .user property.
+```
+
+# Important Guidelines
+
+- Choose the MOST significant type if changes span multiple categories
+- Be specific in the description - avoid vague terms like "update", "fix stuff"
+- The subject should complete: "If applied, this commit will <description>"
+- One commit = one logical change (if diff has unrelated changes, note it)
+- Scope should reflect the module, component, or area affected"#;
+
+const DIFF_WITH_USERS_TEXT_PROMPT: &str = r#"Generate a commit message following Conventional Commits, using the user's input as context for intent.
+
+# Conventional Commits Format
+
+```
+<type>(<optional scope>): <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+## Commit Types (REQUIRED - choose exactly one)
+- `feat`: New feature (correlates with MINOR in SemVer)
+- `fix`: Bug fix (correlates with PATCH in SemVer)
+- `refactor`: Code restructuring without changing behavior
+- `perf`: Performance improvement
+- `docs`: Documentation only changes
+- `style`: Code style changes (formatting, whitespace, semicolons)
+- `test`: Adding or correcting tests
+- `build`: Changes to build system or dependencies
+- `ci`: Changes to CI configuration
+- `chore`: Maintenance tasks (tooling, configs, no production code change)
+- `revert`: Reverting a previous commit
+
+## Rules
+
+### Subject Line (REQUIRED)
+1. Format: `<type>(<scope>): <description>` or `<type>: <description>`
+2. Use imperative mood ("add" not "added" or "adds")
+3. Do NOT capitalize the first letter of description
+4. Do NOT end with a period
+5. Keep under 50 characters (hard limit: 72)
+6. Scope is optional but recommended for larger projects
+
+### Body (OPTIONAL - use for complex changes)
+1. Separate from subject with a blank line
+2. Wrap at 72 characters
+3. Explain WHAT and WHY, not HOW
+4. Use bullet points for multiple items
+
+### Footer (OPTIONAL)
+1. Reference issues: `Fixes #123`, `Closes #456`, `Refs #789`
+2. Breaking changes: Start with `BREAKING CHANGE:` or add `!` after type
+3. Co-authors: `Co-authored-by: Name <email>`
+
+## Breaking Changes
+- Add `!` after type/scope: `feat!:` or `feat(api)!:`
+- Or include `BREAKING CHANGE:` footer with explanation
 
 # Steps
 
-1. Analyze the code diff to understand the changes made.
-2. Review the user's initial commit message to understand the intent and use it as a contextual starting point.
-3. Determine the functionality added or removed, and the reason for these adjustments.
-4. Combine insights from the diff and user's initial commit message to generate a more descriptive and complete commit message.
-5. Summarize the details of the change in an accurate and informative, yet concise way.
-6. Structure the message in a way that starts with a short summary line, followed by optional details if the change is complex.
-
-# Output Format
-
-The output should be a single commit message in the following format:
-- A **first line summarizing** the purpose of the change. This line should be concise.
-- Optionally, include a **second paragraph** with *additional context* if the change is complex or otherwise needs further clarification.
-  (e.g., if there's a bug fix, mention what problem was fixed and why the change works.)
+1. Analyze the user's initial commit message to understand their intent
+2. Analyze the diff to understand the actual changes
+3. Determine the correct type based on the nature of changes
+4. Extract or infer a scope from user input or affected files
+5. Synthesize user intent + diff analysis into a proper conventional commit
+6. If user mentions an issue number, include it in the footer
 
 # Examples
 
-**Input (initial commit message)**:
+**Input (user's message)**:
+```
+fix the login bug
+```
+
+**Input (diff)**:
+```diff
+- if (user.password === input) {
++ if (await bcrypt.compare(input, user.passwordHash)) {
+```
+
+**Output**:
+```
+fix(auth): use bcrypt for secure password comparison
+
+Replace plaintext password comparison with bcrypt hash verification
+to fix authentication vulnerability.
+```
+
+**Input (user's message)**:
 ```
 Refactor UserManager to use services instead of DAOs
 ```
@@ -102,49 +243,85 @@ Refactor UserManager to use services instead of DAOs
 ```diff
 - public class UserManager {
 -     private final UserDAO userDAO;
-
 + public class UserManager {
 +     private final UserService userService;
 +     private final NotificationService notificationService;
-
-  public UserManager(UserDAO userDAO) {
--     this.userDAO = userDAO;
-+     this.userService = new UserService();
-+     this.notificationService = new NotificationService();
-  }
 ```
 
-**Output (commit message)**:
+**Output**:
 ```
-Refactor `UserManager` to use `UserService` and `NotificationService`
+refactor(user): replace UserDAO with service-based architecture
 
-Replaced `UserDAO` with `UserService` and introduced `NotificationService` to improve separation of concerns and make user management logic reusable and extendable.
+Introduce UserService and NotificationService to improve separation of
+concerns and make user management logic more reusable.
 ```
 
-**Input (initial commit message)**:
+**Input (user's message)**:
 ```
-Simplify age check logic
+added new endpoint for users #123
 ```
 
 **Input (diff)**:
 ```diff
-- if (age > 17) {
--     accessAllowed = true;
-- } else {
--     accessAllowed = false;
-- }
-+ accessAllowed = age > 17;
++ @GetMapping("/users/{id}/preferences")
++ public ResponseEntity<Preferences> getUserPreferences(@PathVariable Long id) {
++     return ResponseEntity.ok(userService.getPreferences(id));
++ }
 ```
 
-**Output (commit message)**:
+**Output**:
 ```
-Simplify age check logic for accessing permissions by using a single expression
+feat(api): add user preferences endpoint
+
+Refs #123
 ```
 
-# Notes
-- Make sure the commit messages are descriptive enough to convey why the change is being made without being too verbose.
-- If applicable, add `Fixes #<issue-number>` or other references to link the commit to specific tickets.
-- Avoid wording: "Updated", "Modified", or "Changed" without explicitly stating *why*—focus on *intent*."#;
+**Input (user's message)**:
+```
+cleanup
+```
+
+**Input (diff)**:
+```diff
+- // TODO: implement later
+- // console.log("debug");
+- const unusedVar = 42;
+```
+
+**Output**:
+```
+chore: remove dead code and debug artifacts
+```
+
+**Input (user's message)**:
+```
+BREAKING: change API response format
+```
+
+**Input (diff)**:
+```diff
+- return user;
++ return { data: user, version: "2.0" };
+```
+
+**Output**:
+```
+feat(api)!: wrap responses in versioned data envelope
+
+BREAKING CHANGE: All API responses now return { data, version } object
+instead of raw data. Clients must access response.data for the payload.
+```
+
+# Important Guidelines
+
+- Preserve the user's intent but format it correctly
+- If user mentions "bug", "fix", "broken" → likely `fix`
+- If user mentions "add", "new", "feature" → likely `feat`
+- If user mentions "refactor", "restructure", "reorganize" → `refactor`
+- If user mentions "clean", "remove unused" → likely `chore` or `refactor`
+- Extract issue numbers (#123) from user text and move to footer
+- The subject should complete: "If applied, this commit will <description>"
+- Don't just paraphrase the user - analyze the diff to add specificity"#;
 const N_CTX: usize = 32000;
 const TEMPERATURE: f32 = 0.5;
 
