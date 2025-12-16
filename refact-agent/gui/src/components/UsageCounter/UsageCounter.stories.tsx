@@ -45,6 +45,7 @@ const MockedStore: React.FC<{
       tool_use: "agent",
       system_prompt: {},
       cache: {},
+      queued_messages: [],
       thread: {
         id: "test",
         messages: [

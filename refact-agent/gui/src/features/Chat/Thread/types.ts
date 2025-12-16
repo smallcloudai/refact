@@ -1,7 +1,14 @@
 import { Usage } from "../../../services/refact";
 import { SystemPrompts } from "../../../services/refact/prompts";
-import { ChatMessages } from "../../../services/refact/types";
+import { ChatMessages, UserMessage } from "../../../services/refact/types";
 import { parseOrElse } from "../../../utils/parseOrElse";
+
+export type QueuedUserMessage = {
+  id: string;
+  message: UserMessage;
+  createdAt: number;
+  priority?: boolean;
+};
 
 export type IntegrationMeta = {
   name?: string;
@@ -55,6 +62,7 @@ export type Chat = {
   follow_ups_enabled?: boolean;
   title_generation_enabled?: boolean;
   use_compression?: boolean;
+  queued_messages: QueuedUserMessage[];
 };
 
 export type PayloadWithId = { id: string };

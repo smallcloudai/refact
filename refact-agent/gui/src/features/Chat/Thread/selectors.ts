@@ -126,6 +126,19 @@ export const selectLastSentCompression = createSelector(
   },
 );
 
+export const selectQueuedMessages = (state: RootState) =>
+  state.chat.queued_messages;
+
+export const selectQueuedMessagesCount = createSelector(
+  selectQueuedMessages,
+  (queued) => queued.length,
+);
+
+export const selectHasQueuedMessages = createSelector(
+  selectQueuedMessages,
+  (queued) => queued.length > 0,
+);
+
 export const selectHasUncalledTools = createSelector(
   selectMessages,
   (messages) => {

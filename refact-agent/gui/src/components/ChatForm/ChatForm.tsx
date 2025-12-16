@@ -4,11 +4,11 @@ import { Flex, Card, Text, IconButton } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import {
-  PaperPlaneButton,
   BackToSideBarButton,
   AgentIntegrationsButton,
   ThinkingButton,
   ContextCapButton,
+  SendButtonWithDropdown,
 } from "../Buttons";
 import { TextArea } from "../TextArea";
 import { Form } from "./Form";
@@ -56,6 +56,7 @@ import {
   selectIsWaiting,
   selectLastSentCompression,
   selectMessages,
+  selectQueuedMessages,
   selectThreadToolUse,
   selectToolUse,
 } from "../../features/Chat";
@@ -66,8 +67,10 @@ import { TokensPreview } from "./TokensPreview";
 import classNames from "classnames";
 import { ArchiveIcon } from "@radix-ui/react-icons";
 
+export type SendPolicy = "immediate" | "after_flow";
+
 export type ChatFormProps = {
-  onSubmit: (str: string) => void;
+  onSubmit: (str: string, sendPolicy?: SendPolicy) => void;
   onClose?: () => void;
   className?: string;
   unCalledTools: boolean;
@@ -97,6 +100,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messages = useAppSelector(selectMessages);
   const lastSentCompression = useAppSelector(selectLastSentCompression);
+  const queuedMessages = useAppSelector(selectQueuedMessages);
   const { compressChat, compressChatRequest, isCompressing } =
     useCompressChat();
   const autoFocus = useAutoFocusOnce();
@@ -183,33 +187,44 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const refs = useTourRefs();
 
-  const handleSubmit = useCallback(() => {
-    const trimmedValue = value.trim();
-    if (!disableSend && trimmedValue.length > 0) {
-      const valueWithFiles = attachedFiles.addFilesToInput(trimmedValue);
-      const valueIncludingChecks = addCheckboxValuesToInput(
-        valueWithFiles,
-        checkboxes,
-      );
-      // TODO: add @files
-      setLineSelectionInteracted(false);
-      onSubmit(valueIncludingChecks);
-      setValue(() => "");
-      unCheckAll();
-      attachedFiles.removeAll();
-    }
-  }, [
-    value,
-    disableSend,
-    attachedFiles,
-    checkboxes,
-    setLineSelectionInteracted,
-    onSubmit,
-    setValue,
-    unCheckAll,
-  ]);
+  const handleSubmit = useCallback(
+    (sendPolicy: SendPolicy = "after_flow") => {
+      const trimmedValue = value.trim();
+      // Both options queue during streaming, so both should be allowed
+      const canSubmit = trimmedValue.length > 0 && isOnline && !allDisabled;
 
-  const handleEnter = useOnPressedEnter(handleSubmit);
+      if (canSubmit) {
+        const valueWithFiles = attachedFiles.addFilesToInput(trimmedValue);
+        const valueIncludingChecks = addCheckboxValuesToInput(
+          valueWithFiles,
+          checkboxes,
+        );
+        // TODO: add @files
+        setLineSelectionInteracted(false);
+        onSubmit(valueIncludingChecks, sendPolicy);
+        setValue(() => "");
+        unCheckAll();
+        attachedFiles.removeAll();
+      }
+    },
+    [
+      value,
+      allDisabled,
+      isOnline,
+      attachedFiles,
+      checkboxes,
+      setLineSelectionInteracted,
+      onSubmit,
+      setValue,
+      unCheckAll,
+    ],
+  );
+
+  const handleSendImmediately = useCallback(() => {
+    handleSubmit("immediate");
+  }, [handleSubmit]);
+
+  const handleEnter = useOnPressedEnter(() => handleSubmit("after_flow"));
 
   const handleHelpInfo = useCallback((info: React.ReactNode | null) => {
     setHelpInfo(info);
@@ -351,7 +366,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         <Form
           disabled={disableSend}
           className={classNames(styles.chatForm__form, className)}
-          onSubmit={handleSubmit}
+          onSubmit={() => handleSubmit("after_flow")}
         >
           <FilesPreview files={previewFiles} />
 
@@ -434,11 +449,14 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                     <AttachImagesButton />
                   )}
                 {/* TODO: Reserved space for microphone button coming later on */}
-                <PaperPlaneButton
-                  disabled={disableSend}
-                  title="Send message"
-                  size="1"
-                  type="submit"
+                <SendButtonWithDropdown
+                  disabled={
+                    !isOnline || allDisabled || value.trim().length === 0
+                  }
+                  isStreaming={isStreaming || isWaiting}
+                  queuedCount={queuedMessages.length}
+                  onSend={() => handleSubmit("after_flow")}
+                  onSendImmediately={handleSendImmediately}
                 />
               </Flex>
             </Flex>

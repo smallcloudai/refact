@@ -493,4 +493,5 @@ export const CHAT_CONFIG_THREAD: Chat = {
   system_prompt: {},
   tool_use: "agent",
   send_immediately: false,
+  queued_messages: [],
 };
