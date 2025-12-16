@@ -26,7 +26,7 @@ export const Markdown: React.FC<{
           return (
             <MarkdownCodeBlock
               {...codeProps}
-              showLineNumbers={true}
+              showLineNumbers={false}
               startingLineNumber={startingLineNumber}
             />
           );

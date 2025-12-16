@@ -414,7 +414,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                         ? "yellow"
                         : undefined
                   }
-                  title="Compress chat and continue"
+                  title="Summarize and continue in a new chat"
                   type="button"
                   onClick={() => void compressChat()}
                   disabled={

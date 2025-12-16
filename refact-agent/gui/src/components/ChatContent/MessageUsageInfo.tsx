@@ -79,7 +79,7 @@ export const MessageUsageInfo: React.FC<MessageUsageInfoProps> = ({
     <Box
       style={{
         position: "absolute",
-        right: 0,
+        right: "var(--space-3)",
         top: topOffset,
       }}
     >

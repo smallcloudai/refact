@@ -44,7 +44,7 @@ export const MCPLogs: React.FC<MCPLogsProps> = ({
           <MarkdownCodeBlock
             className="language-bash"
             startingLineNumber={1}
-            showLineNumbers={true}
+            showLineNumbers={false}
             preOptions={{
               noMargin: true,
             }}

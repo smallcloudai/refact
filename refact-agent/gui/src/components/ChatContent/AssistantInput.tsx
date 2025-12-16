@@ -154,10 +154,18 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
       )}
       {toolCalls && <ToolContent toolCalls={toolCalls} />}
       {isLast && (
-        <Flex justify="end" px="2" py="2" gap="2" align="center">
-          <ResendButton />
-          <LikeButton />
-        </Flex>
+        <Box
+          style={{
+            position: "absolute",
+            right: "var(--space-3)",
+            bottom: "0",
+          }}
+        >
+          <Flex gap="2" align="center">
+            <ResendButton />
+            <LikeButton />
+          </Flex>
+        </Box>
       )}
     </Container>
   );
