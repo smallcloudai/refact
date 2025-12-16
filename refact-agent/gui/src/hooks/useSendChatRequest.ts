@@ -13,6 +13,7 @@ import {
   selectIsWaiting,
   selectMessages,
   selectPreventSend,
+  selectQueuedMessages,
   selectSendImmediately,
   selectThread,
   selectThreadMode,
@@ -32,6 +33,8 @@ import {
   chatAskQuestionThunk,
   chatAskedQuestion,
   setSendImmediately,
+  enqueueUserMessage,
+  dequeueUserMessage,
 } from "../features/Chat/Thread/actions";
 
 import { selectAllImages } from "../features/AttachedImages";
@@ -58,24 +61,29 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 
+type SendPolicy = "immediate" | "after_flow";
+
 type SubmitHandlerParams =
   | {
       question: string;
       maybeMode?: LspChatMode;
       maybeMessages?: undefined;
       maybeDropLastMessage?: boolean;
+      sendPolicy?: SendPolicy;
     }
   | {
       question?: undefined;
       maybeMode?: LspChatMode;
       maybeMessages?: undefined;
       maybeDropLastMessage?: boolean;
+      sendPolicy?: SendPolicy;
     }
   | {
       question?: undefined;
       maybeMode?: LspChatMode;
       maybeMessages: ChatMessage[];
       maybeDropLastMessage?: boolean;
+      sendPolicy?: SendPolicy;
     };
 
 export const PATCH_LIKE_FUNCTIONS = [
@@ -98,6 +106,10 @@ export const useSendChatRequest = () => {
   const chatId = useAppSelector(selectChatId);
 
   const isWaiting = useAppSelector(selectIsWaiting);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const hasUnsentTools = useAppSelector(selectHasUncalledTools);
+
+  const isBusy = isWaiting || isStreaming || hasUnsentTools;
 
   const currentMessages = useAppSelector(selectMessages);
   const systemPrompt = useAppSelector(getSelectedSystemPrompt);
@@ -222,6 +234,7 @@ export const useSendChatRequest = () => {
       maybeMode,
       maybeMessages,
       maybeDropLastMessage,
+      sendPolicy = "after_flow",
     }: SubmitHandlerParams) => {
       let messages = messagesWithSystemPrompt;
       if (maybeDropLastMessage) {
@@ -230,6 +243,20 @@ export const useSendChatRequest = () => {
 
       if (question) {
         const message = maybeAddImagesToQuestion(question);
+
+        // If busy, queue the message (priority = send at next available turn)
+        if (isBusy) {
+          dispatch(
+            enqueueUserMessage({
+              id: uuidv4(),
+              message,
+              createdAt: Date.now(),
+              priority: sendPolicy === "immediate",
+            }),
+          );
+          return;
+        }
+
         messages = messages.concat(message);
       } else if (maybeMessages) {
         messages = maybeMessages;
@@ -247,6 +274,7 @@ export const useSendChatRequest = () => {
     },
     [
       dispatch,
+      isBusy,
       maybeAddImagesToQuestion,
       messagesWithSystemPrompt,
       sendMessages,
@@ -342,6 +370,7 @@ export function useAutoSend() {
   const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
   const hasUnsentTools = useAppSelector(selectHasUncalledTools);
+  const queuedMessages = useAppSelector(selectQueuedMessages);
   const { sendMessages, messagesWithSystemPrompt } = useSendChatRequest();
   // TODO: make a selector for this, or show tool formation
   const thread = useAppSelector(selectThread);
@@ -367,9 +396,65 @@ export function useAutoSend() {
     return !wasInteracted && !areToolsConfirmed;
   }, [isIntegration, wasInteracted, areToolsConfirmed]);
 
+  // Base conditions for flushing queue (streaming must be done)
+  const canFlushBase = useMemo(() => {
+    if (errored) return false;
+    if (preventSend) return false;
+    if (streaming) return false;
+    if (isWaiting) return false;
+    return true;
+  }, [errored, preventSend, streaming, isWaiting]);
+
+  // Full idle: also wait for tools to complete (for regular queued messages)
+  const isFullyIdle = useMemo(() => {
+    if (!canFlushBase) return false;
+    if (hasUnsentTools) return false;
+    if (stopForToolConfirmation) return false;
+    return true;
+  }, [canFlushBase, hasUnsentTools, stopForToolConfirmation]);
+
+  // Process queued messages
+  // Priority messages: flush as soon as streaming ends (next turn)
+  // Regular messages: wait for full idle (tools complete)
+  useEffect(() => {
+    if (queuedMessages.length === 0) return;
+
+    const nextQueued = queuedMessages[0];
+    const isPriority = nextQueued.priority;
+
+    // Priority: flush when base conditions met (right after streaming)
+    // Regular: flush only when fully idle (after tools complete)
+    const canFlush = isPriority ? canFlushBase : isFullyIdle;
+
+    if (!canFlush) return;
+
+    // Remove from queue first to prevent double-send
+    dispatch(dequeueUserMessage({ queuedId: nextQueued.id }));
+
+    // Send the queued message
+    void sendMessages([...currentMessages, nextQueued.message], thread.mode);
+  }, [
+    canFlushBase,
+    isFullyIdle,
+    queuedMessages,
+    dispatch,
+    sendMessages,
+    currentMessages,
+    thread.mode,
+  ]);
+
+  // Check if there are priority messages waiting
+  const hasPriorityMessages = useMemo(
+    () => queuedMessages.some((m) => m.priority),
+    [queuedMessages],
+  );
+
   useEffect(() => {
     if (stop) return;
     if (stopForToolConfirmation) return;
+    // Don't run tool follow-up if there are priority messages waiting
+    // Let the queue flush handle them first
+    if (hasPriorityMessages) return;
 
     dispatch(
       clearPauseReasonsAndHandleToolsStatus({
@@ -383,6 +468,7 @@ export function useAutoSend() {
     areToolsConfirmed,
     currentMessages,
     dispatch,
+    hasPriorityMessages,
     sendMessages,
     stop,
     stopForToolConfirmation,

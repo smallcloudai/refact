@@ -124,3 +124,29 @@
   margin-top: var(--space-1);
   box-sizing: border-box;
 }
+
+.queuedMessage {
+  --base-card-surface-box-shadow: 0 0 0 1px
+    color-mix(in oklab, var(--amber-a5), var(--amber-5) 25%);
+  background: var(--color-surface);
+  border-radius: var(--radius-2);
+  padding: var(--space-2) var(--space-3);
+  margin-left: auto;
+  max-width: 85%;
+  opacity: 0.8;
+}
+
+.queuedMessagePriority {
+  --base-card-surface-box-shadow: 0 0 0 1px
+    color-mix(in oklab, var(--blue-a5), var(--blue-5) 25%);
+}
+
+.queuedMessageText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

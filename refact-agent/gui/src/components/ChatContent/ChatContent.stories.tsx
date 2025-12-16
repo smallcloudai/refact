@@ -58,6 +58,7 @@ const MockedStore: React.FC<{
       cache: {},
       system_prompt: {},
       thread: threadData,
+      queued_messages: [],
     },
   });
 

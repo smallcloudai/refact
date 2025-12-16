@@ -61,8 +61,8 @@ export const Chat: React.FC<ChatProps> = ({
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
   const handleSubmit = useCallback(
-    (value: string) => {
-      submit({ question: value });
+    (value: string, sendPolicy?: "immediate" | "after_flow") => {
+      submit({ question: value, sendPolicy });
       if (isViewingRawJSON) {
         setIsViewingRawJSON(false);
       }

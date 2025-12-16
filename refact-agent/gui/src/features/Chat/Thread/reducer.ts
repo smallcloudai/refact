@@ -44,6 +44,9 @@ import {
   setIncludeProjectInfo,
   setContextTokensCap,
   setUseCompression,
+  enqueueUserMessage,
+  dequeueUserMessage,
+  clearQueuedMessages,
 } from "./actions";
 import { formatChatResponse, postProcessMessagesAfterStreaming } from "./utils";
 import {
@@ -128,6 +131,7 @@ const createInitialState = ({
     tool_use,
     checkpoints_enabled: true,
     send_immediately: false,
+    queued_messages: [],
   };
 };
 
@@ -192,6 +196,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     next.title_generation_enabled = state.title_generation_enabled;
     next.use_compression = state.use_compression;
     next.thread.boost_reasoning = state.thread.boost_reasoning;
+    next.queued_messages = [];
     // next.thread.automatic_patch = state.thread.automatic_patch;
     if (action.payload?.messages) {
       next.thread.messages = action.payload.messages;
@@ -394,6 +399,33 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setSendImmediately, (state, action) => {
     state.send_immediately = action.payload;
+  });
+
+  builder.addCase(enqueueUserMessage, (state, action) => {
+    const { priority, ...rest } = action.payload;
+    const messagePayload = { ...rest, priority };
+    if (priority) {
+      // Insert at front for "send next" (next available turn)
+      // Find the position after existing priority messages (stable FIFO among priority)
+      const insertAt = state.queued_messages.findIndex((m) => !m.priority);
+      if (insertAt === -1) {
+        state.queued_messages.push(messagePayload);
+      } else {
+        state.queued_messages.splice(insertAt, 0, messagePayload);
+      }
+    } else {
+      state.queued_messages.push(messagePayload);
+    }
+  });
+
+  builder.addCase(dequeueUserMessage, (state, action) => {
+    state.queued_messages = state.queued_messages.filter(
+      (q) => q.id !== action.payload.queuedId,
+    );
+  });
+
+  builder.addCase(clearQueuedMessages, (state) => {
+    state.queued_messages = [];
   });
 
   builder.addCase(setChatMode, (state, action) => {
