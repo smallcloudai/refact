@@ -125,6 +125,39 @@
   box-sizing: border-box;
 }
 
+.tool_result_markdown {
+  width: 100%;
+  box-sizing: border-box;
+
+  /* keep the block feel (like the code block) */
+  border-radius: var(--radius-2);
+  padding: var(--space-2);
+
+  /* tool output can be wide */
+  overflow-x: auto;
+
+  /* "terminal-ish" feel - matches MarkdownCodeBlock */
+  font-family:
+    Consolas,
+    Monaco,
+    Lucida Console,
+    Liberation Mono,
+    DejaVu Sans Mono,
+    Bitstream Vera Sans Mono,
+    Courier New;
+}
+
+/* Preserve indentation/line breaks for plain text paragraphs */
+.tool_result_markdown :global(p) {
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+/* First element (likely a heading/paragraph) has no top margin */
+.tool_result_markdown > :first-child {
+  margin-top: 0 !important;
+}
+
 .queuedMessage {
   --base-card-surface-box-shadow: 0 0 0 1px
     color-mix(in oklab, var(--amber-a5), var(--amber-5) 25%);

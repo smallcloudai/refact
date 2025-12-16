@@ -1,0 +1,90 @@
+/* 
+ * Root container - sets base size matching MarkdownCodeBlock's <Text size="2">
+ * All children use 'inherit' to prevent browser user-agent shrinkage
+ */
+.root {
+  /* Match Radix Text size="2" which uses --font-size-2 */
+  font-size: var(--font-size-2);
+  line-height: 1.5;
+  /* Use monospace, monospace to fix Firefox font-size quirks */
+  font-family: Consolas, Monaco, 'Lucida Console', 'Liberation Mono',
+    'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Courier New', monospace,
+    monospace;
+}
+
+/* Force ALL elements to inherit - prevents UA stylesheet shrinkage */
+.root *,
+.root code,
+.root pre,
+.root kbd,
+.root samp {
+  font-size: 1em !important; /* 1em = 100% of parent = inherit */
+  line-height: inherit;
+}
+
+/* Paragraphs */
+.paragraph {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* Headings - bold but same size */
+.heading {
+  font-weight: 600;
+  margin: var(--space-2) 0 var(--space-1) 0;
+}
+
+.heading:first-child {
+  margin-top: 0;
+}
+
+/* Lists */
+.list {
+  margin: var(--space-1) 0;
+  padding-left: var(--space-5);
+}
+
+.listItem {
+  margin: 0;
+  padding: 0;
+}
+
+/* Blockquotes */
+.blockquote {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--gray-6);
+}
+
+/* Links */
+.link {
+  color: var(--accent-9);
+  text-decoration: underline;
+}
+
+.link:hover {
+  color: var(--accent-10);
+}
+
+/* Tables */
+.table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: var(--space-2) 0;
+}
+
+.thead {
+  border-bottom: 1px solid var(--gray-6);
+}
+
+.th {
+  padding: var(--space-1) var(--space-2);
+  text-align: left;
+  font-weight: 600;
+  border: 1px solid var(--gray-6);
+}
+
+.td {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--gray-6);
+}

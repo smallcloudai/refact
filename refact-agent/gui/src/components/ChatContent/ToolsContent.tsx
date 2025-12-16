@@ -37,26 +37,67 @@ import { selectFeatures } from "../../features/Config/configSlice";
 import { isRawTextDocToolCall } from "../Tools/types";
 import { TextDocTool } from "../Tools/Textdoc";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
+import { ToolMarkdown } from "../Markdown/ToolMarkdown";
 import classNames from "classnames";
 import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
 import { FadedButton } from "../Buttons";
 import { AnimatedText } from "../Text";
+
 type ResultProps = {
   children: string;
   isInsideScrollArea?: boolean;
   onClose?: () => void;
 };
 
+function looksLikeMarkdown(text: string): boolean {
+  // Strong signals to avoid false positives on logs/stack traces
+  if (/```/.test(text)) return true; // fenced code blocks
+  if (/\[[^\]]+\]\([^)]+\)/.test(text)) return true; // [text](url)
+  if (/^#{1,6}\s+\S/m.test(text)) return true; // headings
+  if (/^\s*([-*+])\s+\S/m.test(text)) return true; // unordered lists
+  if (/^\s*\d+\.\s+\S/m.test(text)) return true; // ordered lists
+
+  // Table detection: header row + separator row
+  const hasTableHeader = /^\s*\|.+\|\s*$/m.test(text);
+  const hasTableSep = /^\s*\|[\s:|-]+\|\s*$/m.test(text);
+  if (hasTableHeader && hasTableSep) return true;
+
+  return false;
+}
+
+const MAX_MD_RENDER_CHARS = 50_000;
+
 const Result: React.FC<ResultProps> = ({ children, onClose }) => {
   const lines = children.split("\n");
+
+  const shouldRenderMarkdown =
+    children.length <= MAX_MD_RENDER_CHARS && looksLikeMarkdown(children);
+
+  // Extract base styles from resultStyle theme
+  const hljsBase = (resultStyle as unknown as { hljs?: React.CSSProperties })
+    .hljs;
+
   return (
     <Reveal defaultOpen={lines.length < 9} isRevealingCode onClose={onClose}>
-      <MarkdownCodeBlock
-        className={classNames(styles.tool_result)}
-        style={resultStyle}
-      >
-        {children}
-      </MarkdownCodeBlock>
+      {shouldRenderMarkdown ? (
+        <Text size="2">
+          <Box
+            className={classNames(styles.tool_result, styles.tool_result_markdown)}
+            style={hljsBase}
+          >
+            <ToolMarkdown style={resultStyle}>
+              {children}
+            </ToolMarkdown>
+          </Box>
+        </Text>
+      ) : (
+        <MarkdownCodeBlock
+          className={classNames(styles.tool_result)}
+          style={resultStyle}
+        >
+          {children}
+        </MarkdownCodeBlock>
+      )}
     </Reveal>
   );
 };
