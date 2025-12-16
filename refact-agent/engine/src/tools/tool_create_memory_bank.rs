@@ -336,7 +336,7 @@ const MB_SYSTEM_PROMPT: &str = r###"• Objective:
 • Operational Constraint:
   – Do NOT call create_knowledge() until instructed."###;
 
-const MB_EXPERT_WRAP_UP: &str = r###"Call create_knowledge() now with your complete and full analysis from the previous step if you haven't called it yet. Otherwise just type "Finished"."###;
+const MB_EXPERT_WRAP_UP: &str = r###"Call create_knowledge(tags, content) now with your complete and full analysis from the previous step if you haven't called it yet. Use appropriate tags like ["architecture", "module-name", "patterns"]. Otherwise just type "Finished"."###;
 
 impl ToolCreateMemoryBank {
     fn build_step_prompt(
@@ -497,8 +497,8 @@ impl Tool for ToolCreateMemoryBank {
                 config_path: self.config_path.clone(),
             },
             agentic: true,
-            experimental: true,
-            description: "Gathers information about the project structure (modules, file relations, classes, etc.) and saves this data into the memory bank.".into(),
+            experimental: false,
+            description: "Gathers information about the project structure (modules, file relations, classes, etc.) and saves this data into the knowledge base.".into(),
             parameters: Vec::new(),
             parameters_required: Vec::new(),
         }

@@ -23,8 +23,7 @@ pub async fn handle_v1_set_active_group_id(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
     gcx.write().await.active_group_id = Some(post.group_id);
-    crate::cloud::threads_sub::trigger_threads_subscription_restart(gcx.clone()).await;
-    
+
     Ok(Response::builder().status(StatusCode::OK).body(Body::from(
         serde_json::to_string(&serde_json::json!({ "success": true })).unwrap()
     )).unwrap())

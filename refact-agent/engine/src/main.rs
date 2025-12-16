@@ -62,7 +62,6 @@ mod http;
 mod integrations;
 mod privacy;
 mod git;
-mod cloud;
 mod agentic;
 mod memories;
 mod files_correction_cache;

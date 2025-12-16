@@ -27,17 +27,25 @@ impl Tool for ToolCreateKnowledge {
             },
             agentic: true,
             experimental: false,
-            description: "Creates a new knowledge entry in the vector database to help with future tasks.".to_string(),
+            description: "Creates a new knowledge entry as a markdown file in the project's .refact_knowledge folder.".to_string(),
             parameters: vec![
                 ToolParam {
-                    name: "knowledge_entry".to_string(),
+                    name: "tags".to_string(),
                     param_type: "string".to_string(),
-                    description: "The detailed knowledge content to store. Include comprehensive information about implementation details, code patterns, architectural decisions, troubleshooting steps, or solution approaches. Document what you did, how you did it, why you made certain choices, and any important observations or lessons learned. This field should contain the rich, detailed content that future searches will retrieve.".to_string(),
-                }
+                    description: "Comma-separated tags for categorizing the knowledge entry, e.g. \"architecture, patterns, rust\"".to_string(),
+                },
+                ToolParam {
+                    name: "filenames".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Comma-separated list of related file paths that this knowledge entry documents or references.".to_string(),
+                },
+                ToolParam {
+                    name: "content".to_string(),
+                    param_type: "string".to_string(),
+                    description: "The knowledge content to store. Include comprehensive information about implementation details, code patterns, architectural decisions, or solutions.".to_string(),
+                },
             ],
-            parameters_required: vec![
-                "knowledge_entry".to_string(),
-            ],
+            parameters_required: vec!["content".to_string()],
         }
     }
 
@@ -47,36 +55,48 @@ impl Tool for ToolCreateKnowledge {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        info!("run @create-knowledge with args: {:?}", args);
-        let gcx = {
-            let ccx_locked = ccx.lock().await;
-            ccx_locked.global_context.clone()
-        };
-        let knowledge_entry = match args.get("knowledge_entry") {
-            Some(Value::String(s)) => s.clone(),
-            Some(v) => return Err(format!("argument `knowledge_entry` is not a string: {:?}", v)),
-            None => return Err("argument `knowledge_entry` is missing".to_string())
-        };
-        crate::memories::memories_add(
-            gcx.clone(),
-            "knowledge-entry",
-            &knowledge_entry,
-            false
-        ).await.map_err(|e| format!("Failed to store knowledge: {e}"))?;
+        info!("create_knowledge {:?}", args);
 
-        let mut results = vec![];
-        results.push(ContextEnum::ChatMessage(ChatMessage {
+        let gcx = ccx.lock().await.global_context.clone();
+
+        let content = match args.get("content") {
+            Some(Value::String(s)) => s.clone(),
+            Some(v) => return Err(format!("argument `content` is not a string: {:?}", v)),
+            None => return Err("argument `content` is missing".to_string()),
+        };
+
+        let tags: Vec<String> = match args.get("tags") {
+            Some(Value::String(s)) => s.split(',')
+                .map(|t| t.trim().to_string())
+                .filter(|t| !t.is_empty())
+                .collect(),
+            Some(Value::Array(arr)) => arr.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect(),
+            _ => vec!["knowledge".to_string()],
+        };
+        let tags = if tags.is_empty() { vec!["knowledge".to_string()] } else { tags };
+
+        let filenames: Vec<String> = match args.get("filenames") {
+            Some(Value::String(s)) => s.split(',')
+                .map(|f| f.trim().to_string())
+                .filter(|f| !f.is_empty())
+                .collect(),
+            _ => vec![],
+        };
+
+        let file_path = crate::memories::memories_add(gcx, &tags, &filenames, &content).await?;
+
+        Ok((false, vec![ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: ChatContent::SimpleText("Knowledge entry created successfully".to_string()),
+            content: ChatContent::SimpleText(format!("Knowledge entry created: {}", file_path.display())),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
-        }));
-
-        Ok((false, results))
+        })]))
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
-        vec!["knowledge".to_string()]
+        vec![]
     }
 }

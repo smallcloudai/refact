@@ -9,16 +9,13 @@ use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::memories::memories_search;
 
-/// @knowledge-load command - loads knowledge entries by search key or memory ID
 pub struct AtLoadKnowledge {
     params: Vec<Box<dyn AtParam>>,
 }
 
 impl AtLoadKnowledge {
     pub fn new() -> Self {
-        AtLoadKnowledge {
-            params: vec![],
-        }
+        AtLoadKnowledge { params: vec![] }
     }
 }
 
@@ -38,31 +35,37 @@ impl AtCommand for AtLoadKnowledge {
             return Err("Usage: @knowledge-load <search_key>".to_string());
         }
 
-        let search_key = args.iter().map(|x| x.text.clone()).join(" ").to_string();
-        let gcx = {
-            let ccx_locked = ccx.lock().await;
-            ccx_locked.global_context.clone()
-        };
+        let search_key = args.iter().map(|x| x.text.clone()).join(" ");
+        let gcx = ccx.lock().await.global_context.clone();
 
-        let mem_top_n = 5;
-        let memories = memories_search(gcx.clone(), &search_key, mem_top_n).await?;
+        let memories = memories_search(gcx, &search_key, 5).await?;
         let mut seen_memids = HashSet::new();
         let unique_memories: Vec<_> = memories.into_iter()
-            .filter(|m| seen_memids.insert(m.iknow_id.clone()))
+            .filter(|m| seen_memids.insert(m.memid.clone()))
             .collect();
-        let mut results = String::new();
-        for memory in unique_memories {
-            let mut content = String::new();
-            content.push_str(&format!("🗃️{}\n", memory.iknow_id));
-            content.push_str(&memory.iknow_memory);
-            results.push_str(&content);
-        };
+
+        let results = unique_memories.iter().map(|m| {
+            let mut result = String::new();
+            if let Some(path) = &m.file_path {
+                result.push_str(&format!("📄 {}", path.display()));
+                if let Some((start, end)) = m.line_range {
+                    result.push_str(&format!(":{}-{}", start, end));
+                }
+                result.push('\n');
+            }
+            if let Some(title) = &m.title {
+                result.push_str(&format!("📌 {}\n", title));
+            }
+            result.push_str(&m.content);
+            result.push_str("\n\n");
+            result
+        }).collect::<String>();
 
         let context = ContextEnum::ChatMessage(ChatMessage::new("plain_text".to_string(), results));
         Ok((vec![context], "".to_string()))
     }
 
     fn depends_on(&self) -> Vec<String> {
-        vec!["knowledge".to_string()]
+        vec![]
     }
 }

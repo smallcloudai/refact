@@ -10,11 +10,9 @@ use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, Too
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::memories::memories_search;
 
-
 pub struct ToolGetKnowledge {
     pub config_path: String,
 }
-
 
 #[async_trait]
 impl Tool for ToolGetKnowledge {
@@ -30,12 +28,12 @@ impl Tool for ToolGetKnowledge {
             },
             agentic: true,
             experimental: false,
-            description: "Fetches successful trajectories to help you accomplish your task. Call each time you have a new task to increase your chances of success.".to_string(),
+            description: "Searches project knowledge base for relevant information. Use this to find existing documentation, patterns, decisions, and solutions.".to_string(),
             parameters: vec![
                 ToolParam {
                     name: "search_key".to_string(),
                     param_type: "string".to_string(),
-                    description: "Search keys for the knowledge database. Write combined elements from all fields (tools, project components, objectives, and language/framework). This field is used for vector similarity search.".to_string(),
+                    description: "Search query for the knowledge database. Describe what you're looking for.".to_string(),
                 }
             ],
             parameters_required: vec!["search_key".to_string()],
@@ -48,49 +46,57 @@ impl Tool for ToolGetKnowledge {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        info!("run @get-knowledge {:?}", args);
+        info!("knowledge search {:?}", args);
 
-        let (gcx, _top_n) = {
-            let ccx_locked = ccx.lock().await;
-            (ccx_locked.global_context.clone(), ccx_locked.top_n)
-        };
+        let gcx = ccx.lock().await.global_context.clone();
 
         let search_key = match args.get("search_key") {
             Some(Value::String(s)) => s.clone(),
-            Some(v) => { return Err(format!("argument `search_key` is not a string: {:?}", v)) },
-            None => { return Err("argument `search_key` is missing".to_string()) }
+            Some(v) => return Err(format!("argument `search_key` is not a string: {:?}", v)),
+            None => return Err("argument `search_key` is missing".to_string()),
         };
 
-        let mem_top_n = 5;
-        let memories = memories_search(gcx.clone(), &search_key, mem_top_n).await?;
-        
+        let memories = memories_search(gcx, &search_key, 5).await?;
+
         let mut seen_memids = HashSet::new();
         let unique_memories: Vec<_> = memories.into_iter()
-            .filter(|m| seen_memids.insert(m.iknow_id.clone()))
+            .filter(|m| seen_memids.insert(m.memid.clone()))
             .collect();
 
-        let memories_str = unique_memories.iter().map(|m| {
-            let payload: String = m.iknow_memory.clone();
-            let mut combined = String::new();
-            combined.push_str(&format!("🗃️{}\n", m.iknow_id));
-            combined.push_str(&payload);
-            combined.push_str("\n\n");
-            combined
-        }).collect::<String>();
+        let memories_str = if unique_memories.is_empty() {
+            "No relevant knowledge found.".to_string()
+        } else {
+            unique_memories.iter().map(|m| {
+                let mut result = String::new();
+                if let Some(path) = &m.file_path {
+                    result.push_str(&format!("📄 {}", path.display()));
+                    if let Some((start, end)) = m.line_range {
+                        result.push_str(&format!(":{}-{}", start, end));
+                    }
+                    result.push('\n');
+                }
+                if let Some(title) = &m.title {
+                    result.push_str(&format!("📌 {}\n", title));
+                }
+                if !m.tags.is_empty() {
+                    result.push_str(&format!("🏷️ {}\n", m.tags.join(", ")));
+                }
+                result.push_str(&m.content);
+                result.push_str("\n\n");
+                result
+            }).collect()
+        };
 
-        let mut results = vec![];
-        results.push(ContextEnum::ChatMessage(ChatMessage {
+        Ok((false, vec![ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
             content: ChatContent::SimpleText(memories_str),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
-        }));
-
-        Ok((false, results))
+        })]))
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
-        vec!["knowledge".to_string()]
+        vec![]
     }
 }
