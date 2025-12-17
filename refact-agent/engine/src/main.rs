@@ -65,6 +65,7 @@ mod git;
 mod agentic;
 mod memories;
 mod files_correction_cache;
+mod knowledge_graph;
 pub mod constants;
 
 #[tokio::main]

@@ -7,57 +7,9 @@ use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 use crate::vecdb::vdb_structs::SplitResult;
 use crate::ast::chunk_utils::official_text_hashing_function;
+use crate::knowledge_graph::KnowledgeFrontmatter;
 
-#[derive(Debug, Clone, Default)]
-pub struct MarkdownFrontmatter {
-    pub title: Option<String>,
-    pub tags: Vec<String>,
-    pub created: Option<String>,
-    pub updated: Option<String>,
-}
-
-impl MarkdownFrontmatter {
-    pub fn parse(content: &str) -> (Self, usize) {
-        let mut frontmatter = Self::default();
-        let mut end_offset = 0;
-
-        if content.starts_with("---") {
-            if let Some(end_idx) = content[3..].find("\n---") {
-                let yaml_content = &content[3..3 + end_idx];
-                end_offset = 3 + end_idx + 4;
-                if content.len() > end_offset && content.as_bytes()[end_offset] == b'\n' {
-                    end_offset += 1;
-                }
-
-                for line in yaml_content.lines() {
-                    let line = line.trim();
-                    if let Some(pos) = line.find(':') {
-                        let key = line[..pos].trim();
-                        let value = line[pos + 1..].trim().trim_matches('"').trim_matches('\'');
-                        match key {
-                            "title" => frontmatter.title = Some(value.to_string()),
-                            "created" => frontmatter.created = Some(value.to_string()),
-                            "updated" => frontmatter.updated = Some(value.to_string()),
-                            "tags" => {
-                                if value.starts_with('[') && value.ends_with(']') {
-                                    frontmatter.tags = value[1..value.len() - 1]
-                                        .split(',')
-                                        .map(|s| s.trim().trim_matches('"').trim_matches('\'').to_string())
-                                        .filter(|s| !s.is_empty())
-                                        .collect();
-                                } else if !value.is_empty() {
-                                    frontmatter.tags = vec![value.to_string()];
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            }
-        }
-        (frontmatter, end_offset)
-    }
-}
+pub use crate::knowledge_graph::KnowledgeFrontmatter as MarkdownFrontmatter;
 
 #[derive(Debug, Clone)]
 struct MarkdownSection {
@@ -111,13 +63,19 @@ impl MarkdownFileSplitter {
         Ok(results)
     }
 
-    fn format_frontmatter_chunk(&self, fm: &MarkdownFrontmatter) -> String {
+    fn format_frontmatter_chunk(&self, fm: &KnowledgeFrontmatter) -> String {
         let mut parts = Vec::new();
         if let Some(title) = &fm.title {
             parts.push(format!("Title: {}", title));
         }
         if !fm.tags.is_empty() {
             parts.push(format!("Tags: {}", fm.tags.join(", ")));
+        }
+        if let Some(kind) = &fm.kind {
+            parts.push(format!("Kind: {}", kind));
+        }
+        if !fm.filenames.is_empty() {
+            parts.push(format!("Files: {}", fm.filenames.join(", ")));
         }
         parts.join("\n")
     }
@@ -250,21 +208,25 @@ mod tests {
 title: "Test Document"
 created: 2024-12-17
 tags: ["rust", "testing"]
+filenames: ["src/main.rs"]
+kind: code
 ---
 
 # Hello World
 "#;
-        let (fm, offset) = MarkdownFrontmatter::parse(content);
+        let (fm, offset) = KnowledgeFrontmatter::parse(content);
         assert_eq!(fm.title, Some("Test Document".to_string()));
         assert_eq!(fm.tags, vec!["rust", "testing"]);
         assert_eq!(fm.created, Some("2024-12-17".to_string()));
+        assert_eq!(fm.filenames, vec!["src/main.rs"]);
+        assert_eq!(fm.kind, Some("code".to_string()));
         assert!(offset > 0);
     }
 
     #[test]
     fn test_frontmatter_no_frontmatter() {
         let content = "# Just a heading\n\nSome content";
-        let (fm, offset) = MarkdownFrontmatter::parse(content);
+        let (fm, offset) = KnowledgeFrontmatter::parse(content);
         assert!(fm.title.is_none());
         assert!(fm.tags.is_empty());
         assert_eq!(offset, 0);
