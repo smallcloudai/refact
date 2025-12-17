@@ -9,6 +9,7 @@ use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, Too
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
+use crate::memories::{memories_add_enriched, EnrichmentParams};
 
 pub struct ToolDeepResearch {
     pub config_path: String,
@@ -190,6 +191,23 @@ impl Tool for ToolDeepResearch {
 
         let final_message = format!("# Deep Research Report\n\n{}", research_result.content.content_text_only());
         tracing::info!("Deep research completed");
+
+        let title = if research_query.len() > 80 {
+            format!("{}...", &research_query[..80])
+        } else {
+            research_query.clone()
+        };
+        let enrichment_params = EnrichmentParams {
+            base_tags: vec!["research".to_string(), "deep-research".to_string()],
+            base_filenames: vec![],
+            base_kind: "research".to_string(),
+            base_title: Some(title),
+        };
+        if let Err(e) = memories_add_enriched(ccx.clone(), &final_message, enrichment_params).await {
+            tracing::warn!("Failed to create enriched memory from deep research: {}", e);
+        } else {
+            tracing::info!("Created enriched memory from deep research");
+        }
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {

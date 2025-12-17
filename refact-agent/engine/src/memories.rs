@@ -1,18 +1,23 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use chrono::{Local, Duration};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
 use tokio::fs;
-use tracing::info;
+use tracing::{info, warn};
 use uuid::Uuid;
 use walkdir::WalkDir;
 
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::file_filter::KNOWLEDGE_FOLDER_NAME;
 use crate::files_correction::get_project_dirs;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
-use crate::global_context::GlobalContext;
+use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
 use crate::knowledge_graph::kg_structs::KnowledgeFrontmatter;
+use crate::knowledge_graph::kg_subchat::{enrich_knowledge_metadata, check_deprecation};
+use crate::knowledge_graph::build_knowledge_graph;
 use crate::vecdb::vdb_structs::VecdbSearch;
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -323,4 +328,172 @@ pub async fn archive_document(gcx: Arc<ARwLock<GlobalContext>>, doc_path: &PathB
     info!("Archived document: {} -> {}", doc_path.display(), archive_path.display());
 
     Ok(archive_path)
+}
+
+fn extract_entities(content: &str) -> Vec<String> {
+    let backtick_re = Regex::new(r"`([a-zA-Z_][a-zA-Z0-9_:]*(?:::[a-zA-Z_][a-zA-Z0-9_]*)*)`").unwrap();
+    backtick_re.captures_iter(content)
+        .map(|c| c.get(1).unwrap().as_str().to_string())
+        .filter(|e| e.len() >= 3 && e.len() <= 100)
+        .collect()
+}
+
+fn extract_file_paths(content: &str) -> Vec<String> {
+    let path_re = Regex::new(r"(?:^|[\s`])((?:[a-zA-Z0-9_-]+/)+[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+)").unwrap();
+    path_re.captures_iter(content)
+        .map(|c| c.get(1).unwrap().as_str().to_string())
+        .collect()
+}
+
+pub struct EnrichmentParams {
+    pub base_tags: Vec<String>,
+    pub base_filenames: Vec<String>,
+    pub base_kind: String,
+    pub base_title: Option<String>,
+}
+
+pub async fn memories_add_enriched(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    content: &str,
+    params: EnrichmentParams,
+) -> Result<PathBuf, String> {
+    let gcx = ccx.lock().await.global_context.clone();
+
+    let entities = extract_entities(content);
+    let detected_paths = extract_file_paths(content);
+
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await
+        .map_err(|e| format!("Failed to load caps: {}", e.message))?;
+    let light_model = if caps.defaults.chat_light_model.is_empty() {
+        caps.defaults.chat_default_model.clone()
+    } else {
+        caps.defaults.chat_light_model.clone()
+    };
+
+    let kg = build_knowledge_graph(gcx.clone()).await;
+
+    let candidate_files: Vec<String> = {
+        let mut files = params.base_filenames.clone();
+        files.extend(detected_paths);
+        files.into_iter().take(30).collect()
+    };
+
+    let candidate_docs: Vec<(String, String)> = kg.active_docs()
+        .take(20)
+        .map(|d| {
+            let id = d.frontmatter.id.clone().unwrap_or_else(|| d.path.to_string_lossy().to_string());
+            let title = d.frontmatter.title.clone().unwrap_or_else(|| "Untitled".to_string());
+            (id, title)
+        })
+        .collect();
+
+    let enrichment = enrich_knowledge_metadata(
+        ccx.clone(),
+        &light_model,
+        content,
+        &entities,
+        &candidate_files,
+        &candidate_docs,
+    ).await;
+
+    let (final_title, final_tags, final_filenames, final_kind, final_links, review_days) = match enrichment {
+        Ok(e) => {
+            let mut tags = params.base_tags.clone();
+            tags.extend(e.tags);
+            tags.sort();
+            tags.dedup();
+
+            let mut files = params.base_filenames.clone();
+            files.extend(e.filenames);
+            files.sort();
+            files.dedup();
+
+            let kind = e.kind.unwrap_or_else(|| params.base_kind.clone());
+
+            (
+                e.title.or(params.base_title.clone()).or_else(|| content.lines().next().map(|l| l.trim_start_matches('#').trim().to_string())),
+                if tags.is_empty() { vec![params.base_kind.clone()] } else { tags },
+                files,
+                kind,
+                e.links,
+                e.review_after_days.unwrap_or(90),
+            )
+        }
+        Err(e) => {
+            warn!("Enrichment failed, using defaults: {}", e);
+            let tags = if params.base_tags.is_empty() { vec![params.base_kind.clone()] } else { params.base_tags };
+            (
+                params.base_title.or_else(|| content.lines().next().map(|l| l.trim_start_matches('#').trim().to_string())),
+                tags,
+                params.base_filenames,
+                params.base_kind,
+                vec![],
+                90,
+            )
+        }
+    };
+
+    let now = Local::now();
+    let frontmatter = KnowledgeFrontmatter {
+        id: Some(Uuid::new_v4().to_string()),
+        title: final_title.clone(),
+        tags: final_tags.clone(),
+        created: Some(now.format("%Y-%m-%d").to_string()),
+        updated: Some(now.format("%Y-%m-%d").to_string()),
+        filenames: final_filenames.clone(),
+        links: final_links,
+        kind: Some(final_kind),
+        status: Some("active".to_string()),
+        superseded_by: None,
+        deprecated_at: None,
+        review_after: Some((now + Duration::days(review_days)).format("%Y-%m-%d").to_string()),
+    };
+
+    let file_path = memories_add(gcx.clone(), &frontmatter, content).await?;
+    let new_doc_id = frontmatter.id.clone().unwrap();
+
+    let deprecation_candidates = kg.get_deprecation_candidates(
+        &final_tags,
+        &final_filenames,
+        &entities,
+        Some(&new_doc_id),
+    );
+
+    if !deprecation_candidates.is_empty() {
+        let snippet: String = content.chars().take(500).collect();
+
+        match check_deprecation(
+            ccx.clone(),
+            &light_model,
+            final_title.as_deref().unwrap_or("Untitled"),
+            &final_tags,
+            &final_filenames,
+            &snippet,
+            &deprecation_candidates,
+        ).await {
+            Ok(result) => {
+                for decision in result.deprecate {
+                    if decision.confidence >= 0.75 {
+                        if let Some(doc) = kg.get_doc_by_id(&decision.target_id) {
+                            if let Err(e) = deprecate_document(
+                                gcx.clone(),
+                                &doc.path,
+                                Some(&new_doc_id),
+                                &decision.reason,
+                            ).await {
+                                warn!("Failed to deprecate {}: {}", decision.target_id, e);
+                            } else {
+                                info!("Deprecated {} (confidence: {:.2}): {}", decision.target_id, decision.confidence, decision.reason);
+                            }
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                warn!("Deprecation check failed: {}", e);
+            }
+        }
+    }
+
+    Ok(file_path)
 }
