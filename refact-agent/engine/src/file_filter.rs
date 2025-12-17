@@ -6,6 +6,10 @@ use std::path::PathBuf;
 const LARGE_FILE_SIZE_THRESHOLD: u64 = 4096*1024; // 4Mb files
 const SMALL_FILE_SIZE_THRESHOLD: u64 = 5;        // 5 Bytes
 
+pub const KNOWLEDGE_FOLDER_NAME: &str = ".refact_knowledge";
+
+const ALLOWED_HIDDEN_FOLDERS: &[&str] = &[KNOWLEDGE_FOLDER_NAME];
+
 pub const SOURCE_FILE_EXTENSIONS: &[&str] = &[
     "c", "cpp", "cc", "h", "hpp", "cs", "java", "py", "rb", "go", "rs", "swift",
     "php", "js", "jsx", "ts", "tsx", "lua", "pl", "r", "sh", "bat", "cmd", "ps1",
@@ -16,12 +20,22 @@ pub const SOURCE_FILE_EXTENSIONS: &[&str] = &[
     "gradle", "liquid"
 ];
 
+fn is_in_allowed_hidden_folder(path: &PathBuf) -> bool {
+    path.ancestors().any(|ancestor| {
+        ancestor.file_name()
+            .map(|name| ALLOWED_HIDDEN_FOLDERS.contains(&name.to_string_lossy().as_ref()))
+            .unwrap_or(false)
+    })
+}
+
 pub fn is_valid_file(path: &PathBuf, allow_hidden_folders: bool, ignore_size_thresholds: bool) -> Result<(), Box<dyn std::error::Error>> {
     if !path.is_file() {
         return Err("Path is not a file".into());
     }
 
-    if !allow_hidden_folders && path.ancestors().any(|ancestor| {
+    let in_allowed_hidden = is_in_allowed_hidden_folder(path);
+
+    if !allow_hidden_folders && !in_allowed_hidden && path.ancestors().any(|ancestor| {
         ancestor.file_name()
             .map(|name| name.to_string_lossy().starts_with('.'))
             .unwrap_or(false)

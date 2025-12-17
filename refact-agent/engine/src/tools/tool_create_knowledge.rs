@@ -8,6 +8,7 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
+use crate::memories::{memories_add_enriched, EnrichmentParams};
 
 pub struct ToolCreateKnowledge {
     pub config_path: String,
@@ -27,17 +28,25 @@ impl Tool for ToolCreateKnowledge {
             },
             agentic: true,
             experimental: false,
-            description: "Creates a new knowledge entry in the vector database to help with future tasks.".to_string(),
+            description: "Creates a new knowledge entry. Uses AI to enrich metadata and check for outdated documents.".to_string(),
             parameters: vec![
                 ToolParam {
-                    name: "knowledge_entry".to_string(),
+                    name: "content".to_string(),
                     param_type: "string".to_string(),
-                    description: "The detailed knowledge content to store. Include comprehensive information about implementation details, code patterns, architectural decisions, troubleshooting steps, or solution approaches. Document what you did, how you did it, why you made certain choices, and any important observations or lessons learned. This field should contain the rich, detailed content that future searches will retrieve.".to_string(),
-                }
+                    description: "The knowledge content to store.".to_string(),
+                },
+                ToolParam {
+                    name: "tags".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Comma-separated tags (optional, will be auto-enriched).".to_string(),
+                },
+                ToolParam {
+                    name: "filenames".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Comma-separated related file paths (optional, will be auto-enriched).".to_string(),
+                },
             ],
-            parameters_required: vec![
-                "knowledge_entry".to_string(),
-            ],
+            parameters_required: vec!["content".to_string()],
         }
     }
 
@@ -47,33 +56,42 @@ impl Tool for ToolCreateKnowledge {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        info!("run @create-knowledge with args: {:?}", args);
-        let gcx = {
-            let ccx_locked = ccx.lock().await;
-            ccx_locked.global_context.clone()
-        };
-        let knowledge_entry = match args.get("knowledge_entry") {
-            Some(Value::String(s)) => s.clone(),
-            Some(v) => return Err(format!("argument `knowledge_entry` is not a string: {:?}", v)),
-            None => return Err("argument `knowledge_entry` is missing".to_string())
-        };
-        crate::memories::memories_add(
-            gcx.clone(),
-            "knowledge-entry",
-            &knowledge_entry,
-            false
-        ).await.map_err(|e| format!("Failed to store knowledge: {e}"))?;
+        info!("create_knowledge {:?}", args);
 
-        let mut results = vec![];
-        results.push(ContextEnum::ChatMessage(ChatMessage {
+        let content = match args.get("content") {
+            Some(Value::String(s)) => s.clone(),
+            Some(v) => return Err(format!("argument `content` is not a string: {:?}", v)),
+            None => return Err("argument `content` is missing".to_string()),
+        };
+
+        let user_tags: Vec<String> = match args.get("tags") {
+            Some(Value::String(s)) => s.split(',').map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).collect(),
+            _ => vec![],
+        };
+
+        let user_filenames: Vec<String> = match args.get("filenames") {
+            Some(Value::String(s)) => s.split(',').map(|f| f.trim().to_string()).filter(|f| !f.is_empty()).collect(),
+            _ => vec![],
+        };
+
+        let enrichment_params = EnrichmentParams {
+            base_tags: user_tags,
+            base_filenames: user_filenames,
+            base_kind: "knowledge".to_string(),
+            base_title: None,
+        };
+
+        let file_path = memories_add_enriched(ccx.clone(), &content, enrichment_params).await?;
+
+        let result_msg = format!("Knowledge entry created: {}", file_path.display());
+
+        Ok((false, vec![ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: ChatContent::SimpleText("Knowledge entry created successfully".to_string()),
+            content: ChatContent::SimpleText(result_msg),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
-        }));
-
-        Ok((false, results))
+        })]))
     }
 
     fn tool_depends_on(&self) -> Vec<String> {

@@ -99,6 +99,7 @@ url = "2.4.1"
 uuid = { version = "1", features = ["v4", "serde"] }
 walkdir = "2.3"
 which = "7.0.1"
+petgraph = "0.6"
 zerocopy = "0.8.14"
 
 # There you can use a local copy

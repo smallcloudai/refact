@@ -19,6 +19,7 @@ use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::tokens::count_text_tokens_with_fallback;
+use crate::memories::{memories_add_enriched, EnrichmentParams};
 
 pub struct ToolStrategicPlanning {
     pub config_path: String,
@@ -318,6 +319,22 @@ impl Tool for ToolStrategicPlanning {
         let (_, initial_solution) = result?;
         let final_message = format!("# Solution\n{}", initial_solution.content.content_text_only());
         tracing::info!("strategic planning response (combined):\n{}", final_message);
+
+        let filenames: Vec<String> = important_paths.iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect();
+        let enrichment_params = EnrichmentParams {
+            base_tags: vec!["planning".to_string(), "strategic".to_string()],
+            base_filenames: filenames,
+            base_kind: "decision".to_string(),
+            base_title: Some("Strategic Plan".to_string()),
+        };
+        if let Err(e) = memories_add_enriched(ccx.clone(), &final_message, enrichment_params).await {
+            tracing::warn!("Failed to create enriched memory from strategic planning: {}", e);
+        } else {
+            tracing::info!("Created enriched memory from strategic planning");
+        }
+
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),

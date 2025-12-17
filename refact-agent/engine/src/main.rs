@@ -62,10 +62,10 @@ mod http;
 mod integrations;
 mod privacy;
 mod git;
-mod cloud;
 mod agentic;
 mod memories;
 mod files_correction_cache;
+mod knowledge_graph;
 pub mod constants;
 
 #[tokio::main]
