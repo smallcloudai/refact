@@ -3,3 +3,17 @@
 .radix-themes {
   /* --default-font-family: Space Grotesk, sans-serif; */
 }
+
+/** Force dark tooltips in dark theme **/
+:where(.radix-themes) :where(.rt-TooltipContent) {
+  background-color: #1a1a1a !important;
+  color: #fcfcfc !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/** Light theme tooltips **/
+:where(.radix-themes[data-appearance="light"]) :where(.rt-TooltipContent) {
+  background-color: #fcfcfc !important;
+  color: #1a1a1a !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}

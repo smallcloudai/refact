@@ -37,12 +37,7 @@ export const ResendButton = () => {
 
   return (
     <Tooltip content="Resend last messages">
-      <IconButton
-        title="Resend last messages"
-        variant="ghost"
-        onClick={handleResend}
-        size="2"
-      >
+      <IconButton variant="ghost" onClick={handleResend} size="2">
         <ResendIcon />
       </IconButton>
     </Tooltip>
