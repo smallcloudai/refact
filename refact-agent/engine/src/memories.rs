@@ -280,6 +280,8 @@ pub async fn save_trajectory(
         vecdb.vectorizer_enqueue_files(&vec![file_path.to_string_lossy().to_string()], true).await;
     }
 
+    let _ = build_knowledge_graph(gcx).await;
+
     Ok(file_path)
 }
 
