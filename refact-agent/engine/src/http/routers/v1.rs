@@ -35,6 +35,7 @@ use crate::http::routers::v1::providers::{handle_v1_providers, handle_v1_provide
     handle_v1_delete_model, handle_v1_delete_provider, handle_v1_model_default, handle_v1_completion_model_families};
 
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
+use crate::http::routers::v1::knowledge_graph::handle_v1_knowledge_graph;
 use crate::http::routers::v1::v1_integrations::{handle_v1_integration_get, handle_v1_integration_icon, handle_v1_integration_save, handle_v1_integration_delete, handle_v1_integrations, handle_v1_integrations_filtered, handle_v1_integrations_mcp_logs};
 use crate::http::routers::v1::file_edit_tools::handle_v1_file_edit_tool_dry_run;
 use crate::http::routers::v1::code_edit::handle_v1_code_edit;
@@ -69,6 +70,7 @@ mod code_edit;
 mod v1_integrations;
 pub mod vecdb;
 mod workspace;
+mod knowledge_graph;
 
 pub fn make_v1_router() -> Router {
     let builder = Router::new()
@@ -168,6 +170,7 @@ pub fn make_v1_router() -> Router {
     let builder = builder
         .route("/vdb-search", post(handle_v1_vecdb_search))
         .route("/vdb-status", get(handle_v1_vecdb_status))
+        .route("/knowledge-graph", get(handle_v1_knowledge_graph))
         .route("/trajectory-save", post(handle_v1_trajectory_save))
         .route("/trajectory-compress", post(handle_v1_trajectory_compress))
         ;

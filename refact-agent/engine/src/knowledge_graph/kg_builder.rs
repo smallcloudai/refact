@@ -98,12 +98,22 @@ pub async fn build_knowledge_graph(gcx: Arc<ARwLock<GlobalContext>>) -> Knowledg
     }
 
     graph.link_docs();
-    info!("knowledge_graph: built with {} documents, {} tags, {} file refs, {} entities",
-        doc_count,
-        graph.tag_index.len(),
-        graph.file_index.len(),
-        graph.entity_index.len()
-    );
+
+    let active_count = graph.docs.values().filter(|d| d.frontmatter.is_active()).count();
+    let deprecated_count = graph.docs.values().filter(|d| d.frontmatter.is_deprecated()).count();
+    let trajectory_count = graph.docs.values()
+        .filter(|d| d.frontmatter.kind.as_deref() == Some("trajectory"))
+        .count();
+    let code_count = graph.docs.values()
+        .filter(|d| d.frontmatter.kind.as_deref() == Some("code"))
+        .count();
+
+    info!("knowledge_graph: built successfully");
+    info!("  Documents: {} total ({} active, {} deprecated, {} trajectories, {} code)",
+        doc_count, active_count, deprecated_count, trajectory_count, code_count);
+    info!("  Tags: {}, Files: {}, Entities: {}",
+        graph.tag_index.len(), graph.file_index.len(), graph.entity_index.len());
+    info!("  Graph edges: {}", graph.graph.edge_count());
 
     graph
 }
