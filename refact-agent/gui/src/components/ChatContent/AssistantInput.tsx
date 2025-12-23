@@ -2,27 +2,18 @@ import React, { useCallback, useMemo } from "react";
 import { Markdown } from "../Markdown";
 
 import { Container, Box, Flex, Text, Link, Card } from "@radix-ui/themes";
-import { ToolCall, Usage, WebSearchCitation } from "../../services/refact";
+import { ToolCall, WebSearchCitation } from "../../services/refact";
 import { ToolContent } from "./ToolsContent";
 import { fallbackCopying } from "../../utils/fallbackCopying";
 import { telemetryApi } from "../../services/refact/telemetry";
-import { LikeButton } from "./LikeButton";
-import { ResendButton } from "./ResendButton";
 import { ReasoningContent } from "./ReasoningContent";
-import { MessageUsageInfo } from "./MessageUsageInfo";
 
 type ChatInputProps = {
   message: string | null;
   reasoningContent?: string | null;
   toolCalls?: ToolCall[] | null;
-  serverExecutedTools?: ToolCall[] | null; // Tools that were executed by the provider (srvtoolu_*)
+  serverExecutedTools?: ToolCall[] | null;
   citations?: WebSearchCitation[] | null;
-  isLast?: boolean;
-  usage?: Usage | null;
-  metering_coins_prompt?: number;
-  metering_coins_generated?: number;
-  metering_coins_cache_creation?: number;
-  metering_coins_cache_read?: number;
 };
 
 export const AssistantInput: React.FC<ChatInputProps> = ({
@@ -31,12 +22,6 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
   toolCalls,
   serverExecutedTools,
   citations,
-  isLast,
-  usage,
-  metering_coins_prompt,
-  metering_coins_generated,
-  metering_coins_cache_creation,
-  metering_coins_cache_read,
 }) => {
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
@@ -85,18 +70,8 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
     [sendTelemetryEvent],
   );
 
-  const hasMessageFirst = !reasoningContent && message;
-
   return (
     <Container position="relative">
-      <MessageUsageInfo
-        usage={usage}
-        metering_coins_prompt={metering_coins_prompt}
-        metering_coins_generated={metering_coins_generated}
-        metering_coins_cache_creation={metering_coins_cache_creation}
-        metering_coins_cache_read={metering_coins_cache_read}
-        topOffset={hasMessageFirst ? "var(--space-4)" : "0"}
-      />
       {reasoningContent && (
         <ReasoningContent
           reasoningContent={reasoningContent}
@@ -104,7 +79,7 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
         />
       )}
       {message && (
-        <Box py="4" style={{ paddingRight: "50px" }}>
+        <Box py="4">
           <Markdown canHaveInteractiveElements={true} onCopyClick={handleCopy}>
             {message}
           </Markdown>
@@ -153,20 +128,6 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
         </Card>
       )}
       {toolCalls && <ToolContent toolCalls={toolCalls} />}
-      {isLast && (
-        <Box
-          style={{
-            position: "absolute",
-            right: "var(--space-3)",
-            bottom: "0",
-          }}
-        >
-          <Flex gap="2" align="center">
-            <ResendButton />
-            <LikeButton />
-          </Flex>
-        </Box>
-      )}
     </Container>
   );
 };

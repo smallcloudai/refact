@@ -5,12 +5,10 @@ import { STUB_LINKS_FOR_CHAT_RESPONSE } from "./chat_links_response";
 import {
   TOOLS,
   CHAT_LINKS_URL,
-  KNOWLEDGE_CREATE_URL,
 } from "../services/refact/consts";
 import { STUB_TOOL_RESPONSE } from "./tools_response";
 import { GoodPollingResponse } from "../services/smallcloud/types";
 import type { LinksForChatResponse } from "../services/refact/links";
-import { SaveTrajectoryResponse } from "../services/refact/knowledge";
 import { ToolConfirmationResponse } from "../services/refact";
 
 export const goodPing: HttpHandler = http.get(
@@ -136,16 +134,7 @@ export const goodTools: HttpHandler = http.get(
   },
 );
 
-export const makeKnowledgeFromChat: HttpHandler = http.post(
-  `http://127.0.0.1:8001${KNOWLEDGE_CREATE_URL}`,
-  () => {
-    const result: SaveTrajectoryResponse = {
-      memid: "foo",
-      trajectory: "something",
-    };
-    return HttpResponse.json(result);
-  },
-);
+
 
 export const loginPollingGood: HttpHandler = http.get(
   "https://www.smallcloud.ai/v1/streamlined-login-recall-ticket",

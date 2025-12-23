@@ -49,6 +49,7 @@ import {
 import { ToolConfirmation } from "./ToolConfirmation";
 import { selectThreadConfirmation } from "../../features/Chat";
 import { AttachImagesButton, FileList } from "../Dropzone";
+import { ResendButton } from "../ChatContent/ResendButton";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import {
   selectChatError,
@@ -449,6 +450,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                     <AttachImagesButton />
                   )}
                 {/* TODO: Reserved space for microphone button coming later on */}
+                <ResendButton />
                 <SendButtonWithDropdown
                   disabled={
                     !isOnline || allDisabled || value.trim().length === 0

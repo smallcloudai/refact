@@ -1,7 +1,7 @@
 import { RootState } from "../../app/store";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
-import { COMPRESS_MESSAGES_URL, KNOWLEDGE_CREATE_URL } from "./consts";
+import { COMPRESS_MESSAGES_URL } from "./consts";
 import { type ChatMessages } from ".";
 
 export type SubscribeArgs =
@@ -68,21 +68,6 @@ export type CompressTrajectoryPost = {
   messages: ChatMessages;
 };
 
-export type SaveTrajectoryResponse = {
-  memid: string;
-  trajectory: string;
-};
-
-function isSaveTrajectoryResponse(obj: unknown): obj is SaveTrajectoryResponse {
-  if (!obj) return false;
-  if (typeof obj !== "object") return false;
-  if (!("memid" in obj) || typeof obj.memid !== "string") return false;
-  if (!("trajectory" in obj) || typeof obj.trajectory !== "string") {
-    return false;
-  }
-  return true;
-}
-
 export const knowledgeApi = createApi({
   reducerPath: "knowledgeApi",
   baseQuery: fetchBaseQuery({
@@ -95,41 +80,6 @@ export const knowledgeApi = createApi({
     },
   }),
   endpoints: (builder) => ({
-    createNewMemoryFromMessages: builder.mutation<
-      SaveTrajectoryResponse,
-      CompressTrajectoryPost
-    >({
-      async queryFn(arg, api, extraOptions, baseQuery) {
-        const messagesForLsp = formatMessagesForLsp(arg.messages);
-
-        const state = api.getState() as RootState;
-        const port = state.config.lspPort as unknown as number;
-        const url = `http://127.0.0.1:${port}${KNOWLEDGE_CREATE_URL}`;
-        const response = await baseQuery({
-          ...extraOptions,
-          url,
-          method: "POST",
-          body: { project: arg.project, messages: messagesForLsp },
-        });
-
-        if (response.error) {
-          return { error: response.error };
-        }
-
-        if (!isSaveTrajectoryResponse(response.data)) {
-          return {
-            error: {
-              status: "CUSTOM_ERROR",
-              error: `Invalid response from ${url}`,
-              data: response.data,
-            },
-          };
-        }
-
-        return { data: response.data };
-      },
-    }),
-
     compressMessages: builder.mutation<
       { goal: string; trajectory: string },
       CompressTrajectoryPost

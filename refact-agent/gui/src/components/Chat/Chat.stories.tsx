@@ -20,7 +20,6 @@ import {
   goodTools,
   noTools,
   // noChatLinks,
-  makeKnowledgeFromChat,
 } from "../../__fixtures__/msw";
 import { TourProvider } from "../../features/Tour";
 import { Flex } from "@radix-ui/themes";
@@ -161,7 +160,7 @@ export const Knowledge: Story = {
         // noChatLinks,
         chatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
       ],
     },
   },
@@ -203,7 +202,7 @@ export const EmptySpaceAtBottom: Story = {
         // noChatLinks,
         chatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
       ],
     },
   },
@@ -284,7 +283,7 @@ export const UserMessageEmptySpaceAtBottom: Story = {
         // noChatLinks,
         chatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
       ],
     },
   },
@@ -367,7 +366,7 @@ export const CompressButton: Story = {
         // noChatLinks,
         chatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
       ],
     },
   },
@@ -394,7 +393,6 @@ export const LowBalance: Story = {
       goodPrompts,
       chatLinks,
       noTools,
-      makeKnowledgeFromChat,
       lowBalance,
     },
   },

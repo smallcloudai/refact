@@ -37,7 +37,7 @@ export const ResendButton = () => {
 
   return (
     <Tooltip content="Resend last messages">
-      <IconButton variant="ghost" onClick={handleResend} size="2">
+      <IconButton variant="ghost" onClick={handleResend} size="1">
         <ResendIcon />
       </IconButton>
     </Tooltip>
@@ -47,8 +47,8 @@ export const ResendButton = () => {
 const ResendIcon: React.FC = () => {
   return (
     <svg
-      height="20"
-      width="20"
+      height="15"
+      width="15"
       viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

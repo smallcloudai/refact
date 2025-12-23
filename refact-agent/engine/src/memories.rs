@@ -252,39 +252,6 @@ async fn memories_search_fallback(
     Ok(scored_results.into_iter().take(top_n).map(|(_, r)| r).collect())
 }
 
-pub async fn save_trajectory(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    compressed_trajectory: &str,
-) -> Result<PathBuf, String> {
-    let knowledge_dir = get_knowledge_dir(gcx.clone()).await?;
-    let trajectories_dir = knowledge_dir.join("trajectories");
-    fs::create_dir_all(&trajectories_dir).await.map_err(|e| format!("Failed to create trajectories dir: {}", e))?;
-
-    let filename = generate_filename(compressed_trajectory);
-    let file_path = trajectories_dir.join(&filename);
-
-    let frontmatter = create_frontmatter(
-        compressed_trajectory.lines().next(),
-        &["trajectory".to_string()],
-        &[],
-        &[],
-        "trajectory",
-    );
-
-    let md_content = format!("{}\n\n{}", frontmatter.to_yaml(), compressed_trajectory);
-    fs::write(&file_path, &md_content).await.map_err(|e| format!("Failed to write trajectory file: {}", e))?;
-
-    info!("Saved trajectory: {}", file_path.display());
-
-    if let Some(vecdb) = gcx.read().await.vec_db.lock().await.as_ref() {
-        vecdb.vectorizer_enqueue_files(&vec![file_path.to_string_lossy().to_string()], true).await;
-    }
-
-    let _ = build_knowledge_graph(gcx).await;
-
-    Ok(file_path)
-}
-
 pub async fn deprecate_document(
     gcx: Arc<ARwLock<GlobalContext>>,
     doc_path: &PathBuf,

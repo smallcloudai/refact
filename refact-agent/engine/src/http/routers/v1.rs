@@ -13,7 +13,6 @@ use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::caps::handle_v1_ping;
 use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions};
 use crate::http::routers::v1::chat_based_handlers::{handle_v1_commit_message_from_diff, handle_v1_trajectory_compress};
-use crate::http::routers::v1::chat_based_handlers::handle_v1_trajectory_save;
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::docker::{handle_v1_docker_container_action, handle_v1_docker_container_list};
 use crate::http::routers::v1::git::{handle_v1_git_commit, handle_v1_checkpoints_preview, handle_v1_checkpoints_restore};
@@ -177,7 +176,6 @@ pub fn make_v1_router() -> Router {
         .route("/vdb-search", post(handle_v1_vecdb_search))
         .route("/vdb-status", get(handle_v1_vecdb_status))
         .route("/knowledge-graph", get(handle_v1_knowledge_graph))
-        .route("/trajectory-save", post(handle_v1_trajectory_save))
         .route("/trajectory-compress", post(handle_v1_trajectory_compress))
         .route("/trajectories", get(handle_v1_trajectories_list))
         .route("/trajectories/subscribe", get(handle_v1_trajectories_subscribe))
