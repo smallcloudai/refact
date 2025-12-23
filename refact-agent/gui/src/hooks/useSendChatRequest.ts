@@ -143,13 +143,17 @@ export const useSendChatRequest = () => {
         !isWaiting &&
         !wasInteracted &&
         isAssistantMessage(lastMessage) &&
-        lastMessage.tool_calls
+        lastMessage.tool_calls &&
+        lastMessage.tool_calls.length > 0
       ) {
         const toolCalls = lastMessage.tool_calls;
+        const firstToolCall = toolCalls[0];
+        // Safety check for incomplete tool calls (can happen after aborted streams)
+        const firstToolName = firstToolCall?.function?.name;
         if (
           !(
-            toolCalls[0].function.name &&
-            PATCH_LIKE_FUNCTIONS.includes(toolCalls[0].function.name) &&
+            firstToolName &&
+            PATCH_LIKE_FUNCTIONS.includes(firstToolName) &&
             isPatchAutomatic
           )
         ) {

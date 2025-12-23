@@ -6,9 +6,23 @@ import {
   isDiffMessage,
   isToolMessage,
   isUserMessage,
+  ChatMessages,
 } from "../../../services/refact/types";
 import { takeFromLast } from "../../../utils/takeFromLast";
-import { ChatThreadRuntime } from "./types";
+import { ChatThreadRuntime, QueuedUserMessage, ThreadConfirmation } from "./types";
+
+// Constant default values to avoid creating new references on each selector call
+const EMPTY_MESSAGES: ChatMessages = [];
+const EMPTY_QUEUED: QueuedUserMessage[] = [];
+const EMPTY_PAUSE_REASONS: string[] = [];
+const EMPTY_IMAGES: string[] = [];
+const DEFAULT_NEW_CHAT_SUGGESTED = { wasSuggested: false } as const;
+const DEFAULT_CONFIRMATION: ThreadConfirmation = {
+  pause: false,
+  pause_reasons: [],
+  status: { wasInteracted: false, confirmationStatus: true },
+};
+const DEFAULT_CONFIRMATION_STATUS = { wasInteracted: false, confirmationStatus: true } as const;
 
 export const selectCurrentThreadId = (state: RootState) => state.chat.current_thread_id;
 export const selectOpenThreadIds = (state: RootState) => state.chat.open_thread_ids;
@@ -36,10 +50,10 @@ export const selectModel = (state: RootState) =>
   state.chat.threads[state.chat.current_thread_id]?.thread.model ?? "";
 
 export const selectMessages = (state: RootState) =>
-  state.chat.threads[state.chat.current_thread_id]?.thread.messages ?? [];
+  state.chat.threads[state.chat.current_thread_id]?.thread.messages ?? EMPTY_MESSAGES;
 
 export const selectMessagesById = (state: RootState, chatId: string) =>
-  state.chat.threads[chatId]?.thread.messages ?? [];
+  state.chat.threads[chatId]?.thread.messages ?? EMPTY_MESSAGES;
 
 export const selectToolUse = (state: RootState) => state.chat.tool_use;
 
@@ -62,7 +76,7 @@ export const selectContextTokensCap = (state: RootState) =>
   state.chat.threads[state.chat.current_thread_id]?.thread.context_tokens_cap;
 
 export const selectThreadNewChatSuggested = (state: RootState) =>
-  state.chat.threads[state.chat.current_thread_id]?.thread.new_chat_suggested ?? { wasSuggested: false };
+  state.chat.threads[state.chat.current_thread_id]?.thread.new_chat_suggested ?? DEFAULT_NEW_CHAT_SUGGESTED;
 
 export const selectThreadMaximumTokens = (state: RootState) =>
   state.chat.threads[state.chat.current_thread_id]?.thread.currentMaximumContextTokens;
@@ -184,7 +198,7 @@ export const selectLastSentCompression = createSelector(
 );
 
 export const selectQueuedMessages = (state: RootState) =>
-  state.chat.threads[state.chat.current_thread_id]?.queued_messages ?? [];
+  state.chat.threads[state.chat.current_thread_id]?.queued_messages ?? EMPTY_QUEUED;
 
 export const selectQueuedMessagesCount = createSelector(
   selectQueuedMessages,
@@ -232,33 +246,22 @@ export const selectHasUncalledTools = createSelector(
 );
 
 export const selectThreadConfirmation = (state: RootState) =>
-  state.chat.threads[state.chat.current_thread_id]?.confirmation ?? {
-    pause: false,
-    pause_reasons: [],
-    status: { wasInteracted: false, confirmationStatus: true },
-  };
+  state.chat.threads[state.chat.current_thread_id]?.confirmation ?? DEFAULT_CONFIRMATION;
 
 export const selectThreadConfirmationById = (state: RootState, chatId: string) =>
-  state.chat.threads[chatId]?.confirmation ?? {
-    pause: false,
-    pause_reasons: [],
-    status: { wasInteracted: false, confirmationStatus: true },
-  };
+  state.chat.threads[chatId]?.confirmation ?? DEFAULT_CONFIRMATION;
 
 export const selectThreadPauseReasons = (state: RootState) =>
-  state.chat.threads[state.chat.current_thread_id]?.confirmation.pause_reasons ?? [];
+  state.chat.threads[state.chat.current_thread_id]?.confirmation.pause_reasons ?? EMPTY_PAUSE_REASONS;
 
 export const selectThreadPause = (state: RootState) =>
   state.chat.threads[state.chat.current_thread_id]?.confirmation.pause ?? false;
 
 export const selectThreadConfirmationStatus = (state: RootState) =>
-  state.chat.threads[state.chat.current_thread_id]?.confirmation.status ?? {
-    wasInteracted: false,
-    confirmationStatus: true,
-  };
+  state.chat.threads[state.chat.current_thread_id]?.confirmation.status ?? DEFAULT_CONFIRMATION_STATUS;
 
 export const selectThreadImages = (state: RootState) =>
-  state.chat.threads[state.chat.current_thread_id]?.attached_images ?? [];
+  state.chat.threads[state.chat.current_thread_id]?.attached_images ?? EMPTY_IMAGES;
 
 export const selectThreadImagesById = (state: RootState, chatId: string) =>
-  state.chat.threads[chatId]?.attached_images ?? [];
+  state.chat.threads[chatId]?.attached_images ?? EMPTY_IMAGES;

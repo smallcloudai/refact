@@ -890,6 +890,14 @@ export function consumeStream(
   onChunk: (chunk: Record<string, unknown>) => void,
 ) {
   const decoder = new TextDecoder();
+  let abortHandled = false;
+
+  const handleAbort = () => {
+    if (!abortHandled) {
+      abortHandled = true;
+      onAbort();
+    }
+  };
 
   function pump({
     done,
@@ -897,7 +905,7 @@ export function consumeStream(
   }: ReadableStreamReadResult<Uint8Array>): Promise<void> {
     if (done) return Promise.resolve();
     if (signal.aborted) {
-      onAbort();
+      handleAbort();
       return Promise.resolve();
     }
 
@@ -931,6 +939,13 @@ export function consumeStream(
     if (deltas.length === 0) return Promise.resolve();
 
     for (const delta of deltas) {
+      // Check abort signal before processing each chunk to prevent late chunks
+      // from corrupting state after user stops streaming
+      if (signal.aborted) {
+        handleAbort();
+        return Promise.resolve();
+      }
+
       if (!delta.startsWith("data: ")) {
         // eslint-disable-next-line no-console
         console.log("Unexpected data in streaming buf: " + delta);
@@ -974,6 +989,13 @@ export function consumeStream(
 
       onChunk(json);
     }
+
+    // Check abort before continuing to read more chunks
+    if (signal.aborted) {
+      handleAbort();
+      return Promise.resolve();
+    }
+
     return reader.read().then(pump);
   }
 
