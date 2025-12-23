@@ -1,9 +1,18 @@
 // Careful with exports that include components, it'll cause this to compile to a large file.
 import type { FileInfo } from "../features/Chat/activeFile";
+// TODO: this cause more exports than needed :/
+export {
+  type ChatThread,
+  type Chat,
+  type ToolUse,
+} from "../features/Chat/Thread/types";
+export { newChatAction } from "../features/Chat/Thread/actions";
+import { type Chat } from "../features/Chat/Thread/types";
 import type { Snippet } from "../features/Chat/selectedSnippet";
 import type { Config } from "../features/Config/configSlice";
 import type { ErrorSliceState } from "../features/Errors/errorsSlice";
 import { request, ready, receive, error } from "../features/FIM/actions";
+import type { HistoryState } from "../features/History/historySlice";
 import type { TipOfTheDayState } from "../features/TipOfTheDay";
 import type { PageSliceState } from "../features/Pages/pagesSlice";
 import type { TourState } from "../features/Tour";
@@ -18,27 +27,23 @@ export {
   setSelectedSnippet,
 } from "../features/Chat/selectedSnippet";
 export type { FimDebugData } from "../services/refact/fim";
+export type { ChatHistoryItem } from "../features/History/historySlice";
 export { addInputValue, setInputValue } from "../components/ChatForm/actions";
 export {
   setCurrentProjectInfo,
   type CurrentProjectInfo,
 } from "../features/Chat/currentProject";
 export type { TextDocToolCall } from "../components/Tools/types";
-export type { BaseMessage as ThreadMessage } from "../services/refact";
 
-// here
 export type {
+  CustomPromptsResponse,
+  CapsResponse,
   UserMessage,
   ChatMessage,
   ChatMessages,
   DiffChunk,
   ToolEditResult,
 } from "../services/refact";
-
-export type {
-  FThreadMultipleMessagesInput,
-  FThreadMessageInput,
-} from "../../generated/documents";
 
 // TODO: re-exporting from redux seems to break things :/
 export type InitialState = {
@@ -49,6 +54,8 @@ export type InitialState = {
   config: Config;
   active_file: FileInfo;
   selected_snippet: Snippet;
+  chat: Chat;
+  history: HistoryState;
   error: ErrorSliceState;
   pages: PageSliceState;
   current_project: CurrentProjectInfo;
@@ -61,7 +68,7 @@ export {
   ideNewFileAction,
   ideOpenHotKeys,
   ideOpenSettingsAction,
-  // ideOpenChatInNewTab,
+  ideOpenChatInNewTab,
   ideAnimateFileStart,
   ideAnimateFileStop,
   ideChatPageChange,
@@ -73,12 +80,10 @@ export {
   ideSetCodeCompletionModel,
   ideSetLoginMessage,
   ideSetActiveTeamsGroup,
-  ideSetActiveTeamsWorkspace,
   ideClearActiveTeamsGroup,
-  ideClearActiveTeamsWorkspace,
 } from "../hooks/useEventBusForIDE";
 
-export { ideAttachFileToChat, newChatAction } from "../hooks/useEventBusForApp";
+export { ideAttachFileToChat } from "../hooks/useEventBusForApp";
 export { toPascalCase } from "../utils/toPascalCase";
 export const fim = {
   request,
@@ -90,18 +95,21 @@ export const fim = {
 export {
   isAssistantDelta,
   isAssistantMessage,
+  isCapsResponse,
   isChatContextFileDelta,
   isChatContextFileMessage,
   isChatResponseChoice,
   isChatUserMessageResponse,
   isCommandCompletionResponse,
   isCommandPreviewResponse,
+  isCustomPromptsResponse,
   isDetailMessage,
   isDiffMessage,
   isDiffResponse,
   isPlainTextMessage,
   isPlainTextResponse,
   isStatisticDataResponse,
+  isSystemPrompts,
   isToolCallDelta,
   isToolCallMessage,
   isToolMessage,
@@ -109,7 +117,7 @@ export {
   isUserMessage,
 } from "../services/refact";
 
-export type { TeamsGroup, TeamsWorkspace } from "../services/smallcloud/types";
+export { type TeamsGroup } from "../services/smallcloud/types";
 
 // export type * from "../services/refact";
 

@@ -959,18 +959,6 @@
                 "deepseek-r1-distill/32b/vllm",
                 "deepseek-r1-distill/70b/vllm"
             ]
-        },
-        "Qwen/Qwen3-235B-A22B": {
-            "n_ctx": 41000,
-            "supports_reasoning": "deepseek",
-            "default_temperature": 0.6,
-            "scratchpad": "PASSTHROUGH",
-            "supports_tools": false,
-            "supports_multimodality": false,
-            "tokenizer": "hf://Qwen/Qwen3-235B-A22B",
-            "similar_models": [
-                "Qwen3-235B-A22B"
-            ]
         }
     },
     "embedding_models": {

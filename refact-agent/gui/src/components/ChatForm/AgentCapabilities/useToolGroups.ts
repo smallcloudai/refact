@@ -9,7 +9,6 @@ import {
   ToolSpec,
 } from "../../../services/refact";
 
-// here
 export function useToolGroups() {
   const dispatch = useAppDispatch();
   const { mutationTrigger: updateToolGroups } = useUpdateToolGroupsMutation();

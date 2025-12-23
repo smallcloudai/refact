@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
+import { selectMessages } from "../features/Chat/Thread/selectors";
 import { selectConfig } from "../features/Config/configSlice";
-import { isDiffChunk, isDiffMessage } from "../services/refact/types";
-import { selectThreadMessages } from "../features/ThreadMessages/threadMessagesSlice";
+import { isDiffMessage } from "../services/refact";
 
 /**
  * Hook to handle file reloading for diff messages in JetBrains IDE
@@ -11,9 +11,7 @@ import { selectThreadMessages } from "../features/ThreadMessages/threadMessagesS
  */
 // Note this won't work if the chat is in the cache.
 export function useDiffFileReload() {
-  const messages = useAppSelector(selectThreadMessages, {
-    devModeChecks: { stabilityCheck: "never" },
-  });
+  const messages = useAppSelector(selectMessages);
   const configIdeHost = useAppSelector(selectConfig).host;
   const { setForceReloadFileByPath } = useEventsBusForIDE();
 
@@ -38,7 +36,7 @@ export function useDiffFileReload() {
         return;
       }
 
-      const messageId = `${message.ftm_role}-${index + 1}`;
+      const messageId = `${message.role}-${index + 1}`;
 
       if (processedMessageIds.current.has(messageId)) {
         return;
@@ -46,11 +44,7 @@ export function useDiffFileReload() {
 
       processedMessageIds.current.add(messageId);
 
-      // TODO: fix types
-      if (!Array.isArray(message.ftm_content)) return;
-
-      message.ftm_content.forEach((diff) => {
-        if (!isDiffChunk(diff)) return;
+      message.content.forEach((diff) => {
         uniqueFilePaths.add(diff.file_name);
         if (diff.file_name_rename) {
           uniqueFilePaths.add(diff.file_name_rename);

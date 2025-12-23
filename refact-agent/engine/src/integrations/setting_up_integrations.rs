@@ -1,7 +1,7 @@
-use std::{fs, iter};
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, OnceLock};
-use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::collections::HashMap;
 use regex::Regex;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -56,7 +56,7 @@ fn parse_and_validate_yaml(path: &str, content: &String) -> Result<serde_json::V
     Ok(json_value)
 }
 
-pub async fn read_integrations_d(
+pub fn read_integrations_d(
     config_dirs: &Vec<PathBuf>,
     global_config_dir: &PathBuf,
     integrations_yaml_path: &String,
@@ -67,6 +67,10 @@ pub async fn read_integrations_d(
     include_non_existent_records: bool,  // NOTE: true for UI only
 ) -> Vec<IntegrationRecord> {
     let mut result = Vec::new();
+
+    let mut files_to_read = Vec::new();
+    let mut project_config_dirs = config_dirs.iter().map(|dir| dir.to_string_lossy().to_string()).collect::<Vec<String>>();
+    project_config_dirs.push("".to_string());  // global
 
     // 1. Read and parse integrations.yaml (Optional, used for testing)
     // This reads the file to be used by (2) and (3), it does not create the records yet.
@@ -109,82 +113,51 @@ pub async fn read_integrations_d(
         }
     }
 
-    // 2. Read single file integrations_yaml_path, sections in yaml become integrations
-    if let Some(integrations_yaml_value) = integrations_yaml_value {
-        let short_yaml = crate::nicer_logs::last_n_chars(integrations_yaml_path, 15);
-        match integrations_yaml_value.as_mapping() {
-            Some(mapping) => {
-                for (key, value) in mapping {
-                    if let Some(key_str) = key.as_str() {
-                        if key_str.starts_with("cmdline_") || key_str.starts_with("service_") {
-                            tracing::info!("{} detected prefix `{}`", short_yaml, key_str);
-                        } else if lst.contains(&key_str) {
-                            tracing::info!("{} has `{}`", short_yaml, key_str);
-                        } else {
-                            tracing::warn!("{} unrecognized section `{}`", short_yaml, key_str);
-                            continue;
-                        }
-
-                        result.push(IntegrationRecord {
-                            integr_config_path: integrations_yaml_path.clone(),
-                            integr_name: key_str.to_string(),
-                            icon_path: format!("/integration-icon/{key_str}.png"),
-                            integr_config_exists: true,
-                            config_unparsed: serde_json::to_value(value).unwrap(),
-                            ..Default::default()
-                        });
-                    }
+    // 2. Read each of config_dirs
+    for project_config_dir in project_config_dirs {
+        // Read config_folder/integr_name.yaml and make a record, even if the file doesn't exist
+        let config_dir = if project_config_dir == "" { global_config_dir.clone() } else { PathBuf::from(project_config_dir.clone()) };
+        for integr_name in lst.iter() {
+            let path_str = join_config_path(&config_dir, integr_name);
+            let path = PathBuf::from(path_str.clone());
+            if !include_non_existent_records && !path.exists() {
+                continue;
+            }
+            let (_integr_name, project_path) = match split_path_into_project_and_integration(&path) {
+                Ok(x) => x,
+                Err(e) => {
+                    tracing::error!("error deriving project path: {}", e);
+                    continue;
                 }
-            },
-            None => {
-                tracing::warn!("{} is not a mapping", short_yaml);
-            }
+            };
+            files_to_read.push((path_str, integr_name.to_string(), project_path));
         }
-    }
-
-    // 3. Read each of config_dirs
-    let mut files_to_read = Vec::new();
-
-    for config_dir in config_dirs.iter().chain(iter::once(global_config_dir)) {
-        let project_path = if config_dir == global_config_dir {
-            String::new() // Global config dir has no project path
-        } else {
-            config_dir
-                .parent().expect("dir to be in form parent/.refact")
-                .to_string_lossy().to_string()
-        };
-
-        let mut integrations_missing: HashSet<&str> = HashSet::from_iter(lst.iter().cloned());
-
-        // Find integrations present in config_dir/integrations.d
-        if let Ok(mut entries) = tokio::fs::read_dir(config_dir.join("integrations.d")).await {
-            while let Ok(Some(entry)) = entries.next_entry().await {
-                let file_name = if let Some(name) = entry.file_name().to_string_lossy().strip_suffix(".yaml") {
-                    name.to_string()
-                } else {
-                    continue; 
+        // Find special files that start with cmdline_* and service_*
+        if let Ok(entries) = fs::read_dir(config_dir.join("integrations.d")) {
+            let mut entries: Vec<_> = entries.filter_map(Result::ok).collect();
+            entries.sort_by_key(|entry| entry.file_name());
+            for entry in entries {
+                let file_name = entry.file_name();
+                let file_name_str = file_name.to_string_lossy();
+                if !file_name_str.ends_with(".yaml") {
+                    continue;
+                }
+                let file_name_str_no_yaml = file_name_str.trim_end_matches(".yaml").to_string();
+                let (_integr_name, project_path) = match split_path_into_project_and_integration(&entry.path()) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        tracing::error!("error deriving project path: {}", e);
+                        continue;
+                    }
                 };
-
-                if file_name.starts_with("cmdline_") || file_name.starts_with("service_") || file_name.starts_with("mcp_") {
-                    files_to_read.push((entry.path(), file_name, project_path.clone(), true));
-                } else if integrations_missing.contains(&file_name.as_str()) {
-                    integrations_missing.remove(file_name.as_str());
-                    files_to_read.push((entry.path(), file_name, project_path.clone(), true));
-                } 
-            }
-        }
-
-        // If there are integrations that were not found in the config_dir/integrations.d,
-        // add them as non-existent records.
-        if include_non_existent_records {
-            for integr_name in integrations_missing.iter() {
-                let path = join_config_path(config_dir, integr_name);
-                files_to_read.push((path, integr_name.to_string(), project_path.clone(), false));
+                if file_name_str.starts_with("cmdline_") || file_name_str.starts_with("service_") || file_name_str.starts_with("mcp_") {
+                    files_to_read.push((entry.path().to_string_lossy().to_string(), file_name_str_no_yaml, project_path));
+                }
             }
         }
     }
 
-    for (path, integr_name, project_path, path_exists) in files_to_read {
+    for (path_str, integr_name, project_path) in files_to_read {
         // If --integrations-yaml is set, ignore the global config folder
         // except for the list of integrations specified as `globally_allowed_integrations`.
         if let Some(allowed_integr_list) = &globally_allowed_integration_list {
@@ -193,24 +166,20 @@ pub async fn read_integrations_d(
             }
         }
 
+        let path = PathBuf::from(&path_str);
         if !any_glob_matches_path(include_paths_matching, &path) {
             continue;
         }
 
-        let path_str = path.to_string_lossy();
-
         // let short_pp = if project_path.is_empty() { format!("global") } else { crate::nicer_logs::last_n_chars(&project_path, 15) };
-        let mut rec: IntegrationRecord = IntegrationRecord {
-            project_path: project_path.clone(),
-            integr_name: integr_name.clone(),
-            icon_path: format!("/integration-icon/{integr_name}.png"),
-            integr_config_path: path_str.to_string(),
-            integr_config_exists: path_exists,
-            ..Default::default()
-        };
-
+        let mut rec: IntegrationRecord = Default::default();
+        rec.project_path = project_path.clone();
+        rec.integr_name = integr_name.clone();
+        rec.icon_path = format!("/integration-icon/{integr_name}.png");
+        rec.integr_config_path = path_str.clone();
+        rec.integr_config_exists = path.exists();
         if rec.integr_config_exists {
-            match tokio::fs::read_to_string(&path).await {
+            match fs::read_to_string(&path) {
                 Ok(file_content) => match parse_and_validate_yaml(&path_str, &file_content) {
                     Ok(json_value) => {
                         // tracing::info!("{} has {}", short_pp, integr_name);
@@ -239,6 +208,43 @@ pub async fn read_integrations_d(
             // tracing::info!("{} no config file for {}", short_pp, integr_name);
         }
         result.push(rec);
+    }
+
+    // 3. Read single file integrations_yaml_path, sections in yaml become integrations
+    if let Some(integrations_yaml_value) = integrations_yaml_value {
+        let short_yaml = crate::nicer_logs::last_n_chars(integrations_yaml_path, 15);
+        match integrations_yaml_value.as_mapping() {
+            Some(mapping) => {
+                for (key, value) in mapping {
+                    if let Some(key_str) = key.as_str() {
+                        if key_str.starts_with("cmdline_") || key_str.starts_with("service_") {
+                            let mut rec: IntegrationRecord = Default::default();
+                            rec.integr_config_path = integrations_yaml_path.clone();
+                            rec.integr_name = key_str.to_string();
+                            rec.icon_path = format!("/integration-icon/{key_str}.png");
+                            rec.integr_config_exists = true;
+                            rec.config_unparsed = serde_json::to_value(value.clone()).unwrap();
+                            result.push(rec);
+                            tracing::info!("{} detected prefix `{}`", short_yaml, key_str);
+                        } else if lst.contains(&key_str) {
+                            let mut rec: IntegrationRecord = Default::default();
+                            rec.integr_config_path = integrations_yaml_path.clone();
+                            rec.integr_name = key_str.to_string();
+                            rec.icon_path = format!("/integration-icon/{key_str}.png");
+                            rec.integr_config_exists = true;
+                            rec.config_unparsed = serde_json::to_value(value.clone()).unwrap();
+                            result.push(rec);
+                            tracing::info!("{} has `{}`", short_yaml, key_str);
+                        } else {
+                            tracing::warn!("{} unrecognized section `{}`", short_yaml, key_str);
+                        }
+                    }
+                }
+            },
+            None => {
+                tracing::warn!("{} is not a mapping", short_yaml);
+            }
+        }
     }
 
     // 4. Replace vars in config_unparsed
@@ -363,93 +369,61 @@ pub async fn get_vars_for_replacements(
     variables
 }
 
-pub fn join_config_path(config_dir: &PathBuf, integr_name: &str) -> PathBuf
+pub fn join_config_path(config_dir: &PathBuf, integr_name: &str) -> String
 {
-    config_dir.join("integrations.d").join(format!("{}.yaml", integr_name))
+    config_dir.join("integrations.d").join(format!("{}.yaml", integr_name)).to_string_lossy().into_owned()
 }
 
 pub async fn get_config_dirs(
     gcx: Arc<ARwLock<GlobalContext>>,
     current_project_path: &Option<PathBuf>
 ) -> (Vec<PathBuf>, PathBuf) {
-    let (global_config_dir, workspace_folders_arc, workspace_vcs_roots_arc, dot_refact_folders_arc) = {
+    let (global_config_dir, workspace_folders_arc, workspace_vcs_roots_arc, _integrations_yaml) = {
         let gcx_locked = gcx.read().await;
         (
             gcx_locked.config_dir.clone(),
             gcx_locked.documents_state.workspace_folders.clone(),
             gcx_locked.documents_state.workspace_vcs_roots.clone(),
-            gcx_locked.documents_state.dot_refact_folders.clone(),
+            gcx_locked.cmdline.integrations_yaml.clone(),
         )
     };
 
     let mut workspace_folders = workspace_folders_arc.lock().unwrap().clone();
-    let dot_refact_folders = dot_refact_folders_arc.lock().await.clone();
+    if let Some(current_project_path) = current_project_path {
+        workspace_folders = workspace_folders.into_iter()
+            .filter(|folder| current_project_path.starts_with(&folder)).collect::<Vec<_>>();
+    }
     let workspace_vcs_roots = workspace_vcs_roots_arc.lock().unwrap().clone();
 
-    let mut config_dirs = vec![];
+    let mut config_dirs = Vec::new();
 
-    if let Some(current_project_path) = current_project_path {
-        workspace_folders.retain(|folder| current_project_path.starts_with(folder));
+    for folder in workspace_folders {
+        let vcs_roots: Vec<PathBuf> = workspace_vcs_roots
+            .iter()
+            .filter(|root| root.starts_with(&folder))
+            .cloned()
+            .collect();
 
-        let active_workspace = if !workspace_folders.is_empty() {
-            workspace_folders.sort();
-            workspace_folders.truncate(1);
-
-            &workspace_folders[0]
+        if !vcs_roots.is_empty() {
+            // it has any workspace_vcs_roots => take them as projects
+            for root in vcs_roots {
+                config_dirs.push(root.join(".refact"));
+            }
         } else {
-            tracing::warn!("No workspace folders found for current project path: {}", current_project_path.display());
-            current_project_path
-        };
-
-        tracing::info!("Active workspace folder: {}", active_workspace.display());
-
-        config_dirs.extend(workspace_vcs_roots.into_iter().map(|p| p.join(".refact")).filter(|p| p.starts_with(active_workspace)));
-        config_dirs.extend(dot_refact_folders.into_iter().filter(|p| p.starts_with(active_workspace)));
-
-        for parent in active_workspace.ancestors() {
-            if parent.join(".refact").exists() || parent == active_workspace {
-                config_dirs.push(parent.join(".refact"));
-            }
-        }
-    } else {
-        config_dirs.extend(workspace_vcs_roots.into_iter().map(|p| p.join(".refact")));
-        config_dirs.extend(dot_refact_folders.into_iter());
-
-        for workspace_folder in workspace_folders {
-            for parent in workspace_folder.ancestors() {
-                if parent.join(".refact").exists() || parent == workspace_folder {
-                    config_dirs.push(parent.join(".refact"));
-                }
-            }
+            // it doesn't => use workspace_folder itself
+            // probably we see this because it's a new project that doesn't have version control yet, but added to the workspace already
+            config_dirs.push(folder.join(".refact"));
         }
     }
 
     config_dirs.sort();
-    config_dirs.dedup();
-
     (config_dirs, global_config_dir)
 }
 
-static RE_PER_PROJECT: OnceLock<Regex> = OnceLock::new();
-static RE_GLOBAL: OnceLock<Regex> = OnceLock::new();
-
-fn get_re_per_project() -> &'static Regex {
-    RE_PER_PROJECT.get_or_init(|| {
-        Regex::new(r"^(.*)[\\/]\.refact[\\/](integrations\.d)[\\/](.+)\.yaml$").unwrap()
-    })
-}
-
-fn get_re_global() -> &'static Regex {
-    RE_GLOBAL.get_or_init(|| {
-        Regex::new(r"^(.*)[\\/]\.config[\\/](refact[\\/](integrations\.d)[\\/](.+)\.yaml$)").unwrap()
-    })
-}
-
-/// Does not validate the path, just extracts the parts based on known patterns.
-pub fn split_path_into_project_and_integration(cfg_path: &Path) -> Result<(String, String), String> {
+pub fn split_path_into_project_and_integration(cfg_path: &PathBuf) -> Result<(String, String), String> {
     let path_str = cfg_path.to_string_lossy();
-    let re_per_project = get_re_per_project();
-    let re_global = get_re_global();
+    let re_per_project = Regex::new(r"^(.*)[\\/]\.refact[\\/](integrations\.d)[\\/](.+)\.yaml$").unwrap();
+    let re_global = Regex::new(r"^(.*)[\\/]\.config[\\/](refact[\\/](integrations\.d)[\\/](.+)\.yaml$)").unwrap();
 
     if let Some(caps) = re_per_project.captures(&path_str) {
         let project_path = caps.get(1).map_or(String::new(), |m| m.as_str().to_string());
@@ -475,16 +449,7 @@ pub async fn integrations_all(
     let lst: Vec<&str> = crate::integrations::integrations_list(allow_experimental);
     let mut error_log: Vec<YamlError> = Vec::new();
     let vars_for_replacements = get_vars_for_replacements(gcx.clone(), &mut error_log).await;
-    let integrations = read_integrations_d(
-        &config_dirs, 
-        &global_config_dir, 
-        &integrations_yaml_path, 
-        &vars_for_replacements, 
-        &lst, 
-        &mut error_log, 
-        &["**/*".to_string()], 
-        include_non_existent_records
-    ).await;
+    let integrations = read_integrations_d(&config_dirs, &global_config_dir, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log, &["**/*".to_string()], include_non_existent_records);
     IntegrationResult { integrations, error_log }
 }
 

@@ -15,23 +15,26 @@ import {
 import { useAppDispatch } from "./useAppDispatch";
 import { useRestoreCheckpoints } from "./useRestoreCheckpoints";
 import { Checkpoint, FileChanged } from "../features/Checkpoints/types";
-import { isUserMessage } from "../services/refact/types";
+import {
+  backUpMessages,
+  newChatAction,
+  selectChatId,
+  selectMessages,
+} from "../features/Chat";
+import { isUserMessage, telemetryApi } from "../services/refact";
+import { deleteChatById } from "../features/History/historySlice";
 import { usePreviewCheckpoints } from "./usePreviewCheckpoints";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 import { selectConfig } from "../features/Config/configSlice";
-import {
-  resetThread,
-  selectMessagesFromEndNode,
-} from "../features/ThreadMessages/threadMessagesSlice";
 
-// TODO: how will check points works?
 export const useCheckpoints = () => {
   const dispatch = useAppDispatch();
-  const messages = useAppSelector(selectMessagesFromEndNode, {
-    devModeChecks: { stabilityCheck: "never" },
-  });
-
+  const messages = useAppSelector(selectMessages);
+  const chatId = useAppSelector(selectChatId);
   const configIdeHost = useAppSelector(selectConfig).host;
+
+  const [sendTelemetryEvent] =
+    telemetryApi.useLazySendTelemetryChatEventQuery();
 
   const { setForceReloadFileByPath } = useEventsBusForIDE();
 
@@ -73,8 +76,13 @@ export const useCheckpoints = () => {
   }, [isCheckpointsPopupVisible, isUndoingCheckpoints]);
 
   const handleUndo = useCallback(() => {
+    void sendTelemetryEvent({
+      scope: `rollbackChanges/undo`,
+      success: true,
+      error_message: "",
+    });
     dispatch(setIsUndoingCheckpoints(true));
-  }, [dispatch]);
+  }, [dispatch, sendTelemetryEvent]);
 
   const handlePreview = useCallback(
     async (checkpoints: Checkpoint[] | null, messageIndex: number) => {
@@ -84,7 +92,11 @@ export const useCheckpoints = () => {
       try {
         const previewedChanges =
           await previewChangesFromCheckpoints(checkpoints).unwrap();
-
+        void sendTelemetryEvent({
+          scope: `rollbackChanges/preview`,
+          success: true,
+          error_message: "",
+        });
         const actions = [
           dispatch(setIsUndoingCheckpoints(false)),
           setLatestCheckpointResult({
@@ -99,10 +111,16 @@ export const useCheckpoints = () => {
         ];
         actions.forEach((action) => dispatch(action));
       } catch (error) {
-        /* empty */
+        void sendTelemetryEvent({
+          scope: `rollbackChanges/failed`,
+          success: false,
+          error_message: `rollback: failed to preview from checkpoints. checkpoints ${JSON.stringify(
+            checkpoints,
+          )}`,
+        });
       }
     },
-    [dispatch, previewChangesFromCheckpoints, messages],
+    [dispatch, previewChangesFromCheckpoints, sendTelemetryEvent, messages],
   );
 
   const handleFix = useCallback(async () => {
@@ -111,6 +129,12 @@ export const useCheckpoints = () => {
         latestRestoredCheckpointsResult.current_checkpoints,
       ).unwrap();
       if (response.success) {
+        void sendTelemetryEvent({
+          scope: `rollbackChanges/confirmed`,
+          success: true,
+          error_message: "",
+        });
+
         if (configIdeHost === "jetbrains") {
           const files =
             latestRestoredCheckpointsResult.reverted_changes.flatMap(
@@ -126,21 +150,37 @@ export const useCheckpoints = () => {
         dispatch(setCheckpointsErrorLog(response.error_log));
         return;
       }
-      // TODO: new chat suggestion?
       if (shouldNewChatBeStarted || !maybeMessageIndex) {
-        const actions = [resetThread()];
+        const actions = [newChatAction(), deleteChatById(chatId)];
         actions.forEach((action) => dispatch(action));
+      } else {
+        const usefulMessages = messages.slice(0, maybeMessageIndex);
+        dispatch(
+          backUpMessages({
+            id: chatId,
+            messages: usefulMessages,
+          }),
+        );
       }
     } catch (error) {
-      /* empty */
+      void sendTelemetryEvent({
+        scope: `rollbackChanges/failed`,
+        success: false,
+        error_message: `rollback: failed to apply previewed changes from checkpoints. checkpoints: ${JSON.stringify(
+          latestRestoredCheckpointsResult.current_checkpoints,
+        )}`,
+      });
     }
   }, [
     dispatch,
+    sendTelemetryEvent,
     setForceReloadFileByPath,
     restoreChangesFromCheckpoints,
     configIdeHost,
     shouldNewChatBeStarted,
     maybeMessageIndex,
+    chatId,
+    messages,
     latestRestoredCheckpointsResult.current_checkpoints,
     latestRestoredCheckpointsResult.reverted_changes,
   ]);

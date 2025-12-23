@@ -2,10 +2,14 @@ use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use regex::Regex;
 use serde_json::{json, Value};
+use tokenizers::Tokenizer;
 use tracing::{info, warn};
 
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam, filter_only_context_file_from_context_tool};
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
+use crate::http::http_post_json;
+use crate::http::routers::v1::at_commands::{CommandExecutePost, CommandExecuteResponse};
+use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat};
@@ -16,6 +20,7 @@ pub const MIN_RAG_CONTEXT_LIMIT: usize = 256;
 
 pub async fn run_at_commands_locally(
     ccx: Arc<AMutex<AtCommandsContext>>,
+    tokenizer: Option<Arc<Tokenizer>>,
     maxgen: usize,
     mut original_messages: Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
@@ -61,7 +66,7 @@ pub async fn run_at_commands_locally(
             continue;
         }
         let mut content = msg.content.content_text_only();
-        let content_n_tokens = msg.content.count_tokens(&None).unwrap_or(0) as usize;
+        let content_n_tokens = msg.content.count_tokens(tokenizer.clone(), &None).unwrap_or(0) as usize;
 
         let mut context_limit = reserve_for_context / messages_with_at.max(1);
         context_limit = context_limit.saturating_sub(content_n_tokens);
@@ -109,6 +114,7 @@ pub async fn run_at_commands_locally(
 
             let (pp_plain_text, non_used_plain) = postprocess_plain_text(
                 plain_text_messages,
+                tokenizer.clone(),
                 tokens_limit_plain,
                 &None,
             ).await;
@@ -131,6 +137,7 @@ pub async fn run_at_commands_locally(
             let post_processed = postprocess_context_files(
                 gcx.clone(),
                 &mut context_file_pp,
+                tokenizer.clone(),
                 tokens_limit_files,
                 false,
                 &pp_settings,
@@ -159,6 +166,47 @@ pub async fn run_at_commands_locally(
     }
 
     (new_messages, any_context_produced)
+}
+
+pub async fn run_at_commands_remotely(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    model_id: &str,
+    maxgen: usize,
+    original_messages: Vec<ChatMessage>,
+    stream_back_to_user: &mut HasRagResults,
+) -> Result<(Vec<ChatMessage>, bool), String> {
+    let (gcx, n_ctx, subchat_tool_parameters, postprocess_parameters, chat_id) = {
+        let ccx_locked = ccx.lock().await;
+        (
+            ccx_locked.global_context.clone(),
+            ccx_locked.n_ctx,
+            ccx_locked.subchat_tool_parameters.clone(),
+            ccx_locked.postprocess_parameters.clone(),
+            ccx_locked.chat_id.clone()
+        )
+    };
+
+    let post = CommandExecutePost {
+        messages: original_messages,
+        n_ctx,
+        maxgen,
+        subchat_tool_parameters,
+        postprocess_parameters,
+        model_name: model_id.to_string(),
+        chat_id: chat_id.clone(),
+    };
+
+    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &chat_id).await?;
+    tracing::info!("run_at_commands_remotely: connecting to port {}", port);
+
+    let url = format!("http://localhost:{port}/v1/at-command-execute");
+    let response: CommandExecuteResponse = http_post_json(&url, &post).await?;
+
+    for msg in response.messages_to_stream_back {
+        stream_back_to_user.push_in_json(msg);
+    }
+
+    Ok((response.messages, response.any_context_produced))
 }
 
 pub async fn correct_at_arg(

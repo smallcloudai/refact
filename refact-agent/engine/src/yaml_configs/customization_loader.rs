@@ -6,7 +6,7 @@ use indexmap::IndexMap;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::{ChatMessage, SubchatParameters};
-use crate::global_context::GlobalContext;
+use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
 use crate::custom_error::YamlError;
 
 
@@ -126,6 +126,7 @@ pub fn load_customization_compiled_in() -> serde_yaml::Value {
 
 pub fn load_and_mix_with_users_config(
     user_yaml: &str,
+    caps_yaml: &str,
     skip_visibility_filtering: bool,
     allow_experimental: bool,
     error_log: &mut Vec<YamlError>,
@@ -157,11 +158,24 @@ pub fn load_and_mix_with_users_config(
             });
             format!("Error parsing user ToolboxConfig: {}\n{}", e, user_yaml)
         }).unwrap_or_default();
+    let caps_config: CustomizationYaml = serde_yaml::from_str(caps_yaml)
+        .map_err(|e| {
+            error_log.push(YamlError {
+                path: "caps.yaml".to_string(),
+                error_line: 0,
+                error_msg: e.to_string(),
+            });
+            format!("Error parsing default ToolboxConfig: {}\n{}", e, caps_yaml)
+        }).unwrap_or_default();
 
     _replace_variables_in_messages(&mut work_config, &variables);
     _replace_variables_in_messages(&mut user_config, &variables);
     _replace_variables_in_system_prompts(&mut work_config, &variables);
     _replace_variables_in_system_prompts(&mut user_config, &variables);
+
+    work_config.system_prompts.extend(caps_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
+    work_config.toolbox_commands.extend(caps_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
+    work_config.code_lens.extend(caps_config.code_lens.iter().map(|(k, v)| (k.clone(), v.clone())));
 
     work_config.system_prompts.extend(user_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.toolbox_commands.extend(user_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
@@ -196,13 +210,28 @@ pub async fn load_customization(
     error_log: &mut Vec<YamlError>,
 ) -> CustomizationYaml {
     let allow_experimental = gcx.read().await.cmdline.experimental;
+    let caps = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => caps,
+        Err(e) => {
+            let address_url = gcx.read().await.cmdline.address_url.clone();
+            error_log.push(YamlError {
+                path: address_url,
+                error_line: 0,
+                error_msg: format!("error loading caps: {e}"),
+            });
+            return CustomizationYaml::default();
+        }
+    };
+
     let config_dir = gcx.read().await.config_dir.clone();
     let customization_yaml_path = config_dir.join("customization.yaml");
     let user_config_text = std::fs::read_to_string(&customization_yaml_path)
         .map_err(|e| format!("Failed to read file: {}", e))
         .unwrap_or_default();
+
     load_and_mix_with_users_config(
         &user_config_text,
+        &caps.customization,
         skip_visibility_filtering,
         allow_experimental,
         error_log,
@@ -217,7 +246,7 @@ mod tests {
     fn are_all_system_prompts_present() {
         let mut error_log = Vec::new();
         let config = load_and_mix_with_users_config(
-            "", true, true, &mut error_log,
+            "", "", true, true, &mut error_log,
         );
         for e in error_log.iter() {
             eprintln!("{e}");

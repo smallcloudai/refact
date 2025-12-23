@@ -18,6 +18,7 @@ use crate::files_in_workspace;
 use crate::files_in_workspace::{on_did_change, on_did_delete};
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
+use crate::telemetry::snippets_collection;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -164,8 +165,9 @@ impl LspBackend {
         Ok(value)
     }
 
-    pub async fn accept_snippet(&self, _: SnippetAcceptedParams) -> Result<SuccessRes> {
-        Ok(SuccessRes { success: true })
+    pub async fn accept_snippet(&self, params: SnippetAcceptedParams) -> Result<SuccessRes> {
+        let success = snippets_collection::snippet_accepted(self.gcx.clone(), params.snippet_telemetry_id).await;
+        Ok(SuccessRes { success })
     }
 
     pub async fn set_active_document(&self, params: ChangeActiveFile) -> Result<SuccessRes> {

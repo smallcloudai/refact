@@ -33,7 +33,7 @@ pub async fn load_integrations(
         &mut error_log,
         include_paths_matching,
         false,
-    ).await;
+    );
 
     let mut integrations_map = IndexMap::new();
     for rec in records {

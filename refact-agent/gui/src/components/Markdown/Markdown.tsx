@@ -18,16 +18,17 @@ import {
   Link,
   Quote,
   Strong,
+  Flex,
   Table,
 } from "@radix-ui/themes";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import "katex/dist/katex.min.css";
-// import { useLinksFromLsp } from "../../hooks";
+import { useLinksFromLsp } from "../../hooks";
 
-// import { ChatLinkButton } from "../ChatLinks";
-// import { extractLinkFromPuzzle } from "../../utils/extractLinkFromPuzzle";
+import { ChatLinkButton } from "../ChatLinks";
+import { extractLinkFromPuzzle } from "../../utils/extractLinkFromPuzzle";
 
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
@@ -45,36 +46,36 @@ export type MarkdownProps = Pick<
     wrap?: boolean;
   } & Partial<MarkdownControls>;
 
-// const PuzzleLink: React.FC<{
-//   children: string;
-// }> = ({ children }) => {
-//   const { handleLinkAction } = useLinksFromLsp();
-//   const link = extractLinkFromPuzzle(children);
+const PuzzleLink: React.FC<{
+  children: string;
+}> = ({ children }) => {
+  const { handleLinkAction } = useLinksFromLsp();
+  const link = extractLinkFromPuzzle(children);
 
-//   if (!link) return children;
+  if (!link) return children;
 
-//   return (
-//     <Flex direction="column" align="start" gap="2" mt="2">
-//       <ChatLinkButton link={link} onClick={handleLinkAction} />
-//     </Flex>
-//   );
-// };
+  return (
+    <Flex direction="column" align="start" gap="2" mt="2">
+      <ChatLinkButton link={link} onClick={handleLinkAction} />
+    </Flex>
+  );
+};
 
 const MaybeInteractiveElement: React.FC<{
   key?: Key | null;
   children?: React.ReactNode;
 }> = ({ children }) => {
-  // const processed = React.Children.map(children, (child, index) => {
-  //   if (typeof child === "string" && child.startsWith("🧩")) {
-  //     const key = `puzzle-link-${index}`;
-  //     return <PuzzleLink key={key}>{child}</PuzzleLink>;
-  //   }
-  //   return child;
-  // });
+  const processed = React.Children.map(children, (child, index) => {
+    if (typeof child === "string" && child.startsWith("🧩")) {
+      const key = `puzzle-link-${index}`;
+      return <PuzzleLink key={key}>{child}</PuzzleLink>;
+    }
+    return child;
+  });
 
   return (
     <Text className={styles.maybe_pin} my="2">
-      {children}
+      {processed}
     </Text>
   );
 };

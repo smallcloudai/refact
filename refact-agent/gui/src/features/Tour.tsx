@@ -61,23 +61,23 @@ export const tourReducer = createReducer<TourState>(initialState, (builder) => {
 
 export type TourRefs = {
   newChat: null | HTMLButtonElement;
-  // useTools: null | HTMLDivElement;
+  useTools: null | HTMLDivElement;
   useModel: null | HTMLDivElement;
   chat: null | HTMLDivElement;
   openInNewTab: null | HTMLButtonElement;
   back: null | HTMLAnchorElement;
   f1: null | HTMLButtonElement;
   more: null | HTMLButtonElement;
-  // setupIntegrations: null | HTMLButtonElement;
+  setupIntegrations: null | HTMLButtonElement;
   setNewChat: (x: HTMLButtonElement | null) => void;
-  // setUseTools: (x: HTMLDivElement | null) => void;
+  setUseTools: (x: HTMLDivElement | null) => void;
   setUseModel: (x: HTMLDivElement | null) => void;
   setChat: (x: HTMLDivElement | null) => void;
   setOpenInNewTab: (x: HTMLButtonElement | null) => void;
   setBack: (x: HTMLAnchorElement | null) => void;
   setF1: (x: HTMLButtonElement | null) => void;
   setMore: (x: HTMLButtonElement | null) => void;
-  // setSetupIntegrations: (x: HTMLButtonElement | null) => void;
+  setSetupIntegrations: (x: HTMLButtonElement | null) => void;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -89,7 +89,7 @@ type TourContextProps = {
 // TODO: having a component here causes the linter warnings, Tour a directory, with separate files should for the component and actions fix this
 export const TourProvider = ({ children }: TourContextProps) => {
   const [newChat, setNewChat] = useState<null | HTMLButtonElement>(null);
-  // const [useTools, setUseTools] = useState<null | HTMLDivElement>(null);
+  const [useTools, setUseTools] = useState<null | HTMLDivElement>(null);
   const [useModel, setUseModel] = useState<null | HTMLDivElement>(null);
   const [chat, setChat] = useState<null | HTMLDivElement>(null);
   const [openInNewTab, setOpenInNewTab] = useState<null | HTMLButtonElement>(
@@ -98,30 +98,30 @@ export const TourProvider = ({ children }: TourContextProps) => {
   const [back, setBack] = useState<null | HTMLAnchorElement>(null);
   const [f1, setF1] = useState<null | HTMLButtonElement>(null);
   const [more, setMore] = useState<null | HTMLButtonElement>(null);
-  // const [setupIntegrations, setSetupIntegrations] =
-  //   useState<null | HTMLButtonElement>(null);
+  const [setupIntegrations, setSetupIntegrations] =
+    useState<null | HTMLButtonElement>(null);
 
   return (
     <TourContext.Provider
       value={{
         newChat,
-        // useTools,
+        useTools,
         useModel,
         chat,
         openInNewTab,
         back,
         f1,
         more,
-        // setupIntegrations,
+        setupIntegrations,
         setNewChat,
-        // setUseTools,
+        setUseTools,
         setUseModel,
         setChat,
         setOpenInNewTab,
         setBack,
         setF1,
         setMore,
-        // setSetupIntegrations,
+        setSetupIntegrations,
       }}
     >
       {children}

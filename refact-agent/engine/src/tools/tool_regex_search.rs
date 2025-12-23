@@ -5,7 +5,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use futures::future::join_all;
 use itertools::Itertools;
-use fancy_regex::Regex;
+use regex::Regex;
 use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
@@ -39,7 +39,7 @@ async fn search_single_file(
     let mut file_results = Vec::new();
     
     for (line_idx, line) in lines.iter().enumerate() {
-        if regex.is_match(line).unwrap_or(false) {
+        if regex.is_match(line) {
             let line_num = (line_idx + 1) as i64;
             let context_start = line_idx.saturating_sub(2);
             let context_end = (line_idx + 3).min(lines.len());
@@ -232,7 +232,7 @@ impl Tool for ToolRegexSearch {
         };
         let mut path_matches: Vec<String> = files_in_scope
             .iter()
-            .filter(|path| regex.is_match(path).unwrap_or(false))
+            .filter(|path| regex.is_match(path))
             .cloned()
             .collect();
         path_matches.sort();

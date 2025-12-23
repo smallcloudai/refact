@@ -2,7 +2,7 @@ use crate::ast::ast_indexer_thread::{ast_indexer_block_until_finished, ast_index
 use crate::call_validation::DiffChunk;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::global_context::GlobalContext;
-use fancy_regex::{Match, Regex};
+use regex::{Match, Regex};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -370,9 +370,7 @@ pub async fn str_replace_regex(
     let has_crlf = file_content.contains("\r\n");
 
     let normalized_content = normalize_line_endings(&file_content);
-    let matches: Vec<Match> = pattern.find_iter(&normalized_content)
-        .filter_map(|r| r.ok())
-        .collect();
+    let matches: Vec<Match> = pattern.find_iter(&normalized_content).collect();
     let occurrences = matches.len();
     if occurrences == 0 {
         return Err(format!(

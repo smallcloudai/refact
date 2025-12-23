@@ -5,7 +5,6 @@ import { setUpStore } from "../../app/store";
 import { Theme } from "../../components/Theme";
 import { http, HttpResponse, type HttpHandler } from "msw";
 import { QUESTIONS_STUB } from "../../__fixtures__";
-import { BasicStuff } from "../../__fixtures__/msw";
 
 const Component = () => {
   const store = setUpStore({
@@ -29,17 +28,28 @@ const Component = () => {
   );
 };
 
-// TODO: needs graphql mocks
 const meta = {
   title: "User Survey",
   component: Component,
   parameters: {
     msw: {
       handlers: [
+        http.get("http://127.0.0.1:8001/v1/ping", () => {
+          return HttpResponse.text("pong");
+        }),
+        http.get("https://www.smallcloud.ai/v1/login", () => {
+          return HttpResponse.json({
+            retcode: "OK",
+            account: "party@refact.ai",
+            inference_url: "https://www.smallcloud.ai/v1",
+            inference: "PRO",
+            metering_balance: -100000,
+            questionnaire: false,
+          });
+        }),
         http.get("https://www.smallcloud.ai/v1/questionnaire", () => {
           return HttpResponse.json(QUESTIONS_STUB);
         }),
-        BasicStuff,
       ],
     },
   },

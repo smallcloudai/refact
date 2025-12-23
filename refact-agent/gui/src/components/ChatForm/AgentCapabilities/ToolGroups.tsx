@@ -9,7 +9,6 @@ import { ToolsList } from "./ToolsList";
 import { ToolGroupList } from "./ToolGroupList";
 
 export const ToolGroups: React.FC = () => {
-  // TODO: add cloud tools
   const { data: toolGroups, isLoading, isSuccess } = useGetToolGroupsQuery();
   const {
     toggleAllTools,

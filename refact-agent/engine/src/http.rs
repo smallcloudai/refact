@@ -14,6 +14,7 @@ use crate::global_context::GlobalContext;
 use crate::http::routers::make_refact_http_server;
 
 pub mod routers;
+mod utils;
 
 async fn handler_404(path: Uri) -> impl IntoResponse {
     info!("404 {}", path);
@@ -100,4 +101,34 @@ async fn _make_http_request<T: Serialize>(
             }
         }
     }
+}
+
+pub async fn http_post_json<T: Serialize, R: for<'de> serde::Deserialize<'de>>(
+    url: &str,
+    body: &T,
+) -> Result<R, String> {
+    let post_result = _make_http_request("POST", url, body, 1).await?;
+    post_result.json::<R>().await.map_err(|e| e.to_string())
+}
+
+pub async fn http_post<T: Serialize>(
+    url: &str,
+    body: &T,
+) -> Result<(), String> {
+    _make_http_request("POST", url, body, 1).await.map(|_| ())
+}
+
+pub async fn http_post_with_retries<T: Serialize>(
+    url: &str,
+    body: &T,
+    max_attempts: usize,
+) -> Result<(), String> {
+    _make_http_request("POST", url, body, max_attempts).await.map(|_| ())
+}
+
+pub async fn http_get_json<R: for<'de> serde::Deserialize<'de>>(
+    url: &str,
+) -> Result<R, String> {
+    let get_result = _make_http_request("GET", url, &(), 1).await?;
+    get_result.json::<R>().await.map_err(|e| e.to_string())
 }

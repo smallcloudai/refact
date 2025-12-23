@@ -3,8 +3,7 @@ import { IconButton } from "@radix-ui/themes";
 import { Checkpoint } from "./types";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { useAppSelector, useIsOnline } from "../../hooks";
-// import { selectIsStreaming, selectIsWaiting } from "../Chat";
-import { selectIsStreaming, selectIsWaiting } from "../ThreadMessages";
+import { selectIsStreaming, selectIsWaiting } from "../Chat";
 
 type CheckpointButtonProps = {
   checkpoints: Checkpoint[] | null;

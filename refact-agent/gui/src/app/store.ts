@@ -1,4 +1,5 @@
 import { combineSlices, configureStore } from "@reduxjs/toolkit";
+import { storage } from "./storage";
 import {
   FLUSH,
   PAUSE,
@@ -9,15 +10,18 @@ import {
   persistReducer,
   persistStore,
 } from "redux-persist";
-import storage from "redux-persist/lib/storage";
 import { statisticsApi } from "../services/refact/statistics";
 import {
+  capsApi,
+  promptsApi,
   toolsApi,
   commandsApi,
   pathApi,
   pingApi,
   integrationsApi,
   dockerApi,
+  telemetryApi,
+  knowledgeApi,
   providersApi,
   modelsApi,
   teamsApi,
@@ -29,32 +33,32 @@ import { tipOfTheDaySlice } from "../features/TipOfTheDay";
 import { reducer as configReducer } from "../features/Config/configSlice";
 import { activeFileReducer } from "../features/Chat/activeFile";
 import { selectedSnippetReducer } from "../features/Chat/selectedSnippet";
-
+import { chatReducer } from "../features/Chat/Thread/reducer";
+import {
+  historySlice,
+  historyMiddleware,
+} from "../features/History/historySlice";
 import { errorSlice } from "../features/Errors/errorsSlice";
 
 import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
 import { informationSlice } from "../features/Errors/informationSlice";
-import { attachedImagesSlice } from "../features/AttachedImages/imagesSlice";
-import { teamsSlice } from "../features/Teams/teamsSlice";
+import { confirmationSlice } from "../features/ToolConfirmation/confirmationSlice";
+import { attachedImagesSlice } from "../features/AttachedImages";
+import { teamsSlice } from "../features/Teams";
 import { userSurveySlice } from "../features/UserSurvey/userSurveySlice";
 import { linksApi } from "../services/refact/links";
-import { integrationsSlice } from "../features/Integrations/integrationsSlice";
+import { integrationsSlice } from "../features/Integrations";
 import { currentProjectInfoReducer } from "../features/Chat/currentProject";
 import { checkpointsSlice } from "../features/Checkpoints/checkpointsSlice";
 import { checkpointsApi } from "../services/refact/checkpoints";
 import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/patchesAndDiffsTrackerSlice";
-import { threadListSlice } from "../features/ThreadList/threadListSlice";
-import { threadMessagesSlice } from "../features/ThreadMessages/threadMessagesSlice";
-import { expertsSlice } from "../features/ExpertsAndModels/expertsSlice";
-import { graphqlQueriesAndMutations } from "../services/graphql/queriesAndMutationsApi";
-import { groupsSlice } from "../features/Groups/groupsSlice";
-import { connectionStatusSlice } from "../features/ConnectionStatus/connectionStatusSlice";
+import { coinBallanceSlice } from "../features/CoinBalance";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
-  storage,
+  storage: storage(),
   stateReconciler: mergeInitialState,
 };
 
@@ -75,8 +79,10 @@ const rootReducer = combineSlices(
     active_file: activeFileReducer,
     current_project: currentProjectInfoReducer,
     selected_snippet: selectedSnippetReducer,
-
+    chat: chatReducer,
     [statisticsApi.reducerPath]: statisticsApi.reducer,
+    [capsApi.reducerPath]: capsApi.reducer,
+    [promptsApi.reducerPath]: promptsApi.reducer,
     [toolsApi.reducerPath]: toolsApi.reducer,
     [commandsApi.reducerPath]: commandsApi.reducer,
     [smallCloudApi.reducerPath]: smallCloudApi.reducer,
@@ -84,40 +90,34 @@ const rootReducer = combineSlices(
     [pingApi.reducerPath]: pingApi.reducer,
     [linksApi.reducerPath]: linksApi.reducer,
     [checkpointsApi.reducerPath]: checkpointsApi.reducer,
+    [telemetryApi.reducerPath]: telemetryApi.reducer,
+    [knowledgeApi.reducerPath]: knowledgeApi.reducer,
     [teamsApi.reducerPath]: teamsApi.reducer,
     [providersApi.reducerPath]: providersApi.reducer,
     [modelsApi.reducerPath]: modelsApi.reducer,
-    [graphqlQueriesAndMutations.reducerPath]:
-      graphqlQueriesAndMutations.reducer,
   },
+  historySlice,
   errorSlice,
   informationSlice,
   pagesSlice,
   integrationsApi,
   dockerApi,
+  confirmationSlice,
   attachedImagesSlice,
   userSurveySlice,
   teamsSlice,
   integrationsSlice,
   checkpointsSlice,
   patchesAndDiffsTrackerSlice,
-  threadListSlice,
-  threadMessagesSlice,
-  expertsSlice,
-  groupsSlice,
-  connectionStatusSlice,
+  coinBallanceSlice,
 );
 
 const rootPersistConfig = {
   key: "root",
-  storage,
-  whitelist: ["tour", userSurveySlice.reducerPath],
+  storage: storage(),
+  whitelist: [historySlice.reducerPath, "tour", userSurveySlice.reducerPath],
   stateReconciler: mergeInitialState,
 };
-
-if (import.meta.env.DEV) {
-  rootPersistConfig.whitelist.push("teams");
-}
 
 const persistedReducer = persistReducer<ReturnType<typeof rootReducer>>(
   rootPersistConfig,
@@ -164,6 +164,8 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
           .prepend(
             pingApi.middleware,
             statisticsApi.middleware,
+            capsApi.middleware,
+            promptsApi.middleware,
             toolsApi.middleware,
             commandsApi.middleware,
             smallCloudApi.middleware,
@@ -172,14 +174,15 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
             integrationsApi.middleware,
             dockerApi.middleware,
             checkpointsApi.middleware,
+            telemetryApi.middleware,
+            knowledgeApi.middleware,
             providersApi.middleware,
             modelsApi.middleware,
             teamsApi.middleware,
-            graphqlQueriesAndMutations.middleware,
           )
+          .prepend(historyMiddleware.middleware)
           // .prepend(errorMiddleware.middleware)
           .prepend(listenerMiddleware.middleware)
-        // .prepend(expertsAndModelsMiddleWare.middleware)
       );
     },
   });
@@ -190,9 +193,25 @@ export const store = setUpStore();
 export type Store = typeof store;
 
 export const persistor = persistStore(store);
+// TODO: sync storage across windows (was buggy when deleting).
+// window.onstorage = (event) => {
+//   if (!event.key || !event.key.endsWith(persistConfig.key)) {
+//     return;
+//   }
 
+//   if (event.oldValue === event.newValue) {
+//     return;
+//   }
+//   if (event.newValue === null) {
+//     return;
+//   }
+
+// Infer the `RootState` and `AppDispatch` types from the store itself
+// export type RootState = ReturnType<typeof store.getState>;
+// Inferred type: {posts: PostsState, comments: CommentsState, users: UsersState}
 export type AppDispatch = typeof store.dispatch;
 
+// Infer the type of `store`
 export type AppStore = typeof store;
 
 declare global {

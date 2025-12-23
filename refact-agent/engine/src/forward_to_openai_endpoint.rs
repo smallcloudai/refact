@@ -8,9 +8,10 @@ use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
-use crate::call_validation::SamplingParameters;
+use crate::call_validation::{ChatMeta, SamplingParameters};
 use crate::caps::BaseModelRecord;
 use crate::custom_error::MapErrToString;
+use crate::scratchpads::chat_utils_limit_history::CompressionStrength;
 use crate::caps::EmbeddingModelRecord;
 
 pub async fn forward_to_openai_style_endpoint(
@@ -18,6 +19,7 @@ pub async fn forward_to_openai_style_endpoint(
     prompt: &str,
     client: &reqwest::Client,
     sampling_parameters: &SamplingParameters,
+    meta: Option<ChatMeta>
 ) -> Result<serde_json::Value, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let mut headers = HeaderMap::new();
@@ -61,6 +63,9 @@ pub async fn forward_to_openai_style_endpoint(
         data["prompt"] = serde_json::Value::String(prompt.to_string());
         data["echo"] = serde_json::Value::Bool(false);
     }
+    if let Some(meta) = meta {
+        data["meta"] = json!(meta);
+    }
 
     // When cancelling requests, coroutine ususally gets aborted here on the following line.
     let req = client.post(&model_rec.endpoint)
@@ -93,6 +98,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     prompt: &str,
     client: &reqwest::Client,
     sampling_parameters: &SamplingParameters,
+    meta: Option<ChatMeta>
 ) -> Result<EventSource, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let mut headers = HeaderMap::new();
@@ -142,6 +148,10 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         sampling_parameters.n.clone().map(|x| x.to_string()).unwrap_or("none".to_string())
     );
 
+    if let Some(meta) = meta {
+        data["meta"] = json!(meta);
+    }
+
     if model_rec.endpoint.is_empty() {
         return Err(format!("No endpoint configured for {}", model_rec.id));
     }
@@ -172,6 +182,20 @@ fn passthrough_messages_to_json(
     }
 }
 
+pub fn try_get_compression_from_prompt(
+    prompt: &str,
+) -> serde_json::Value {
+    let big_json: serde_json::Value = if prompt.starts_with("PASSTHROUGH ") {
+        serde_json::from_str( &prompt[12..]).unwrap()
+    } else {
+        return json!(CompressionStrength::Absent);
+    };
+    if let Some(compression_strength) = big_json.get("compression_strength") {
+        compression_strength.clone()
+    } else {
+        json!(CompressionStrength::Absent)
+    }
+}
 
 #[derive(serde::Serialize)]
 struct EmbeddingsPayloadOpenAI {

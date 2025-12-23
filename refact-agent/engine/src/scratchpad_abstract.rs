@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::SamplingParameters;
-use crate::tokens::{count_text_tokens, count_text_tokens_with_tokenizer};
+use crate::tokens::count_text_tokens;
 
 use tracing::warn;
 
@@ -134,28 +134,19 @@ impl HasTokenizerAndEot {
         &self,
         text: &str,
     ) -> Result<i32, String> {
-        Ok(count_text_tokens(text) as i32)
-    }
-
-    pub fn count_text_tokens_with_tokenizer(&self, text: &str) -> Result<usize, String> {
-        let tokenizer = if let Some(t) = self.tokenizer.clone() {
-            t
-        } else {
-            return Err("assert_one_token: no tokenizer".to_string());
-        };
-        count_text_tokens_with_tokenizer(tokenizer, text)
+        count_text_tokens(self.tokenizer.clone(), text).map(|t| t as i32)
     }
 
     pub fn assert_one_token(
         &self,
         text: &str
     ) -> Result<(), String> {
-        let tokenizer = if let Some(t) = self.tokenizer.clone() {
-            t
-        } else {
+        if self.tokenizer.is_none() {
             return Err("assert_one_token: no tokenizer".to_string());
-        };
-        let token_count = count_text_tokens_with_tokenizer(tokenizer, text)?;
+        }
+
+        let token_count = count_text_tokens(self.tokenizer.clone(), text)?;
+
         if token_count != 1 {
             Err(format!("assert_one_token: expected 1 token for \"{text}\", got {token_count}"))
         } else {

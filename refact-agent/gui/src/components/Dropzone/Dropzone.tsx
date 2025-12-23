@@ -4,8 +4,9 @@ import { Cross1Icon, ImageIcon } from "@radix-ui/react-icons";
 import { DropzoneInputProps, FileRejection, useDropzone } from "react-dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import { TruncateLeft } from "../Text";
+import { telemetryApi } from "../../services/refact/telemetry";
+import { useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "../ChatForm/useCheckBoxes";
-import { useCapabilitiesForModel } from "../../hooks";
 
 export const FileUploadContext = createContext<{
   open: () => void;
@@ -20,11 +21,11 @@ export const DropzoneProvider: React.FC<
   React.PropsWithChildren<{ asChild?: boolean }>
 > = ({ asChild, ...props }) => {
   const { setError, processAndInsertImages } = useAttachedImages();
-  const capabilities = useCapabilitiesForModel();
+  const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
 
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: FileRejection[]): void => {
-      if (!capabilities.multimodal) return;
+      if (!isMultimodalitySupportedForCurrentModel) return;
       processAndInsertImages(acceptedFiles);
 
       if (fileRejections.length) {
@@ -37,7 +38,7 @@ export const DropzoneProvider: React.FC<
         setError(rejectedFileMessage.join("\n"));
       }
     },
-    [capabilities.multimodal, processAndInsertImages, setError],
+    [processAndInsertImages, setError, isMultimodalitySupportedForCurrentModel],
   );
 
   // TODO: disable when chat is busy
@@ -78,6 +79,8 @@ export const DropzoneProvider: React.FC<
 export const DropzoneConsumer = FileUploadContext.Consumer;
 
 export const AttachImagesButton = () => {
+  const [sendTelemetryEvent] =
+    telemetryApi.useLazySendTelemetryChatEventQuery();
   const attachFileOnClick = useCallback(
     (
       event: { preventDefault: () => void; stopPropagation: () => void },
@@ -86,8 +89,13 @@ export const AttachImagesButton = () => {
       event.preventDefault();
       event.stopPropagation();
       open();
+      void sendTelemetryEvent({
+        scope: `addImage/button`, // add drag&drop and clipboard
+        success: true,
+        error_message: "",
+      });
     },
-    [],
+    [sendTelemetryEvent],
   );
   return (
     <DropzoneConsumer>

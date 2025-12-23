@@ -1,56 +1,52 @@
-import { ToolConfirmationRequest } from "../features/ThreadMessages/threadMessagesSlice";
+import { ToolConfirmationPauseReason } from "../services/refact";
 
-export const CONFIRMATIONAL_PAUSE_REASONS_WITH_PATH: ToolConfirmationRequest[] =
+export const CONFIRMATIONAL_PAUSE_REASONS_WITH_PATH: ToolConfirmationPauseReason[] =
   [
     {
       command: "SELECT *",
       rule: "*",
-      ftm_num: 2,
-      // type: "confirmation",
+      type: "confirmation",
       tool_call_id: "1",
-      // integr_config_path: "\\\\?\\d:\\work\\refact.ai\\refact-lsp\\.refact\\integrations\\postgres.yaml",
+      integr_config_path:
+        "\\\\?\\d:\\work\\refact.ai\\refact-lsp\\.refact\\integrations\\postgres.yaml",
     },
   ];
-export const CONFIRMATIONAL_PAUSE_REASONS: ToolConfirmationRequest[] = [
+export const CONFIRMATIONAL_PAUSE_REASONS: ToolConfirmationPauseReason[] = [
   {
     command: "patch",
     rule: "default",
-    ftm_num: 2,
-    // type: "confirmation",
+    type: "confirmation",
     tool_call_id: "1",
-    // integr_config_path: null,
+    integr_config_path: null,
   },
 ];
 
-export const DENIAL_PAUSE_REASONS_WITH_PATH: ToolConfirmationRequest[] = [
+export const DENIAL_PAUSE_REASONS_WITH_PATH: ToolConfirmationPauseReason[] = [
   {
     command: "SELECT *",
     rule: "*",
-    ftm_num: 2,
-    // type: "denial",
+    type: "denial",
     tool_call_id: "1",
-    // integr_config_path:
-    //   "\\\\?\\d:\\work\\refact.ai\\refact-lsp\\.refact\\integrations\\postgres.yaml",
+    integr_config_path:
+      "\\\\?\\d:\\work\\refact.ai\\refact-lsp\\.refact\\integrations\\postgres.yaml",
   },
 ];
 
-export const MIXED_PAUSE_REASONS: ToolConfirmationRequest[] = [
+export const MIXED_PAUSE_REASONS: ToolConfirmationPauseReason[] = [
   {
     command: "SELECT *",
     rule: "*",
-    // type: "denial",
-    ftm_num: 2,
+    type: "denial",
     tool_call_id: "1",
-    // integr_config_path:
-    //   "\\\\?\\d:\\work\\refact.ai\\refact-lsp\\.refact\\integrations\\postgres.yaml",
+    integr_config_path:
+      "\\\\?\\d:\\work\\refact.ai\\refact-lsp\\.refact\\integrations\\postgres.yaml",
   },
   {
     command: "DROP *",
     rule: "*",
-    // type: "confirmation",
+    type: "confirmation",
     tool_call_id: "1",
-    ftm_num: 2,
-    // integr_config_path:
-    //   "\\\\?\\d:\\work\\refact.ai\\refact-lsp\\.refact\\integrations\\postgres.yaml",
+    integr_config_path:
+      "\\\\?\\d:\\work\\refact.ai\\refact-lsp\\.refact\\integrations\\postgres.yaml",
   },
 ];

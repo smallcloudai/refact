@@ -19,7 +19,6 @@ export type SelectProps = React.ComponentProps<typeof RadixSelect.Root> & {
   disabled?: boolean;
   open?: SelectRootProps["open"];
   defaultOpen?: SelectRootProps["defaultOpen"];
-  placeholder?: string;
 };
 
 export type SelectRootProps = React.ComponentProps<typeof RadixSelect.Root>;
@@ -57,7 +56,6 @@ export const Select: React.FC<SelectProps> = ({
   options,
   onChange,
   contentPosition,
-  placeholder,
   ...props
 }) => {
   const [isOpen, setIsOpen] = React.useState(
@@ -91,7 +89,7 @@ export const Select: React.FC<SelectProps> = ({
           </HoverCard.Content>
         </HoverCard.Root>
       ) : (
-        <Trigger title={title} placeholder={placeholder} />
+        <Trigger title={title} />
       )}
       <Content position={contentPosition ?? "popper"}>
         {options.map((option, index) => {

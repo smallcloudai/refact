@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use fancy_regex::Regex;
+use regex::Regex;
 use tokio::sync::Mutex as AMutex;
 use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, preprocess_path_for_normalization};
 use tokio::sync::RwLock as ARwLock;
@@ -128,6 +128,7 @@ impl Tool for ToolUpdateTextDocRegex {
             content: ChatContent::SimpleText(json!(diff_chunks).to_string()),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            usage: None,
             ..Default::default()
         }]
         .into_iter()

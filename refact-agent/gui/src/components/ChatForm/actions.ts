@@ -7,7 +7,6 @@ export type InputActionPayload = {
   send_immediately: boolean; // auto_submit flag from customization.yaml
 };
 
-// TODO: not used anywhere
 export const addInputValue = createAction<InputActionPayload>("textarea/add");
 export const setInputValue =
   createAction<InputActionPayload>("textarea/replace");

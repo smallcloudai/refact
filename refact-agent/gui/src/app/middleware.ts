@@ -4,45 +4,51 @@ import {
   isAnyOf,
   isRejected,
 } from "@reduxjs/toolkit";
-
+import {
+  doneStreaming,
+  newChatAction,
+  chatAskQuestionThunk,
+  restoreChat,
+  newIntegrationChat,
+  setIsWaitingForResponse,
+  upsertToolCall,
+  sendCurrentChatToLspAfterToolCallUpdate,
+  chatResponse,
+  chatError,
+} from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
 import { dockerApi } from "../services/refact/docker";
+import { capsApi, isCapsErrorResponse } from "../services/refact/caps";
+import { promptsApi } from "../services/refact/prompts";
 import { toolsApi } from "../services/refact/tools";
-import { commandsApi, isDetailMessage } from "../services/refact/commands";
+import {
+  commandsApi,
+  isDetailMessage,
+  isDetailMessageWithErrorType,
+} from "../services/refact/commands";
 import { pathApi } from "../services/refact/path";
 import { pingApi } from "../services/refact/ping";
 import {
   clearError,
-  setBallanceError,
   setError,
   setIsAuthError,
 } from "../features/Errors/errorsSlice";
 import { setThemeMode, updateConfig } from "../features/Config/configSlice";
 import { resetAttachedImagesSlice } from "../features/AttachedImages";
 import { nextTip } from "../features/TipOfTheDay";
-
+import { telemetryApi } from "../services/refact/telemetry";
+import { CONFIG_PATH_URL, FULL_PATH_URL } from "../services/refact/consts";
+import {
+  resetConfirmationInteractedState,
+  updateConfirmationAfterIdeToolUse,
+} from "../features/ToolConfirmation/confirmationSlice";
 import {
   ideToolCallResponse,
   ideForceReloadProjectTreeFiles,
 } from "../hooks/useEventBusForIDE";
-
-import { isToolMessage, modelsApi, providersApi } from "../services/refact";
-import {
-  receiveThread,
-  receiveThreadMessages,
-  selectLastMessageForAlt,
-  selectMessageByToolCallId,
-  selectToolConfirmationRequests,
-  threadMessagesSlice,
-} from "../features/ThreadMessages";
-import {
-  graphqlQueriesAndMutations,
-  rejectToolUsageAction,
-} from "../services/graphql";
-import { push } from "../features/Pages/pagesSlice";
-import { setExpert, setModel } from "../features/ExpertsAndModels/expertsSlice";
-import { setBallanceInformation } from "../features/Errors/informationSlice";
+import { upsertToolCallIntoHistory } from "../features/History/historySlice";
+import { isToolResponse, modelsApi, providersApi } from "../services/refact";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -55,12 +61,11 @@ const startListening = listenerMiddleware.startListening.withTypes<
 
 startListening({
   // TODO: figure out why this breaks the tests when it's not a function :/
-  // matcher: isAnyOf(
-  //   (d: unknown): d is ReturnType<typeof newChatAction> =>
-  //     newChatAction.match(d),
-  //   // (d: unknown): d is ReturnType<typeof restoreChat> => restoreChat.match(d),
-  // ),
-  actionCreator: threadMessagesSlice.actions.resetThread,
+  matcher: isAnyOf(
+    (d: unknown): d is ReturnType<typeof newChatAction> =>
+      newChatAction.match(d),
+    (d: unknown): d is ReturnType<typeof restoreChat> => restoreChat.match(d),
+  ),
   effect: (_action, listenerApi) => {
     [
       // pingApi.util.resetApiState(),
@@ -70,9 +75,22 @@ startListening({
       toolsApi.util.resetApiState(),
       commandsApi.util.resetApiState(),
       resetAttachedImagesSlice(),
-      clearError(),
+      resetConfirmationInteractedState(),
     ].forEach((api) => listenerApi.dispatch(api));
 
+    listenerApi.dispatch(clearError());
+  },
+});
+
+// TODO: think about better cache invalidation approach instead of listening for an action dispatching globally
+startListening({
+  matcher: isAnyOf((d: unknown): d is ReturnType<typeof newIntegrationChat> =>
+    newIntegrationChat.match(d),
+  ),
+  effect: (_action, listenerApi) => {
+    [integrationsApi.util.resetApiState()].forEach((api) =>
+      listenerApi.dispatch(api),
+    );
     listenerApi.dispatch(clearError());
   },
 });
@@ -81,6 +99,21 @@ startListening({
   // TODO: figure out why this breaks the tests when it's not a function :/
   matcher: isAnyOf(isRejected),
   effect: (action, listenerApi) => {
+    if (
+      capsApi.endpoints.getCaps.matchRejected(action) &&
+      !action.meta.condition
+    ) {
+      const errorStatus = action.payload?.status;
+      const isAuthError = errorStatus === 401;
+      const message = isAuthError
+        ? AUTH_ERROR_MESSAGE
+        : isCapsErrorResponse(action.payload?.data)
+          ? action.payload.data.detail
+          : `fetching caps from lsp`;
+
+      listenerApi.dispatch(setError(message));
+      listenerApi.dispatch(setIsAuthError(isAuthError));
+    }
     if (
       toolsApi.endpoints.getToolGroups.matchRejected(action) &&
       !action.meta.condition
@@ -92,6 +125,36 @@ startListening({
         : isDetailMessage(action.payload?.data)
           ? action.payload.data.detail
           : `fetching tool groups from lsp`;
+
+      listenerApi.dispatch(setError(message));
+      listenerApi.dispatch(setIsAuthError(isAuthError));
+    }
+    if (
+      toolsApi.endpoints.checkForConfirmation.matchRejected(action) &&
+      !action.meta.condition
+    ) {
+      const errorStatus = action.payload?.status;
+      const isAuthError = errorStatus === 401;
+      const message = isAuthError
+        ? AUTH_ERROR_MESSAGE
+        : isDetailMessage(action.payload?.data)
+          ? action.payload.data.detail
+          : `confirmation check from lsp`;
+
+      listenerApi.dispatch(setError(message));
+      listenerApi.dispatch(setIsAuthError(isAuthError));
+    }
+    if (
+      promptsApi.endpoints.getPrompts.matchRejected(action) &&
+      !action.meta.condition
+    ) {
+      const errorStatus = action.payload?.status;
+      const isAuthError = errorStatus === 401;
+      const message = isAuthError
+        ? AUTH_ERROR_MESSAGE
+        : isDetailMessage(action.payload?.data)
+          ? action.payload.data.detail.split("\n").slice(0, 2).join("\n")
+          : `fetching system prompts.`;
 
       listenerApi.dispatch(setError(message));
       listenerApi.dispatch(setIsAuthError(isAuthError));
@@ -227,18 +290,8 @@ startListening({
       listenerApi.dispatch(setIsAuthError(isAuthError));
     }
 
-    // TODO: thread or message error?
-
     if (
-      (graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage.matchRejected(
-        action,
-      ) ||
-        graphqlQueriesAndMutations.endpoints.createThreadWitMultipleMessages.matchRejected(
-          action,
-        ) ||
-        graphqlQueriesAndMutations.endpoints.sendMessages.matchRejected(
-          action,
-        )) &&
+      chatAskQuestionThunk.rejected.match(action) &&
       !action.meta.aborted &&
       typeof action.payload === "string"
     ) {
@@ -289,48 +342,17 @@ startListening({
 });
 
 startListening({
-  matcher: isAnyOf(
-    graphqlQueriesAndMutations.endpoints.sendMessages.matchFulfilled,
-    graphqlQueriesAndMutations.endpoints.createThreadWitMultipleMessages
-      .matchFulfilled,
-    graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage
-      .matchFulfilled,
-  ),
+  actionCreator: doneStreaming,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
-    if (
-      graphqlQueriesAndMutations.endpoints.sendMessages.matchFulfilled(
-        action,
-      ) &&
-      action.meta.arg.originalArgs.input.ftm_belongs_to_ft_id ===
-        state.threadMessages.thread?.ft_id
-    ) {
-      listenerApi.dispatch(resetAttachedImagesSlice());
-    } else if (
-      graphqlQueriesAndMutations.endpoints.createThreadWithSingleMessage.matchFulfilled(
-        action,
-      ) &&
-      action.payload.thread_create.ft_id === state.threadMessages.ft_id
-    ) {
-      listenerApi.dispatch(resetAttachedImagesSlice());
-    } else if (
-      graphqlQueriesAndMutations.endpoints.createThreadWitMultipleMessages.matchFulfilled(
-        action,
-      ) &&
-      action.payload.thread_create.ft_id !== state.threadMessages.ft_id
-    ) {
+    if (action.payload.id === state.chat.thread.id) {
       listenerApi.dispatch(resetAttachedImagesSlice());
     }
   },
 });
 
 startListening({
-  matcher: isAnyOf(
-    // restoreChat,
-    // newChatAction,
-    updateConfig,
-    threadMessagesSlice.actions.resetThread,
-  ),
+  matcher: isAnyOf(restoreChat, newChatAction, updateConfig),
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
     const isUpdate = updateConfig.match(action);
@@ -351,63 +373,160 @@ startListening({
   },
 });
 
-// An integration chat was started.
 startListening({
-  matcher:
-    graphqlQueriesAndMutations.endpoints.createThreadWitMultipleMessages
-      .matchFulfilled,
+  actionCreator: newIntegrationChat,
+  effect: async (_action, listenerApi) => {
+    const state = listenerApi.getState();
+    // TODO: set mode to configure ? or infer it later
+    // TODO: create a dedicated thunk for this.
+    await listenerApi.dispatch(
+      chatAskQuestionThunk({
+        messages: state.chat.thread.messages,
+        chatId: state.chat.thread.id,
+      }),
+    );
+  },
+});
+
+// Telemetry
+startListening({
+  matcher: isAnyOf(
+    chatAskQuestionThunk.rejected.match,
+    chatAskQuestionThunk.fulfilled.match,
+    // give files api
+    pathApi.endpoints.getFullPath.matchFulfilled,
+    pathApi.endpoints.getFullPath.matchRejected,
+    pathApi.endpoints.customizationPath.matchFulfilled,
+    pathApi.endpoints.customizationPath.matchRejected,
+    pathApi.endpoints.privacyPath.matchFulfilled,
+    pathApi.endpoints.privacyPath.matchRejected,
+    pathApi.endpoints.integrationsPath.matchFulfilled,
+    pathApi.endpoints.integrationsPath.matchRejected,
+  ),
   effect: (action, listenerApi) => {
-    if (action.meta.arg.originalArgs.integration) {
-      listenerApi.dispatch(integrationsApi.util.resetApiState());
-      listenerApi.dispatch(clearError());
-      listenerApi.dispatch(
-        push({ name: "chat", ft_id: action.payload.thread_create.ft_id }),
-      );
+    const state = listenerApi.getState();
+    if (chatAskQuestionThunk.rejected.match(action) && !action.meta.condition) {
+      const { chatId, mode } = action.meta.arg;
+      const thread =
+        chatId in state.chat.cache
+          ? state.chat.cache[chatId]
+          : state.chat.thread;
+      const scope = `sendChat_${thread.model}_${mode}`;
+
+      if (isDetailMessageWithErrorType(action.payload)) {
+        const errorMessage = action.payload.detail;
+        listenerApi.dispatch(
+          action.payload.errorType === "GLOBAL"
+            ? setError(errorMessage)
+            : chatError({ id: chatId, message: errorMessage }),
+        );
+        const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
+          scope,
+          success: false,
+          error_message: errorMessage,
+        });
+        void listenerApi.dispatch(thunk);
+      }
+    }
+
+    if (chatAskQuestionThunk.fulfilled.match(action)) {
+      const { chatId, mode } = action.meta.arg;
+      const thread =
+        chatId in state.chat.cache
+          ? state.chat.cache[chatId]
+          : state.chat.thread;
+      const scope = `sendChat_${thread.model}_${mode}`;
+
+      const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
+        scope,
+        success: true,
+        error_message: "",
+      });
+
+      void listenerApi.dispatch(thunk);
+    }
+
+    if (pathApi.endpoints.getFullPath.matchFulfilled(action)) {
+      const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
+        url: FULL_PATH_URL,
+        scope: "getFullPath",
+        success: true,
+        error_message: "",
+      });
+      void listenerApi.dispatch(thunk);
+    }
+
+    if (
+      pathApi.endpoints.getFullPath.matchRejected(action) &&
+      !action.meta.condition
+    ) {
+      const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
+        url: FULL_PATH_URL,
+        scope: "getFullPath",
+        success: false,
+        error_message: action.error.message ?? JSON.stringify(action.error),
+      });
+      void listenerApi.dispatch(thunk);
+    }
+
+    if (
+      pathApi.endpoints.customizationPath.matchFulfilled(action) ||
+      pathApi.endpoints.privacyPath.matchFulfilled(action) ||
+      pathApi.endpoints.integrationsPath.matchFulfilled(action)
+    ) {
+      const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
+        url: CONFIG_PATH_URL,
+        scope: action.meta.arg.endpointName,
+        success: true,
+        error_message: "",
+      });
+      void listenerApi.dispatch(thunk);
+    }
+
+    if (
+      (pathApi.endpoints.customizationPath.matchRejected(action) ||
+        pathApi.endpoints.privacyPath.matchRejected(action) ||
+        pathApi.endpoints.integrationsPath.matchRejected(action)) &&
+      !action.meta.condition
+    ) {
+      const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
+        url: CONFIG_PATH_URL,
+        scope: action.meta.arg.endpointName,
+        success: false,
+        error_message: action.error.message ?? JSON.stringify(action.error),
+      });
+      void listenerApi.dispatch(thunk);
     }
   },
 });
 
-// TODO: this should let flexus know that the user accepted the tool
 // Tool Call results from ide.
 startListening({
   actionCreator: ideToolCallResponse,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
 
-    // TODO: reject, will require making a new message so the chat must be loaded
-    if (state.threadMessages.thread?.ft_id !== action.payload.chatId) return;
+    listenerApi.dispatch(upsertToolCallIntoHistory(action.payload));
+    listenerApi.dispatch(upsertToolCall(action.payload));
+    listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
 
-    // Check if already confirmed
-    const pendingRequests = selectToolConfirmationRequests(state);
-    const maybePendingToolCall = pendingRequests.find(
-      (req) => req.tool_call_id === action.payload.toolCallId,
+    const pauseReasons = state.confirmation.pauseReasons.filter(
+      (reason) => reason.tool_call_id !== action.payload.toolCallId,
     );
-    if (!maybePendingToolCall) return;
 
-    if (action.payload.accepted) {
-      const thunk =
-        graphqlQueriesAndMutations.endpoints.toolConfirmation.initiate({
-          ft_id: action.payload.chatId,
-          confirmation_response: JSON.stringify([action.payload.toolCallId]),
-        });
-      void listenerApi.dispatch(thunk);
-      return;
+    if (pauseReasons.length === 0) {
+      listenerApi.dispatch(resetConfirmationInteractedState());
+      listenerApi.dispatch(setIsWaitingForResponse(false));
     }
 
-    // rejection creates a new message at the end of the thread
-    // find the parent, then find the end point
-    const message = selectMessageByToolCallId(state, action.payload.toolCallId);
-    if (!message) return;
-    const lastMessage = selectLastMessageForAlt(state, message.ftm_alt);
-    if (!lastMessage) return;
-    const rejectAction = rejectToolUsageAction(
-      [action.payload.toolCallId],
-      action.payload.chatId,
-      lastMessage.ftm_num,
-      lastMessage.ftm_alt,
-      lastMessage.ftm_prev_alt,
-    );
-    void listenerApi.dispatch(rejectAction);
+    if (pauseReasons.length === 0 && action.payload.accepted) {
+      void listenerApi.dispatch(
+        sendCurrentChatToLspAfterToolCallUpdate({
+          chatId: action.payload.chatId,
+          toolCallId: action.payload.toolCallId,
+        }),
+      );
+    }
   },
 });
 
@@ -429,89 +548,12 @@ startListening({
 // JB file refresh
 // TBD: this could include diff messages to
 startListening({
-  actionCreator: threadMessagesSlice.actions.receiveThreadMessages,
+  actionCreator: chatResponse,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
     if (state.config.host !== "jetbrains") return;
-    if (!isToolMessage(action.payload.news_payload_thread_message)) return;
+    if (!isToolResponse(action.payload)) return;
     if (!window.postIntellijMessage) return;
     window.postIntellijMessage(ideForceReloadProjectTreeFiles());
-  },
-});
-
-startListening({
-  actionCreator: receiveThread,
-  effect: (action, listenerApi) => {
-    const state = listenerApi.getState();
-    if (
-      !state.threadMessages.ft_id ||
-      !action.payload.news_payload_id.startsWith(state.threadMessages.ft_id)
-    ) {
-      return;
-    }
-
-    if (
-      action.payload.news_payload_thread.ft_fexp_id &&
-      action.payload.news_payload_thread.ft_fexp_id !==
-        state.experts.selectedExpert
-    ) {
-      listenerApi.dispatch(
-        setExpert(action.payload.news_payload_thread.ft_fexp_id),
-      );
-    }
-  },
-});
-
-startListening({
-  actionCreator: receiveThreadMessages,
-  effect: (action, listenerApi) => {
-    const state = listenerApi.getState();
-    if (
-      !state.threadMessages.ft_id ||
-      !action.payload.news_payload_id.startsWith(state.threadMessages.ft_id)
-    ) {
-      return;
-    }
-
-    const maybeModel = getModel(action.payload);
-    if (maybeModel && maybeModel !== state.experts.selectedModel) {
-      listenerApi.dispatch(setModel(maybeModel));
-    }
-  },
-});
-
-function getModel(preferences: unknown): string | null {
-  if (!preferences) return null;
-  if (typeof preferences !== "object") return null;
-  if (!("model" in preferences)) {
-    return null;
-  }
-  if (typeof preferences.model !== "string") {
-    return null;
-  }
-  return preferences.model;
-}
-
-startListening({
-  matcher: graphqlQueriesAndMutations.endpoints.getBasicStuff.matchFulfilled,
-  effect: (action, listenerApi) => {
-    const state = listenerApi.getState();
-    const currentWorkspace = state.teams.workspace;
-    if (!currentWorkspace) return;
-
-    const workspaceInfo = action.payload.query_basic_stuff.workspaces.find(
-      (ws) => ws.ws_id === currentWorkspace.ws_id,
-    );
-    if (!workspaceInfo) return;
-
-    if (!workspaceInfo.have_coins_enough) {
-      // dispatch global error about not having enough coins
-      listenerApi.dispatch(setBallanceError("Your balance is exhausted!"));
-    } else if (
-      workspaceInfo.have_coins_exactly <= 2000 &&
-      !state.information.dismissed
-    ) {
-      listenerApi.dispatch(setBallanceInformation());
-    }
   },
 });

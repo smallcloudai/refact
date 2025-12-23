@@ -1,5 +1,7 @@
 import { createSelector, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { partition } from "../../utils";
+import { chatAskQuestionThunk, chatResponse } from "../Chat";
+import { isAssistantMessage, isDiffResponse } from "../../events";
+import { parseOrElse, partition } from "../../utils";
 import { RootState } from "../../app/store";
 
 export type PatchMeta = {
@@ -11,7 +13,7 @@ export type PatchMeta = {
 };
 
 const initialState: { patches: PatchMeta[] } = { patches: [] };
-// TODO: maybe remove this?
+
 export const patchesAndDiffsTrackerSlice = createSlice({
   name: "patchesAndDiffsTracker",
   initialState,
@@ -43,45 +45,45 @@ export const patchesAndDiffsTrackerSlice = createSlice({
     },
   },
 
-  // extraReducers: (builder) => {
-  //   // TODO: handel this
-  //   builder.addCase(chatAskQuestionThunk.pending, (state, action) => {
-  //     if (action.meta.arg.messages.length === 0) return state;
-  //     const { messages, chatId } = action.meta.arg;
-  //     const lastMessage = messages[messages.length - 1];
-  //     if (!isAssistantMessage(lastMessage)) return state;
-  //     const toolCalls = lastMessage.ftm_tool_calls;
-  //     if (!toolCalls) return state;
-  //     const patches = toolCalls.reduce<PatchMeta[]>((acc, toolCall) => {
-  //       if (toolCall.function.name !== "patch") return acc;
-  //       const filePath = pathFromArgString(toolCall.function.arguments);
-  //       if (!filePath) return acc;
-  //       return [
-  //         ...acc,
-  //         {
-  //           chatId,
-  //           toolCallId: toolCall.id,
-  //           filePath,
-  //           started: false,
-  //           completed: false,
-  //         },
-  //       ];
-  //     }, []);
-  //     state.patches.push(...patches);
-  //   });
+  extraReducers: (builder) => {
+    builder.addCase(chatAskQuestionThunk.pending, (state, action) => {
+      if (action.meta.arg.messages.length === 0) return state;
+      const { messages, chatId } = action.meta.arg;
+      const lastMessage = messages[messages.length - 1];
+      if (!isAssistantMessage(lastMessage)) return state;
+      const toolCalls = lastMessage.tool_calls;
+      if (!toolCalls) return state;
+      const patches = toolCalls.reduce<PatchMeta[]>((acc, toolCall) => {
+        if (toolCall.id === undefined) return acc;
+        if (toolCall.function.name !== "patch") return acc;
+        const filePath = pathFromArgString(toolCall.function.arguments);
+        if (!filePath) return acc;
+        return [
+          ...acc,
+          {
+            chatId,
+            toolCallId: toolCall.id,
+            filePath,
+            started: false,
+            completed: false,
+          },
+        ];
+      }, []);
+      state.patches.push(...patches);
+    });
 
-  //   builder.addCase(chatResponse, (state, action) => {
-  //     if (!isDiffResponse(action.payload)) return state;
-  //     const { id, tool_call_id } = action.payload;
-  //     const next = state.patches.map((patchMeta) => {
-  //       if (patchMeta.chatId !== id) return patchMeta;
-  //       if (patchMeta.toolCallId !== tool_call_id) return patchMeta;
-  //       return { ...patchMeta, completed: true };
-  //     });
+    builder.addCase(chatResponse, (state, action) => {
+      if (!isDiffResponse(action.payload)) return state;
+      const { id, tool_call_id } = action.payload;
+      const next = state.patches.map((patchMeta) => {
+        if (patchMeta.chatId !== id) return patchMeta;
+        if (patchMeta.toolCallId !== tool_call_id) return patchMeta;
+        return { ...patchMeta, completed: true };
+      });
 
-  //     state.patches = next;
-  //   });
-  // },
+      state.patches = next;
+    });
+  },
 
   selectors: {
     selectAllFilePaths: (state) => {
@@ -126,3 +128,17 @@ export const selectCompletedPatchesFilePaths = createSelector(
 
 export const { setStartedByFilePaths, removePatchMetaByFileNameIfCompleted } =
   patchesAndDiffsTrackerSlice.actions;
+
+const pathFromArgString = (argString: string) => {
+  const args = parseOrElse<Record<string, unknown> | null>(argString, null);
+  if (
+    args &&
+    typeof args === "object" &&
+    "path" in args &&
+    typeof args.path === "string"
+  ) {
+    return args.path;
+  } else {
+    return null;
+  }
+};

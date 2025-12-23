@@ -11,7 +11,7 @@ use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ContextEnum;
-use crate::call_validation::{ChatContent, ChatMessage};
+use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
 use crate::integrations::go_to_configuration_message;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 
@@ -175,6 +175,12 @@ impl Tool for ToolPostgres {
 
     fn tool_depends_on(&self) -> Vec<String> {
         vec![]
+    }
+
+    fn usage(&mut self) -> &mut Option<ChatUsage> {
+        static mut DEFAULT_USAGE: Option<ChatUsage> = None;
+        #[allow(static_mut_refs)]
+        unsafe { &mut DEFAULT_USAGE }
     }
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {

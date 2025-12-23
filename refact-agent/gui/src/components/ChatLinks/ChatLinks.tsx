@@ -1,9 +1,13 @@
 import React from "react";
 import { Button } from "@radix-ui/themes";
 import { type ChatLink } from "../../services/refact/links";
+import { useAppSelector, useLinksFromLsp } from "../../hooks";
+import { Spinner } from "@radix-ui/themes";
 import { TruncateRight } from "../Text/TruncateRight";
 
 import styles from "./ChatLinks.module.css";
+import { useCoinBallance } from "../../hooks/useCoinBalance";
+import { selectAreFollowUpsEnabled } from "../../features/Chat";
 
 function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
   const hasAction = "link_action" in link;
@@ -16,35 +20,35 @@ function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
 }
 
 export const ChatLinks: React.FC = () => {
-  // const { linksResult, handleLinkAction, streaming } = useLinksFromLsp();
-  // const balance = useCoinBallance();
-  // const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
-  // if (streaming || !areFollowUpsEnabled) return null;
+  const { linksResult, handleLinkAction, streaming } = useLinksFromLsp();
+  const balance = useCoinBallance();
+  const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
+  if (streaming || !areFollowUpsEnabled) return null;
 
-  // // TODO: waiting, errors, maybe add a title
+  // TODO: waiting, errors, maybe add a title
 
-  // if (linksResult.isLoading || linksResult.isFetching) {
-  //   return (
-  //     <Button variant="surface" disabled>
-  //       <Spinner loading />
-  //       Checking for actions
-  //     </Button>
-  //   );
-  // }
+  if (linksResult.isLoading || linksResult.isFetching) {
+    return (
+      <Button variant="surface" disabled>
+        <Spinner loading />
+        Checking for actions
+      </Button>
+    );
+  }
 
-  // if (linksResult.data && linksResult.data.links.length > 0) {
-  //   return linksResult.data.links.map((link, index) => {
-  //     const key = `chat-link-${index}`;
-  //     return (
-  //       <ChatLinkButton
-  //         key={key}
-  //         link={link}
-  //         onClick={handleLinkAction}
-  //         disabled={balance <= 0}
-  //       />
-  //     );
-  //   });
-  // }
+  if (linksResult.data && linksResult.data.links.length > 0) {
+    return linksResult.data.links.map((link, index) => {
+      const key = `chat-link-${index}`;
+      return (
+        <ChatLinkButton
+          key={key}
+          link={link}
+          onClick={handleLinkAction}
+          disabled={balance <= 0}
+        />
+      );
+    });
+  }
 
   return null;
 };

@@ -1,8 +1,10 @@
+export * from "./caps";
 export * from "./providers";
 export * from "./models";
 export * from "./chat";
 export * from "./commands";
 export * from "./fim";
+export * from "./prompts";
 export * from "./statistics";
 export * from "./tools";
 export * from "./types";
@@ -11,4 +13,6 @@ export * from "./ping";
 export * from "./links";
 export * from "./integrations";
 export * from "./docker";
+export * from "./telemetry";
+export * from "./knowledge";
 export * from "./teams";

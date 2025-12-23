@@ -1,5 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize};
+use std::sync::Arc;
 use serde_json::{json, Value};
+use tokenizers::Tokenizer;
 use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall};
 use crate::scratchpads::scratchpad_utils::{calculate_image_tokens_openai, image_reader_from_b64string, parse_image_b64_from_image_url_openai};
 use crate::tokens::count_text_tokens;
@@ -75,9 +77,9 @@ impl MultimodalElement {
         })
     }
 
-    pub fn count_tokens(&self, style: &Option<String>) -> Result<i32, String> {
+    pub fn count_tokens(&self, tokenizer: Option<Arc<Tokenizer>>, style: &Option<String>) -> Result<i32, String> {
         if self.is_text() {
-            Ok(count_text_tokens(&self.m_content) as i32)
+            Ok(count_text_tokens(tokenizer, &self.m_content)? as i32)
         } else if self.is_image() {
             let style = style.clone().unwrap_or("openai".to_string());
             match style.as_str() {
@@ -173,21 +175,21 @@ impl ChatContent {
         }
     }
 
-    pub fn size_estimate(&self, style: &Option<String>) -> usize {
+    pub fn size_estimate(&self, tokenizer: Option<Arc<Tokenizer>>, style: &Option<String>) -> usize {
         match self {
             ChatContent::SimpleText(text) => text.len(),
             ChatContent::Multimodal(_elements) => {
-                let tcnt = self.count_tokens(style).unwrap_or(0);
+                let tcnt = self.count_tokens(tokenizer, style).unwrap_or(0);
                 (tcnt as f32 * 2.618) as usize
             },
         }
     }
 
-    pub fn count_tokens(&self, style: &Option<String>) -> Result<i32, String> {
+    pub fn count_tokens(&self, tokenizer: Option<Arc<Tokenizer>>, style: &Option<String>) -> Result<i32, String> {
         match self {
-            ChatContent::SimpleText(text) => Ok(count_text_tokens(text) as i32),
+            ChatContent::SimpleText(text) => Ok(count_text_tokens(tokenizer, text)? as i32),
             ChatContent::Multimodal(elements) => elements.iter()
-                .map(|e|e.count_tokens(style))
+                .map(|e|e.count_tokens(tokenizer.clone(), style))
                 .collect::<Result<Vec<_>, _>>()
                 .map(|counts| counts.iter().sum()),
         }

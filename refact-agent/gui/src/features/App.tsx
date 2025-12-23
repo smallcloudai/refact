@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Flex } from "@radix-ui/themes";
-import { Chat } from "./Chat";
-import { selectIsStreaming, selectThreadId } from "./ThreadMessages";
+import { Chat, newChatAction, selectChatId, selectIsStreaming } from "./Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
 import {
   useAppSelector,
@@ -28,6 +27,7 @@ import { TourProvider } from "./Tour";
 import { Tour } from "../components/Tour";
 import { TourEnd } from "../components/Tour/TourEnd";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
+import { AbortControllerProvider } from "../contexts/AbortControllers";
 import { Toolbar } from "../components/Toolbar";
 import { Tab } from "../components/Toolbar/Toolbar";
 import { PageWrapper } from "../components/PageWrapper";
@@ -41,9 +41,8 @@ import { LoginPage } from "./Login";
 import styles from "./App.module.css";
 import classNames from "classnames";
 import { usePatchesAndDiffsEventsForIDE } from "../hooks/usePatchesAndDiffEventsForIDE";
-
+import { UrqlProvider } from "../../urqlProvider";
 import { selectActiveGroup } from "./Teams";
-import { ConnectionStatus } from "./ConnectionStatus/ConectionStatus";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -65,8 +64,9 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const { chatPageChange, setIsChatStreaming, setIsChatReady } =
     useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
+  const historyState = useAppSelector((state: RootState) => state.history);
   const maybeCurrentActiveGroup = useAppSelector(selectActiveGroup);
-  const chatId = useAppSelector(selectThreadId);
+  const chatId = useAppSelector(selectChatId);
   useEventBusForWeb();
   useEventBusForApp();
   usePatchesAndDiffsEventsForIDE();
@@ -89,10 +89,12 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
       if (tourState.type === "in_progress" && tourState.step === 1) {
         dispatch(push({ name: "welcome" }));
       } else if (
-        // threads length?
+        Object.keys(historyState).length === 0 &&
+        // TODO: rework when better router will be implemented
         maybeCurrentActiveGroup
       ) {
         dispatch(push({ name: "history" }));
+        dispatch(newChatAction());
         dispatch(push({ name: "chat" }));
       } else {
         dispatch(push({ name: "history" }));
@@ -107,6 +109,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     isLoggedIn,
     dispatch,
     tourState,
+    historyState,
     maybeCurrentActiveGroup,
   ]);
 
@@ -144,7 +147,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     if (page.name === "chat") {
       return {
         type: "chat",
-        id: chatId ?? "",
+        id: chatId,
       };
     }
     if (page.name === "history") {
@@ -173,12 +176,12 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         <UserSurvey />
         {page.name === "login page" && <LoginPage />}
         {activeTab && <Toolbar activeTab={activeTab} />}
-        <ConnectionStatus />
         {page.name === "welcome" && <Welcome onPressNext={startTour} />}
         {page.name === "tour end" && <TourEnd />}
         {page.name === "history" && (
           <Sidebar
             takingNotes={false}
+            onOpenChatInTab={undefined}
             style={{
               alignSelf: "stretch",
               height: "calc(100% - var(--space-5)* 2)",
@@ -238,13 +241,17 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 export const App = () => {
   return (
     <Provider store={store}>
-      <PersistGate persistor={persistor}>
-        <Theme>
-          <TourProvider>
-            <InnerApp />
-          </TourProvider>
-        </Theme>
-      </PersistGate>
+      <UrqlProvider>
+        <PersistGate persistor={persistor}>
+          <Theme>
+            <TourProvider>
+              <AbortControllerProvider>
+                <InnerApp />
+              </AbortControllerProvider>
+            </TourProvider>
+          </Theme>
+        </PersistGate>
+      </UrqlProvider>
     </Provider>
   );
 };

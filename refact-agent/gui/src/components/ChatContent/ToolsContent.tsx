@@ -10,14 +10,11 @@ import {
   Separator,
 } from "@radix-ui/themes";
 import {
-  isMultiModalToolMessage,
-  MultiModalToolMessage,
-  // MultiModalToolResult,
+  isMultiModalToolResult,
   // knowledgeApi,
-  // MultiModalToolResult,
+  MultiModalToolResult,
   ToolCall,
-  type ToolMessage,
-  // ToolResult,
+  ToolResult,
   ToolUsage,
 } from "../../services/refact";
 import styles from "./ChatContent.module.css";
@@ -26,14 +23,12 @@ import { Chevron } from "../Collapsible";
 import { Reveal } from "../Reveal";
 import { useAppSelector, useHideScroll } from "../../hooks";
 import {
-  selectManyToolMessagesByIds,
-  selectManyDiffMessageByIds,
-  selectToolMessageById,
-} from "../../features/ThreadMessages";
-import {
   selectIsStreaming,
   selectIsWaiting,
-} from "../../features/ThreadMessages";
+  selectManyDiffMessageByIds,
+  selectManyToolResultsByIds,
+  selectToolResultById,
+} from "../../features/Chat/Thread/selectors";
 import { ScrollArea } from "../ScrollArea";
 import { takeWhile } from "../../utils";
 import { DialogImage } from "../DialogImage";
@@ -126,14 +121,14 @@ const ToolMessage: React.FC<{
 }> = ({ toolCall, onClose }) => {
   const name = toolCall.function.name ?? "";
   const maybeResult = useAppSelector((state) =>
-    selectToolMessageById(state, toolCall.id),
+    selectToolResultById(state, toolCall.id),
   );
 
   const argsString = React.useMemo(() => {
     return toolCallArgsToString(toolCall.function.arguments);
   }, [toolCall.function.arguments]);
 
-  if (maybeResult && isMultiModalToolMessage(maybeResult)) {
+  if (maybeResult && isMultiModalToolResult(maybeResult)) {
     // TODO: handle this
     return null;
   }
@@ -147,9 +142,9 @@ const ToolMessage: React.FC<{
           <CommandMarkdown isInsideScrollArea>{functionCalled}</CommandMarkdown>
         </Box>
       </ScrollArea>
-      {maybeResult?.ftm_content && (
+      {maybeResult?.content && (
         <Result isInsideScrollArea onClose={onClose}>
-          {maybeResult.ftm_content}
+          {maybeResult.content}
         </Result>
       )}
     </Flex>
@@ -187,13 +182,8 @@ export const SingleModelToolContent: React.FC<{
     return ids;
   }, [toolCalls]);
 
-  const results = useAppSelector((state) =>
-    selectManyToolMessagesByIds(state, toolCallsId),
-  );
-
-  const diffs = useAppSelector((state) =>
-    selectManyDiffMessageByIds(state, toolCallsId),
-  );
+  const results = useAppSelector(selectManyToolResultsByIds(toolCallsId));
+  const diffs = useAppSelector(selectManyDiffMessageByIds(toolCallsId));
   const allResolved = useMemo(() => {
     return results.length + diffs.length === toolCallsId.length;
   }, [diffs.length, results.length, toolCallsId.length]);
@@ -269,6 +259,7 @@ export const SingleModelToolContent: React.FC<{
               console.error("toolCall is null");
               return;
             }
+            if (toolCall.id === undefined) return;
             const key = `${toolCall.id}-${toolCall.index}`;
             return (
               <Box key={key} py="2">
@@ -289,26 +280,23 @@ export type ToolContentProps = {
 export const ToolContent: React.FC<ToolContentProps> = ({ toolCalls }) => {
   const features = useAppSelector(selectFeatures);
   const ids = toolCalls.reduce<string[]>((acc, cur) => {
-    if (cur.id) return [...acc, cur.id];
+    if (cur.id !== undefined) return [...acc, cur.id];
     return acc;
   }, []);
-  // Chate this selector to use thread message list
-  const allToolResults = useAppSelector((state) =>
-    selectManyToolMessagesByIds(state, ids),
-  );
+  const allToolResults = useAppSelector(selectManyToolResultsByIds(ids));
 
   return processToolCalls(toolCalls, allToolResults, features);
 };
 
 function processToolCalls(
   toolCalls: ToolCall[],
-  toolResults: ToolMessage[],
+  toolResults: ToolResult[],
   features: RootState["config"]["features"] = {},
   processed: React.ReactNode[] = [],
 ) {
   if (toolCalls.length === 0) return processed;
   const [head, ...tail] = toolCalls;
-  const result = toolResults.find((result) => result.ftm_call_id === head.id);
+  const result = toolResults.find((result) => result.tool_call_id === head.id);
 
   // TODO: handle knowledge differently.
   // memories are split in content with 🗃️019957b6ff
@@ -325,29 +313,26 @@ function processToolCalls(
       <TextDocTool
         key={`textdoc-tool-${head.function.name}-${processed.length}`}
         toolCall={head}
-        // TODO: failed tools
-        // toolFailed={result?.tool_failed}
+        toolFailed={result?.tool_failed}
       />
     );
     return processToolCalls(tail, toolResults, features, [...processed, elem]);
   }
 
-  // TODO: skip multi modal for now
-  if (result && isMultiModalToolMessage(result)) {
+  if (result && isMultiModalToolResult(result)) {
     const restInTail = takeWhile(tail, (toolCall) => {
       const nextResult = toolResults.find(
-        (res) => res.ftm_call_id === toolCall.id,
+        (res) => res.tool_call_id === toolCall.id,
       );
-      return nextResult !== undefined && isMultiModalToolMessage(nextResult);
+      return nextResult !== undefined && isMultiModalToolResult(nextResult);
     });
 
     const nextTail = tail.slice(restInTail.length);
     const multiModalToolCalls = [head, ...restInTail];
     const ids = multiModalToolCalls.map((d) => d.id);
-    const multiModalToolResults: MultiModalToolMessage[] = toolResults
-      // .filter(isMultiModalToolResult)
-      .filter(isMultiModalToolMessage)
-      .filter((toolResult) => ids.includes(toolResult.ftm_call_id));
+    const multiModalToolResults: MultiModalToolResult[] = toolResults
+      .filter(isMultiModalToolResult)
+      .filter((toolResult) => ids.includes(toolResult.tool_call_id));
 
     const elem = (
       <MultiModalToolContent
@@ -364,9 +349,9 @@ function processToolCalls(
 
   const restInTail = takeWhile(tail, (toolCall) => {
     const item = toolResults.find(
-      (result) => result.ftm_call_id === toolCall.id,
+      (result) => result.tool_call_id === toolCall.id,
     );
-    return item === undefined; // || !isMultiModalToolResult(item);
+    return item === undefined || !isMultiModalToolResult(item);
   });
   const nextTail = tail.slice(restInTail.length);
 
@@ -384,7 +369,7 @@ function processToolCalls(
 
 const MultiModalToolContent: React.FC<{
   toolCalls: ToolCall[];
-  toolResults: MultiModalToolMessage[];
+  toolResults: MultiModalToolResult[];
 }> = ({ toolCalls, toolResults }) => {
   const [open, setOpen] = React.useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -398,9 +383,7 @@ const MultiModalToolContent: React.FC<{
     }, []);
   }, [toolCalls]);
 
-  const diffs = useAppSelector((state) =>
-    selectManyDiffMessageByIds(state, ids),
-  );
+  const diffs = useAppSelector(selectManyDiffMessageByIds(ids));
 
   const handleClose = useCallback(() => {
     handleHide();
@@ -409,9 +392,7 @@ const MultiModalToolContent: React.FC<{
   // const content = toolResults.map((toolResult) => toolResult.content);
 
   const hasImages = toolResults.some((toolResult) =>
-    toolResult.ftm_content.some((content) =>
-      content.m_type.startsWith("image/"),
-    ),
+    toolResult.content.some((content) => content.m_type.startsWith("image/")),
   );
 
   // TOOD: duplicated
@@ -438,9 +419,8 @@ const MultiModalToolContent: React.FC<{
   });
 
   const hasResults = useMemo(() => {
-    // TODO: diffs
-    const diffIds = diffs.map((diff) => diff.ftm_call_id);
-    const toolIds = toolResults.map((d) => d.ftm_call_id);
+    const diffIds = diffs.map((diff) => diff.tool_call_id);
+    const toolIds = toolResults.map((d) => d.tool_call_id);
     const resultIds = [...diffIds, ...toolIds];
     return toolCalls.every(
       (toolCall) => toolCall.id && resultIds.includes(toolCall.id),
@@ -469,11 +449,11 @@ const MultiModalToolContent: React.FC<{
           <Box py="2">
             {toolCalls.map((toolCall, i) => {
               const result = toolResults.find(
-                (toolResult) => toolResult.ftm_call_id === toolCall.id,
+                (toolResult) => toolResult.tool_call_id === toolCall.id,
               );
               if (!result) return null;
 
-              const texts = result.ftm_content
+              const texts = result.content
                 .filter((content) => content.m_type === "text")
                 .map((result) => result.m_content)
                 .join("\n");
@@ -514,18 +494,18 @@ const MultiModalToolContent: React.FC<{
         <Flex py="2" gap="2" wrap="wrap">
           {toolCalls.map((toolCall, index) => {
             const toolResult = toolResults.find(
-              (toolResult) => toolResult.ftm_call_id === toolCall.id,
+              (toolResult) => toolResult.tool_call_id === toolCall.id,
             );
             if (!toolResult) return null;
 
-            const images = toolResult.ftm_content.filter((content) =>
+            const images = toolResult.content.filter((content) =>
               content.m_type.startsWith("image/"),
             );
             if (images.length === 0) return null;
 
             return images.map((image, idx) => {
               const dataUrl = `data:${image.m_type};base64,${image.m_content}`;
-              const key = `tool-image-${toolResult.ftm_call_id}-${index}-${idx}`;
+              const key = `tool-image-${toolResult.tool_call_id}-${index}-${idx}`;
               return (
                 <DialogImage key={key} size="8" src={dataUrl} fallback="" />
               );
@@ -625,7 +605,7 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
   }, [scrollOnHide]);
 
   const maybeResult = useAppSelector((state) =>
-    selectToolMessageById(state, toolCall.id),
+    selectToolResultById(state, toolCall.id),
   );
 
   const argsString = React.useMemo(() => {
@@ -633,9 +613,9 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
   }, [toolCall.function.arguments]);
 
   const memories = useMemo(() => {
-    if (typeof maybeResult?.ftm_content !== "string") return [];
-    return splitMemories(maybeResult.ftm_content);
-  }, [maybeResult?.ftm_content]);
+    if (typeof maybeResult?.content !== "string") return [];
+    return splitMemories(maybeResult.content);
+  }, [maybeResult?.content]);
 
   const functionCalled = "```python\n" + name + "(" + argsString + ")\n```";
 

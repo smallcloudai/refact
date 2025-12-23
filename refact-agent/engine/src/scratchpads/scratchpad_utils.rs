@@ -6,12 +6,14 @@ use crate::call_validation::{ChatToolCall, ContextFile};
 use crate::postprocessing::pp_context_files::RESERVE_FOR_QUESTION_AND_FOLLOWUP;
 
 pub struct HasRagResults {
+    pub was_sent: bool,
     pub in_json: Vec<Value>,
 }
 
 impl HasRagResults {
     pub fn new() -> Self {
         HasRagResults {
+            was_sent: false,
             in_json: vec![],
         }
     }
@@ -20,6 +22,14 @@ impl HasRagResults {
 impl HasRagResults {
     pub fn push_in_json(&mut self, value: Value) {
         self.in_json.push(value);
+    }
+
+    pub fn response_streaming(&mut self) -> Result<Vec<Value>, String> {
+        if self.was_sent == true || self.in_json.is_empty() {
+            return Ok(vec![]);
+        }
+        self.was_sent = true;
+        Ok(self.in_json.clone())
     }
 }
 
@@ -43,7 +53,7 @@ pub fn max_tokens_for_rag_chat_by_tools(
     if tools.is_empty() {
         return base_limit.min(4096);
     }
-    let context_files_len = context_files.len().min(crate::http::routers::v1::at_commands::CHAT_TOP_N);
+    let context_files_len = context_files.len().min(crate::http::routers::v1::chat::CHAT_TOP_N);
     let mut overall_tool_limit: usize = 0;
     for tool in tools {
         let is_cat_with_lines = if tool.function.name == "cat" {

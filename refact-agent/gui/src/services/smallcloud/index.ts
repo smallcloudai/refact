@@ -1,14 +1,13 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { RootState } from "../../app/store";
-import { setApiKey } from "../../features/Config/configSlice";
 import {
-  ApiKeyResponse,
   EmailLinkResponse,
-  isApiKeyResponse,
   isEmailLinkResponse,
+  isGoodResponse,
   isSurveyQuestions,
+  isUser,
   SurveyQuestions,
+  User,
 } from "./types";
 
 export const smallCloudApi = createApi({
@@ -27,17 +26,17 @@ export const smallCloudApi = createApi({
   }),
   tagTypes: ["User", "Polling"],
   endpoints: (builder) => ({
-    login: builder.query<ApiKeyResponse, string>({
+    login: builder.query({
       providesTags: ["Polling"],
-      queryFn: async (token, api, _extraOptions, _baseQuery) => {
-        return new Promise((resolve, _reject) => {
+      queryFn: async (token, api, _extraOptions, baseQuery) => {
+        return new Promise<ReturnType<typeof baseQuery>>((resolve, reject) => {
           const timeout = setInterval(() => {
             fetch(
-              // "https://www.smallcloud.ai/v1/streamlined-login-recall-ticket",
-              `https://app.refact.ai/v1/streamlined-login-recall-ticket?ticket=${token}`,
+              "https://www.smallcloud.ai/v1/streamlined-login-recall-ticket",
               {
                 method: "GET",
                 headers: {
+                  Authorization: `codify-${token}`,
                   "Content-Type": "application/json",
                 },
                 redirect: "follow",
@@ -55,25 +54,45 @@ export const smallCloudApi = createApi({
                 return response.json() as unknown;
               })
               .then((json: unknown) => {
-                if (isApiKeyResponse(json)) {
+                if (isGoodResponse(json)) {
                   clearInterval(timeout);
-                  // console.log("API Key received:", json.api_key);
-                  api.dispatch(setApiKey(json.api_key));
                   resolve({ data: json });
                 }
               })
-              .catch((err: Error) => {
-                clearInterval(timeout);
-                resolve({
-                  error: {
-                    status: "FETCH_ERROR",
-                    error: err.message,
-                  } as FetchBaseQueryError,
-                });
-              });
+              .catch((err: Error) => reject(err));
           }, 5000);
         });
       },
+    }),
+    getUser: builder.query<
+      User,
+      {
+        apiKey: string;
+        addressURL?: string;
+      }
+    >({
+      query: (args) => {
+        const { apiKey } = args;
+        return {
+          url: "login",
+          method: "GET",
+          redirect: "follow",
+          cache: "no-cache",
+          // referrer: "no-referrer",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + apiKey,
+          },
+        };
+      },
+      transformResponse(response: unknown) {
+        if (!isUser(response)) {
+          throw new Error("Invalid response from server");
+        }
+
+        return response;
+      },
+      providesTags: ["User"],
     }),
 
     getSurvey: builder.query<SurveyQuestions, undefined>({
@@ -113,8 +132,7 @@ export const smallCloudApi = createApi({
     >({
       async queryFn(arg, api, extraOptions, baseQuery) {
         // TODO: maybe use cookies?
-        // const url = `https://www.smallcloud.ai/plugin-magic-link/${arg.token.trim()}/${arg.email.trim()}`;
-        const url = `https://app.refact.ai/v1/streamlined-login-by-email/${arg.token.trim()}/${arg.email.trim()}`;
+        const url = `https://www.smallcloud.ai/plugin-magic-link/${arg.token.trim()}/${arg.email.trim()}`;
 
         const response = await baseQuery({
           ...extraOptions,
@@ -126,7 +144,8 @@ export const smallCloudApi = createApi({
         if (!isEmailLinkResponse(response.data)) {
           return {
             error: {
-              error: "Invalid response from /v1/streamlined-login-by-email",
+              error:
+                "Invalid response from https://www.smallcloud.ai/plugin-magic-link",
               data: response.data,
               status: "CUSTOM_ERROR",
             },

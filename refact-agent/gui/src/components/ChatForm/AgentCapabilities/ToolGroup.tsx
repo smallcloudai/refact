@@ -27,7 +27,6 @@ export const ToolGroup: React.FC<ToolGroupProps> = ({
   setSelectedToolGroup,
 }) => {
   const categoryBadge = useMemo(() => {
-    // TODO: add cloud tools
     const categoryMap: Record<
       string,
       { color: BadgeProps["color"]; tooltip: string }

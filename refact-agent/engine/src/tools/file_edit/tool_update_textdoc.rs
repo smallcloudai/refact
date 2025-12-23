@@ -120,6 +120,7 @@ impl Tool for ToolUpdateTextDoc {
             content: ChatContent::SimpleText(json!(diff_chunks).to_string()),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            usage: None,
             ..Default::default()
         }]
         .into_iter()

@@ -40,16 +40,19 @@ pub async fn handle_v1_code_completion(
     }
     info!("chosen completion model: {}, scratchpad: {}", code_completion_post.model, model_rec.scratchpad);
     code_completion_post.parameters.temperature = Some(code_completion_post.parameters.temperature.unwrap_or(0.2));
-    let cache_arc = gcx.write().await.completions_cache.clone();
+    let (cache_arc, tele_storage) = {
+        let gcx_locked = gcx.write().await;
+        (gcx_locked.completions_cache.clone(), gcx_locked.telemetry.clone())
+    };
     if !code_completion_post.no_cache {
         let cache_key = completion_cache::cache_key_from_post(&code_completion_post);
         let cached_maybe = completion_cache::cache_get(cache_arc.clone(), cache_key.clone());
         if let Some(cached_json_value) = cached_maybe {
             // info!("cache hit for key {:?}", cache_key.clone());
-            return if !code_completion_post.stream {
-                crate::restream::cached_not_stream(&cached_json_value).await
+            if !code_completion_post.stream {
+                return crate::restream::cached_not_stream(&cached_json_value).await;
             } else {
-                crate::restream::cached_stream(&cached_json_value).await
+                return crate::restream::cached_stream(&cached_json_value).await;
             }
         }
     }
@@ -60,6 +63,7 @@ pub async fn handle_v1_code_completion(
         &model_rec,
         &code_completion_post.clone(),
         cache_arc.clone(),
+        tele_storage.clone(),
         ast_service_opt
     ).await.map_err(|e| ScratchError::new(StatusCode::BAD_REQUEST, e))?;
     let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
@@ -70,11 +74,12 @@ pub async fn handle_v1_code_completion(
         vec![],
         "".to_string(),
         false,
+        model_rec.base.id.clone(),
     ).await));
     if !code_completion_post.stream {
-        crate::restream::scratchpad_interaction_not_stream(ccx.clone(), &mut scratchpad, &model_rec.base, &mut code_completion_post.parameters, false).await
+        crate::restream::scratchpad_interaction_not_stream(ccx.clone(), &mut scratchpad, "completion".to_string(), &model_rec.base, &mut code_completion_post.parameters, false, None).await
     } else {
-        crate::restream::scratchpad_interaction_stream(ccx.clone(), scratchpad, model_rec.base.clone(), code_completion_post.parameters.clone(), false).await
+        crate::restream::scratchpad_interaction_stream(ccx.clone(), scratchpad, "completion-stream".to_string(), model_rec.base.clone(), code_completion_post.parameters.clone(), false, None).await
     }
 }
 
@@ -106,13 +111,18 @@ pub async fn handle_v1_code_completion_prompt(
             .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
 
     // don't need cache, but go along
-    let cache_arc = gcx.write().await.completions_cache.clone();
+    let (cache_arc, tele_storage) = {
+        let cx_locked = gcx.write().await;
+        (cx_locked.completions_cache.clone(), cx_locked.telemetry.clone())
+    };
+
     let ast_service_opt = gcx.read().await.ast_service.clone();
     let mut scratchpad = scratchpads::create_code_completion_scratchpad(
         gcx.clone(),
         &model_rec,
         &post,
         cache_arc.clone(),
+        tele_storage.clone(),
         ast_service_opt
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
@@ -126,6 +136,7 @@ pub async fn handle_v1_code_completion_prompt(
         vec![],
         "".to_string(),
         false,
+        model_rec.base.id.clone(),
     ).await));
     let prompt = scratchpad.prompt(ccx.clone(), &mut post.parameters).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
@@ -137,5 +148,5 @@ pub async fn handle_v1_code_completion_prompt(
         .header("Content-Type", "application/json")
         .body(Body::from(body))
         .unwrap();
-    Ok(response)
+    return Ok(response);
 }

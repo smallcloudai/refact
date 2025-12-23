@@ -1,39 +1,23 @@
 import { useMemo } from "react";
-// import {
-//   // selectIsStreaming,
-//   // selectIsWaiting,
-//   selectMessages,
-// } from "../../features/Chat";
 import {
   selectIsStreaming,
   selectIsWaiting,
-} from "../../features/ThreadMessages";
-import {
-  useAppSelector,
-  // useLastSentCompressionStop
-} from "../../hooks";
+  selectMessages,
+} from "../../features/Chat";
+import { useAppSelector, useLastSentCompressionStop } from "../../hooks";
 import {
   calculateUsageInputTokens,
   mergeUsages,
 } from "../../utils/calculateUsageInputTokens";
-import { isAssistantMessage, isUsage, Usage } from "../../services/refact";
-import { selectMessagesFromEndNode } from "../../features/ThreadMessages";
+import { isAssistantMessage } from "../../services/refact";
 
 export function useUsageCounter() {
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  // const compressionStop = useLastSentCompressionStop();
-  // here, change to selectFromEndNode
-  // const messages = useAppSelector(selectMessages);
-  const messagesInBranch = useAppSelector(selectMessagesFromEndNode, {
-    devModeChecks: { stabilityCheck: "never" },
-  });
-  const assistantMessages = messagesInBranch.filter(isAssistantMessage);
-  // const usages = assistantMessages.map((msg) => msg.ftm_usage);
-  const usages = assistantMessages.reduce<Usage[]>((acc, cur) => {
-    if (!isUsage(cur.ftm_usage)) return acc;
-    return [...acc, cur.ftm_usage];
-  }, []);
+  const compressionStop = useLastSentCompressionStop();
+  const messages = useAppSelector(selectMessages);
+  const assistantMessages = messages.filter(isAssistantMessage);
+  const usages = assistantMessages.map((msg) => msg.usage);
   const currentThreadUsage = mergeUsages(usages);
   const lastAssistantMessage =
     assistantMessages.length > 0
@@ -44,7 +28,11 @@ export function useUsageCounter() {
   const totalInputTokens = useMemo(() => {
     return calculateUsageInputTokens({
       usage: currentThreadUsage,
-      keys: ["tokens_prompt", "tokens_cache_creation", "tokens_cache_read"],
+      keys: [
+        "prompt_tokens",
+        "cache_creation_input_tokens",
+        "cache_read_input_tokens",
+      ],
     });
   }, [currentThreadUsage]);
 
@@ -53,21 +41,21 @@ export function useUsageCounter() {
   }, [lastUsage]);
 
   const isOverflown = useMemo(() => {
-    // if (compressionStop.strength === "low") return true;
-    // if (compressionStop.strength === "medium") return true;
-    // if (compressionStop.strength === "high") return true;
+    if (compressionStop.strength === "low") return true;
+    if (compressionStop.strength === "medium") return true;
+    if (compressionStop.strength === "high") return true;
     return false;
-  }, []);
+  }, [compressionStop.strength]);
 
   const isWarning = useMemo(() => {
-    // if (compressionStop.strength === "medium") return true;
-    // if (compressionStop.strength === "high") return true;
+    if (compressionStop.strength === "medium") return true;
+    if (compressionStop.strength === "high") return true;
     return false;
-  }, []);
+  }, [compressionStop.strength]);
 
   const shouldShow = useMemo(() => {
-    return messagesInBranch.length > 0 && !isStreaming && !isWaiting;
-  }, [messagesInBranch.length, isStreaming, isWaiting]);
+    return messages.length > 0 && !isStreaming && !isWaiting;
+  }, [messages.length, isStreaming, isWaiting]);
 
   return {
     shouldShow,

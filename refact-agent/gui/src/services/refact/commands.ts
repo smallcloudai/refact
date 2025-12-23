@@ -2,7 +2,7 @@ import { RootState } from "../../app/store";
 import { parseOrElse } from "../../utils";
 import { LspChatMessage } from "./chat";
 import { AT_COMMAND_COMPLETION, AT_COMMAND_PREVIEW } from "./consts";
-import type { ChatContextFile } from "./types";
+import type { ChatContextFile, ChatMeta } from "./types";
 
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
@@ -86,7 +86,7 @@ export const commandsApi = createApi({
       CommandPreviewRequest
     >({
       queryFn: async (args, api, _opts, baseQuery) => {
-        const { messages } = args;
+        const { messages, meta, model } = args;
         const state = api.getState() as RootState;
         const port = state.config.lspPort;
         const url = `http://127.0.0.1:${port}${AT_COMMAND_PREVIEW}`;
@@ -95,7 +95,7 @@ export const commandsApi = createApi({
           method: "POST",
           credentials: "same-origin",
           redirect: "follow",
-          body: { messages, model_n_ctx: 2094 },
+          body: { messages, meta, model },
         });
 
         if (response.error) return { error: response.error };
@@ -199,12 +199,14 @@ function isCommandPreviewContent(json: unknown): json is CommandPreviewContent {
 
 export type CommandPreviewRequest = {
   messages: LspChatMessage[];
+  meta: ChatMeta;
+  model: string;
 };
 
 export type CommandPreviewResponse = {
   messages: CommandPreviewContent[];
   current_context: number;
-  // number_context: number;
+  number_context: number;
 };
 
 export function isCommandPreviewResponse(
@@ -214,8 +216,8 @@ export function isCommandPreviewResponse(
   if (typeof json !== "object") return false;
   if (!("current_context" in json) || typeof json.current_context !== "number")
     return false;
-  // if (!("number_context" in json) || typeof json.number_context !== "number")
-  //   return false;
+  if (!("number_context" in json) || typeof json.number_context !== "number")
+    return false;
   if (!("messages" in json)) return false;
   if (!Array.isArray(json.messages)) return false;
 

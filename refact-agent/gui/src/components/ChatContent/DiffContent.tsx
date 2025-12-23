@@ -1,10 +1,6 @@
 import React, { useCallback, useRef } from "react";
 import { Text, Container, Box, Flex, Link } from "@radix-ui/themes";
-import {
-  DiffMessage,
-  isDiffChunk,
-  type DiffChunk,
-} from "../../services/refact";
+import { DiffMessage, type DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
 import styles from "./ChatContent.module.css";
 import { filename } from "../../utils";
@@ -351,14 +347,10 @@ type GroupedDiffsProps = {
 };
 
 export const GroupedDiffs: React.FC<GroupedDiffsProps> = ({ diffs }) => {
-  const chunks = diffs.reduce<DiffMessage["ftm_content"]>((acc, diff) => {
-    if (!Array.isArray(diff.ftm_content)) return acc;
-    const chunksForDiff = diff.ftm_content.filter(isDiffChunk);
-    return [...acc, ...chunksForDiff];
-  }, []);
-
-  // TODO: diff.ftm_content isn't a patch :/
-  if (chunks.length === 0) return null;
+  const chunks = diffs.reduce<DiffMessage["content"]>(
+    (acc, diff) => [...acc, ...diff.content],
+    [],
+  );
 
   const groupedByFileName = groupBy(chunks, (chunk) => chunk.file_name);
 

@@ -1,6 +1,7 @@
 use indexmap::IndexMap;
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
@@ -13,6 +14,7 @@ use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_ast_definition::AtAstDefinition;
 use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_tree::AtTree;
+use crate::at_commands::at_web::AtWeb;
 use crate::at_commands::execute_at::AtCommandMember;
 
 
@@ -27,10 +29,15 @@ pub struct AtCommandsContext {
     pub pp_skeleton: bool,
     pub correction_only_up_to_step: usize,  // suppresses context_file messages, writes a correction message instead
     pub chat_id: String,
+    pub current_model: String,
     pub should_execute_remotely: bool,
+
     pub at_commands: HashMap<String, Arc<dyn AtCommand + Send>>,  // a copy from static constant
     pub subchat_tool_parameters: IndexMap<String, SubchatParameters>,
     pub postprocess_parameters: PostprocessSettings,
+
+    pub subchat_tx: Arc<AMutex<mpsc::UnboundedSender<serde_json::Value>>>, // one and only supported format for now {"tool_call_id": xx, "subchat_id": xx, "add_message": {...}}
+    pub subchat_rx: Arc<AMutex<mpsc::UnboundedReceiver<serde_json::Value>>>,
 }
 
 impl AtCommandsContext {
@@ -42,7 +49,9 @@ impl AtCommandsContext {
         messages: Vec<ChatMessage>,
         chat_id: String,
         should_execute_remotely: bool,
+        current_model: String,
     ) -> Self {
+        let (tx, rx) = mpsc::unbounded_channel::<serde_json::Value>();
         AtCommandsContext {
             global_context: global_context.clone(),
             n_ctx,
@@ -53,10 +62,15 @@ impl AtCommandsContext {
             pp_skeleton: true,
             correction_only_up_to_step: 0,
             chat_id,
+            current_model,
             should_execute_remotely,
+
             at_commands: at_commands_dict(global_context.clone()).await,
             subchat_tool_parameters: IndexMap::new(),
             postprocess_parameters: PostprocessSettings::new(),
+
+            subchat_tx: Arc::new(AMutex::new(tx)),
+            subchat_rx: Arc::new(AMutex::new(rx)),
         }
     }
 }
@@ -64,6 +78,7 @@ impl AtCommandsContext {
 #[async_trait]
 pub trait AtCommand: Send + Sync {
     fn params(&self) -> &Vec<Box<dyn AtParam>>;
+    // returns (messages_for_postprocessing, text_on_clip)
     async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String>;
     fn depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
 }
@@ -78,10 +93,16 @@ pub trait AtParam: Send + Sync {
 pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<dyn AtCommand + Send>> {
     let at_commands_dict = HashMap::from([
         ("@file".to_string(), Arc::new(AtFile::new()) as Arc<dyn AtCommand + Send>),
+        // ("@file-search".to_string(), Arc::new(AtFileSearch::new()) as Arc<dyn AtCommand + Send>),
         ("@definition".to_string(), Arc::new(AtAstDefinition::new()) as Arc<dyn AtCommand + Send>),
         ("@references".to_string(), Arc::new(AtAstReference::new()) as Arc<dyn AtCommand + Send>),
+        // ("@local-notes-to-self".to_string(), Arc::new(AtLocalNotesToSelf::new()) as Arc<dyn AtCommand + Send>),
         ("@tree".to_string(), Arc::new(AtTree::new()) as Arc<dyn AtCommand + Send>),
+        // ("@diff".to_string(), Arc::new(AtDiff::new()) as Arc<dyn AtCommand + Send>),
+        // ("@diff-rev".to_string(), Arc::new(AtDiffRev::new()) as Arc<dyn AtCommand + Send>),
+        ("@web".to_string(), Arc::new(AtWeb::new()) as Arc<dyn AtCommand + Send>),
         ("@search".to_string(), Arc::new(crate::at_commands::at_search::AtSearch::new()) as Arc<dyn AtCommand + Send>),
+        ("@knowledge-load".to_string(), Arc::new(crate::at_commands::at_knowledge::AtLoadKnowledge::new()) as Arc<dyn AtCommand + Send>),
     ]);
 
     let (ast_on, vecdb_on, active_group_id) = {

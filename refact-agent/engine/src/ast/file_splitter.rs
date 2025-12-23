@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use itertools::Itertools;
+use tokenizers::Tokenizer;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -29,6 +30,7 @@ impl AstBasedFileSplitter {
     pub async fn vectorization_split(
         &self,
         doc: &Document,
+        tokenizer: Option<Arc<Tokenizer>>,
         gcx: Arc<RwLock<crate::global_context::GlobalContext>>,
         tokens_limit: usize,
     ) -> Result<Vec<crate::vecdb::vdb_structs::SplitResult>, String> {
@@ -41,7 +43,7 @@ impl AstBasedFileSplitter {
             Ok(parser) => parser,
             Err(_e) => {
                 // tracing::info!("cannot find a parser for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e.message);
-                return self.fallback_file_splitter.vectorization_split(&doc, tokens_limit, gcx.clone()).await;
+                return self.fallback_file_splitter.vectorization_split(&doc, tokenizer.clone(), tokens_limit, gcx.clone()).await;
             }
         };
 
@@ -60,7 +62,7 @@ impl AstBasedFileSplitter {
             Ok(x) => x,
             Err(e) => {
                 tracing::info!("lowlevel_file_markup failed for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e);
-                return self.fallback_file_splitter.vectorization_split(&doc, tokens_limit, gcx.clone()).await;
+                return self.fallback_file_splitter.vectorization_split(&doc, tokenizer.clone(), tokens_limit, gcx.clone()).await;
             }
         };
 
@@ -80,9 +82,9 @@ impl AstBasedFileSplitter {
                 let top_row = unused_symbols_cluster_accumulator_.first().unwrap().full_range.start_point.row;
                 let bottom_row = unused_symbols_cluster_accumulator_.last().unwrap().full_range.end_point.row;
                 let content = doc_lines[top_row..bottom_row + 1].join("\n");
-                let chunks__ = crate::ast::chunk_utils::get_chunks(
-                    &content, &path, &"".to_string(), (top_row, bottom_row), tokens_limit, LINES_OVERLAP, false,
-                );
+                let chunks__ = crate::ast::chunk_utils::get_chunks(&content, &path, &"".to_string(),
+                                          (top_row, bottom_row),
+                                          tokenizer.clone(), tokens_limit, LINES_OVERLAP, false);
                 chunks_.extend(chunks__);
                 unused_symbols_cluster_accumulator_.clear();
             }
@@ -119,10 +121,10 @@ impl AstBasedFileSplitter {
                 if let Some(children) = guid_to_children.get(&symbol.guid) {
                     if !children.is_empty() {
                         let skeleton_line = formatter.make_skeleton(&symbol, &doc_text, &guid_to_children, &guid_to_info);
-                        let chunks_ = crate::ast::chunk_utils::get_chunks(
-                            &skeleton_line, &symbol.file_path, &symbol.symbol_path, 
-                            (symbol.full_range.start_point.row, symbol.full_range.end_point.row), tokens_limit, LINES_OVERLAP, true
-                        );
+                        let chunks_ = crate::ast::chunk_utils::get_chunks(&skeleton_line, &symbol.file_path,
+                                                 &symbol.symbol_path,
+                                                 (symbol.full_range.start_point.row, symbol.full_range.end_point.row),
+                                                 tokenizer.clone(), tokens_limit, LINES_OVERLAP, true);
                         chunks.extend(chunks_);
                     }
                 }
@@ -130,9 +132,8 @@ impl AstBasedFileSplitter {
 
             let (declaration, top_bottom_rows) = formatter.get_declaration_with_comments(&symbol, &doc_text, &guid_to_children, &guid_to_info);
             if !declaration.is_empty() {
-                let chunks_ = crate::ast::chunk_utils::get_chunks(
-                    &declaration, &symbol.file_path, &symbol.symbol_path, top_bottom_rows, tokens_limit, LINES_OVERLAP, true
-                );
+                let chunks_ = crate::ast::chunk_utils::get_chunks(&declaration, &symbol.file_path,
+                                         &symbol.symbol_path, top_bottom_rows, tokenizer.clone(), tokens_limit, LINES_OVERLAP, true);
                 chunks.extend(chunks_);
             }
         }

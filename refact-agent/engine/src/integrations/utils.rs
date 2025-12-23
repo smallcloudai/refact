@@ -1,7 +1,8 @@
 use std::fmt::Display;
 
 use serde::{Deserialize, Serializer, Deserializer};
-use crate::integrations::docker::integr_isolation::Port;
+
+use crate::integrations::docker::docker_container_manager::Port;
 
 pub fn serialize_opt_num_to_str<T: Display, S: Serializer>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&value.as_ref().map_or_else(String::new, |v| v.to_string()))

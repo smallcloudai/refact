@@ -3,31 +3,19 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 
 import { ScrollAreaWithAnchor } from ".";
-import { Text, Container, Card } from "@radix-ui/themes";
-import { setUpStore } from "../../app/store";
-import { Provider } from "react-redux";
-import { Theme } from "../Theme";
-
-const Template: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const store = setUpStore();
-  return (
-    <Provider store={store}>
-      <Theme>
-        <Container size="1" p="8" maxHeight="100%">
-          <Card>{children}</Card>
-        </Container>
-      </Theme>
-    </Provider>
-  );
-};
+import { Text, Container, Theme, Card } from "@radix-ui/themes";
 
 const meta: Meta<typeof ScrollAreaWithAnchor.ScrollArea> = {
   title: "Scroll Area Anchor",
   decorators: [
     (Story) => (
-      <Template>
-        <Story />
-      </Template>
+      <Theme>
+        <Container p="8" maxHeight="100%">
+          <Card>
+            <Story />
+          </Card>
+        </Container>
+      </Theme>
     ),
   ],
   parameters: {

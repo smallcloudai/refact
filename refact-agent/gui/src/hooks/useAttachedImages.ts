@@ -7,16 +7,14 @@ import {
   addImage,
   type ImageFile,
   resetAttachedImagesSlice,
-} from "../features/AttachedImages/imagesSlice";
+} from "../features/AttachedImages";
 import { setError } from "../features/Errors/errorsSlice";
 import { setInformation } from "../features/Errors/informationSlice";
-import { useCapabilitiesForModel } from "./useCapabilitiesForModel";
+import { useCapsForToolUse } from "./useCapsForToolUse";
 
-// TODO: maybe remove
 export function useAttachedImages() {
   const images = useAppSelector(selectAllImages);
-  // const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
-  const capabilities = useCapabilitiesForModel();
+  const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
   const dispatch = useAppDispatch();
 
   const removeImage = useCallback(
@@ -64,11 +62,11 @@ export function useAttachedImages() {
   );
 
   useEffect(() => {
-    if (!capabilities.multimodal) {
+    if (!isMultimodalitySupportedForCurrentModel) {
       const action = resetAttachedImagesSlice();
       dispatch(action);
     }
-  }, [dispatch, capabilities.multimodal]);
+  }, [isMultimodalitySupportedForCurrentModel, dispatch]);
 
   return {
     images,

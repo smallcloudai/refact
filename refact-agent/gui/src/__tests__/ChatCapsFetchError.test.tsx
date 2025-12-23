@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import { HttpResponse, http } from "msw";
 import {
   server,
+  goodPrompts,
   noTools,
   goodUser,
   goodPing,
@@ -12,14 +13,14 @@ import {
 } from "../utils/mockServer";
 import { Chat } from "../features/Chat";
 
-describe.skip("chat caps error", () => {
+describe("chat caps error", () => {
   test("error detail", async () => {
     const errorMessage =
       "500 Internal Server Error caps fetch failed: failed to open file 'hren'";
     server.use(
       goodPing,
       noTools,
-
+      goodPrompts,
       goodUser,
       chatLinks,
       telemetryChat,

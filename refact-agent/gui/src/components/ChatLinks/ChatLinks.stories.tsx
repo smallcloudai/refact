@@ -1,6 +1,7 @@
 import { Meta, StoryObj } from "@storybook/react";
 
 import { ChatLinks } from "./ChatLinks";
+import { setUpStore } from "../../app/store";
 import { Provider } from "react-redux";
 import { Theme } from "../Theme";
 import { Container } from "@radix-ui/themes";
@@ -8,17 +9,15 @@ import { http, HttpResponse, type HttpHandler } from "msw";
 import { CHAT_LINKS_URL } from "../../services/refact/consts";
 import {
   STUB_LINKS_FOR_CHAT_RESPONSE,
-  // CHAT_CONFIG_THREAD,
+  CHAT_CONFIG_THREAD,
 } from "../../__fixtures__";
-import { setUpStore } from "../../app/store";
 
 const Template = () => {
-  // TODO: migrate fixtures when flexus is advancing chats again.
-  // const store = setUpStore({
-  //   chat: CHAT_CONFIG_THREAD,
-  // });
+  const store = setUpStore({
+    chat: CHAT_CONFIG_THREAD,
+  });
   return (
-    <Provider store={setUpStore()}>
+    <Provider store={store}>
       <Theme>
         <Container p="4">
           <ChatLinks />

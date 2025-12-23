@@ -43,7 +43,7 @@ impl Default for IndexingSettings {
 
 pub struct IndexingEverywhere {
     pub global: IndexingSettings,
-    pub vcs_indexing_settings_map: HashMap<PathBuf, IndexingSettings>,
+    pub vcs_indexing_settings_map: HashMap<String, IndexingSettings>,
     pub loaded_ts: u64,
 }
 
@@ -64,11 +64,12 @@ impl IndexingEverywhere {
 
         let mut best_vcs: Option<IndexingSettings> = None;
         let mut best_pathbuf: Option<PathBuf> = None;
-        for (vcs_path, vcs_settings) in &self.vcs_indexing_settings_map {
-            if path.starts_with(vcs_path) {
-                if best_vcs.is_none() || vcs_path.components().count() > best_pathbuf.as_ref().unwrap().components().count() {
+        for (vcs, vcs_settings) in &self.vcs_indexing_settings_map {
+            let vcs_pathbuf = PathBuf::from(vcs);
+            if path.starts_with(&vcs) {
+                if best_vcs.is_none() || vcs_pathbuf.components().count() > best_pathbuf.clone().unwrap().components().count() {
                     best_vcs = Some(vcs_settings.clone());
-                    best_pathbuf = Some(vcs_path.clone());
+                    best_pathbuf = Some(vcs_pathbuf);
                 }
             }
         }
@@ -84,7 +85,7 @@ impl IndexingEverywhere {
 
 pub async fn load_indexing_yaml(
     indexing_yaml_path: &Path,
-    relative_path_base: Option<&Path>,
+    relative_path_base: Option<&PathBuf>,
 ) -> Result<IndexingSettings, String> {
     let content = fs::read_to_string(&indexing_yaml_path)
         .await
@@ -138,13 +139,13 @@ pub async fn reload_indexing_everywhere_if_needed(
         };
 
         let vcs_dirs: Vec<PathBuf> = workspace_vcs_roots.lock().unwrap().iter().cloned().collect();
-        let mut vcs_indexing_settings_map = HashMap::new();
+        let mut vcs_indexing_settings_map: HashMap<String, IndexingSettings> = HashMap::new();
         for indexing_root in vcs_dirs {
             let indexing_path = indexing_root.join(".refact").join("indexing.yaml");
             if indexing_path.exists() {
                 match load_indexing_yaml(&indexing_path, Some(&indexing_root)).await {
                     Ok(indexing_settings) => {
-                        vcs_indexing_settings_map.insert(indexing_root, indexing_settings);
+                        vcs_indexing_settings_map.insert(indexing_root.to_str().unwrap().to_string(), indexing_settings);
                     },
                     Err(e) => {
                         tracing::error!("{}, skip", e);
@@ -178,7 +179,7 @@ pub fn is_blocklisted(indexing_settings: &IndexingSettings, path: &Path) -> bool
 
 fn _load_indexing_yaml_str(
     indexing_yaml_str: &str,
-    relative_path_base: Option<&Path>,
+    relative_path_base: Option<&PathBuf>,
 ) -> Result<IndexingSettings, String> {
     match serde_yaml::from_str::<IndexingSettings>(indexing_yaml_str) {
         Ok(indexing_settings) => {

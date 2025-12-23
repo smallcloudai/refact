@@ -15,7 +15,7 @@ import {
 describe("calculateUsageInputTokens", () => {
   it("should return 0 for undefined usage", () => {
     const result = calculateUsageInputTokens({
-      keys: ["tokens_prompt", "tokens_completion"],
+      keys: ["prompt_tokens", "completion_tokens"],
       usage: undefined,
     });
 
@@ -24,27 +24,15 @@ describe("calculateUsageInputTokens", () => {
 
   it("should sum specified numeric keys from usage", () => {
     const usage: Usage = {
-      coins: 0,
-      tokens_prompt: 100,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 0,
-      tokens_completion: 30,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 0,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 0,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 30,
+      prompt_tokens: 100,
+      total_tokens: 130,
+      completion_tokens_details: null,
+      prompt_tokens_details: null,
     };
 
     const result = calculateUsageInputTokens({
-      keys: ["tokens_prompt", "tokens_completion"],
+      keys: ["prompt_tokens", "completion_tokens"],
       usage,
     });
 
@@ -53,41 +41,20 @@ describe("calculateUsageInputTokens", () => {
 
   it("should ignore non-numeric values", () => {
     const usage: Usage = {
-      // completion_tokens: 30,
-      // prompt_tokens: 100,
-      // total_tokens: 130,
-      // completion_tokens_details: {
-      //   accepted_prediction_tokens: 20,
-      //   audio_tokens: 0,
-      //   reasoning_tokens: 10,
-      //   rejected_prediction_tokens: 0,
-      // },
-      // prompt_tokens_details: null,
-      coins: 0,
-      tokens_prompt: 100,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 0,
-      tokens_completion: 30,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 0,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 10,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 30,
+      prompt_tokens: 100,
+      total_tokens: 130,
+      completion_tokens_details: {
+        accepted_prediction_tokens: 20,
+        audio_tokens: 0,
+        reasoning_tokens: 10,
+        rejected_prediction_tokens: 0,
+      },
+      prompt_tokens_details: null,
     };
 
     const result = calculateUsageInputTokens({
-      keys: [
-        "tokens_prompt",
-        "tokens_completion",
-        "tokens_completion_reasoning",
-      ],
+      keys: ["prompt_tokens", "completion_tokens", "completion_tokens_details"],
       usage,
     });
 
@@ -205,315 +172,233 @@ describe("mergeUsages", () => {
 
   it("should correctly merge basic usage fields", () => {
     const usage1: Usage = {
-      // completion_tokens: 30,
-      // prompt_tokens: 100,
-      // total_tokens: 130,
-      // completion_tokens_details: null,
-      // prompt_tokens_details: null,
-      coins: 0,
-      tokens_prompt: 100,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 0,
-      tokens_completion: 30,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 0,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 0,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 30,
+      prompt_tokens: 100,
+      total_tokens: 130,
+      completion_tokens_details: null,
+      prompt_tokens_details: null,
     };
 
     const usage2: Usage = {
-      // completion_tokens: 20,
-      // prompt_tokens: 80,
-      // total_tokens: 100,
-      // completion_tokens_details: null,
-      // prompt_tokens_details: null,
-      coins: 0,
-      tokens_prompt: 80,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 0,
-      tokens_completion: 20,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 0,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 0,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 20,
+      prompt_tokens: 80,
+      total_tokens: 100,
+      completion_tokens_details: null,
+      prompt_tokens_details: null,
     };
 
     const result = mergeUsages([usage1, usage2]);
 
     expect(result).toEqual({
-      coins: 0,
-      tokens_prompt: 100 + 80,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 0,
-      tokens_completion: 30 + 20,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 0,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 0,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 50,
+      prompt_tokens: 180,
+      total_tokens: 230,
+      completion_tokens_details: null,
+      prompt_tokens_details: null,
+      cache_creation_input_tokens: 0,
+      cache_read_input_tokens: 0,
     });
   });
 
   it("should correctly merge completion token details", () => {
     const usage1: Usage = {
-      coins: 0,
-      tokens_prompt: 100,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 0,
-      tokens_completion: 30,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 0,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 20,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 30,
+      prompt_tokens: 100,
+      total_tokens: 130,
+      completion_tokens_details: {
+        accepted_prediction_tokens: 10,
+        audio_tokens: 0,
+        reasoning_tokens: 20,
+        rejected_prediction_tokens: 0,
+      },
+      prompt_tokens_details: null,
     };
 
     const usage2: Usage = {
-      coins: 0,
-      tokens_prompt: 80,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 0,
-      tokens_completion: 30 + 20,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 0,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 10,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 20,
+      prompt_tokens: 80,
+      total_tokens: 100,
+      completion_tokens_details: {
+        accepted_prediction_tokens: 5,
+        audio_tokens: 0,
+        reasoning_tokens: 10,
+        rejected_prediction_tokens: 5,
+      },
+      prompt_tokens_details: null,
     };
 
     const result = mergeUsages([usage1, usage2]);
 
-    expect(result).toEqual({
-      coins: 0,
-      tokens_prompt: 100 + 80,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 0,
-      tokens_completion: 20,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 0,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 20 + 10,
-      pp1000t_completion_reasoning: 0,
+    expect(result?.completion_tokens_details).toEqual({
+      accepted_prediction_tokens: 15,
+      audio_tokens: 0,
+      reasoning_tokens: 30,
+      rejected_prediction_tokens: 5,
+    });
+  });
+
+  it("should correctly merge prompt token details", () => {
+    const usage1: Usage = {
+      completion_tokens: 30,
+      prompt_tokens: 100,
+      total_tokens: 130,
+      completion_tokens_details: null,
+      prompt_tokens_details: {
+        audio_tokens: 0,
+        cached_tokens: 80,
+      },
+    };
+
+    const usage2: Usage = {
+      completion_tokens: 20,
+      prompt_tokens: 80,
+      total_tokens: 100,
+      completion_tokens_details: null,
+      prompt_tokens_details: {
+        audio_tokens: 0,
+        cached_tokens: 50,
+      },
+    };
+
+    const result = mergeUsages([usage1, usage2]);
+
+    expect(result?.prompt_tokens_details).toEqual({
+      audio_tokens: 0,
+      cached_tokens: 130,
     });
   });
 
   it("should correctly merge cache-related fields", () => {
     const usage1: Usage = {
-      coins: 0,
-      tokens_prompt: 100,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 0,
-      tokens_completion: 30,
-      pp1000t_cache_read: 20,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 50,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 0,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 30,
+      prompt_tokens: 100,
+      total_tokens: 130,
+      completion_tokens_details: null,
+      prompt_tokens_details: null,
+      cache_creation_input_tokens: 50,
+      cache_read_input_tokens: 20,
     };
 
     const usage2: Usage = {
-      coins: 0,
-      tokens_prompt: 80,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 10,
-      tokens_completion: 20,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 30,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 0,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 20,
+      prompt_tokens: 80,
+      total_tokens: 100,
+      completion_tokens_details: null,
+      prompt_tokens_details: null,
+      cache_creation_input_tokens: 30,
+      cache_read_input_tokens: 10,
     };
 
     const result = mergeUsages([usage1, usage2]);
 
-    expect(result?.tokens_cache_creation).toBe(80);
-    expect(result?.tokens_cache_read).toBe(30);
+    expect(result?.cache_creation_input_tokens).toBe(80);
+    expect(result?.cache_read_input_tokens).toBe(30);
   });
 
   it("should handle complex merge scenario with multiple usage records", () => {
     const usage1: Usage = {
-      coins: 0,
-      tokens_prompt: 100,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 20,
-      tokens_completion: 30,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 50,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 5,
-      tokens_completion_reasoning: 15,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 30,
+      prompt_tokens: 100,
+      total_tokens: 130,
+      completion_tokens_details: {
+        accepted_prediction_tokens: 10,
+        audio_tokens: 5,
+        reasoning_tokens: 15,
+        rejected_prediction_tokens: 0,
+      },
+      prompt_tokens_details: {
+        audio_tokens: 0,
+        cached_tokens: 80,
+      },
+      cache_creation_input_tokens: 50,
+      cache_read_input_tokens: 20,
     };
 
     const usage2: Usage = {
-      coins: 0,
-      tokens_prompt: 80,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 10,
-      tokens_completion: 20,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 30,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 10,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 20,
+      prompt_tokens: 80,
+      total_tokens: 100,
+      completion_tokens_details: {
+        accepted_prediction_tokens: 5,
+        audio_tokens: 0,
+        reasoning_tokens: 10,
+        rejected_prediction_tokens: 5,
+      },
+      prompt_tokens_details: {
+        audio_tokens: 10,
+        cached_tokens: 50,
+      },
+      cache_creation_input_tokens: 30,
+      cache_read_input_tokens: 10,
     };
 
     // Add an undefined value to ensure it's properly filtered
     const result = mergeUsages([usage1, usage2, undefined]);
 
     expect(result).toEqual({
-      coins: 0,
-      tokens_prompt: 100 + 80,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 20 + 10,
-      tokens_completion: 30 + 20,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 50 + 30,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 5,
-      tokens_completion_reasoning: 15 + 10,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 50,
+      prompt_tokens: 180,
+      total_tokens: 230,
+      completion_tokens_details: {
+        accepted_prediction_tokens: 15,
+        audio_tokens: 5,
+        reasoning_tokens: 25,
+        rejected_prediction_tokens: 5,
+      },
+      prompt_tokens_details: {
+        audio_tokens: 10,
+        cached_tokens: 130,
+      },
+      cache_creation_input_tokens: 80,
+      cache_read_input_tokens: 30,
     });
   });
 
   it("should handle real-world usage examples", () => {
     const gptUsage: Usage = {
-      coins: 0,
-      tokens_prompt: 3391,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 0,
-      tokens_completion: 30,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 0,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 0,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 30,
+      prompt_tokens: 3391,
+      total_tokens: 3421,
+      completion_tokens_details: {
+        accepted_prediction_tokens: 0,
+        audio_tokens: 0,
+        reasoning_tokens: 0,
+        rejected_prediction_tokens: 0,
+      },
+      prompt_tokens_details: {
+        audio_tokens: 0,
+        cached_tokens: 3328,
+      },
     };
 
     const anthropicUsage: Usage = {
-      coins: 0,
-      tokens_prompt: 5,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 0,
-      tokens_completion: 142,
-      pp1000t_cache_read: 3608,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 3291,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 0,
-      tokens_completion_reasoning: 0,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 142,
+      prompt_tokens: 5,
+      total_tokens: 147,
+      completion_tokens_details: null,
+      prompt_tokens_details: null,
+      cache_creation_input_tokens: 3291,
+      cache_read_input_tokens: 3608,
     };
 
     const result = mergeUsages([gptUsage, anthropicUsage]);
 
     expect(result).toEqual({
-      coins: 0,
-      tokens_prompt: 3396,
-      pp1000t_prompt: 0,
-      tokens_cache_read: 3608,
-      tokens_completion: 172,
-      pp1000t_cache_read: 0,
-      pp1000t_completion: 0,
-      tokens_prompt_text: 0,
-      tokens_prompt_audio: 0,
-      tokens_prompt_image: 0,
-      tokens_prompt_cached: 0,
-      tokens_cache_creation: 3291,
-      pp1000t_cache_creation: 0,
-      tokens_completion_text: 0,
-      tokens_completion_audio: 5,
-      tokens_completion_reasoning: 15,
-      pp1000t_completion_reasoning: 0,
+      completion_tokens: 172,
+      prompt_tokens: 3396,
+      total_tokens: 3568,
+      completion_tokens_details: {
+        accepted_prediction_tokens: 0,
+        audio_tokens: 0,
+        reasoning_tokens: 0,
+        rejected_prediction_tokens: 0,
+      },
+      prompt_tokens_details: {
+        audio_tokens: 0,
+        cached_tokens: 3328,
+      },
+      cache_creation_input_tokens: 3291,
+      cache_read_input_tokens: 3608,
     });
   });
 });

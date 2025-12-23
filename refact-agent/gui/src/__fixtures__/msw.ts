@@ -1,21 +1,17 @@
-import { http, HttpResponse, type HttpHandler, graphql } from "msw";
+import { http, HttpResponse, type HttpHandler } from "msw";
+import { EMPTY_CAPS_RESPONSE, STUB_CAPS_RESPONSE } from "./caps";
+import { SYSTEM_PROMPTS } from "./prompts";
 import { STUB_LINKS_FOR_CHAT_RESPONSE } from "./chat_links_response";
-import { TOOLS, CHAT_LINKS_URL } from "../services/refact/consts";
+import {
+  TOOLS,
+  CHAT_LINKS_URL,
+  KNOWLEDGE_CREATE_URL,
+} from "../services/refact/consts";
 import { STUB_TOOL_RESPONSE } from "./tools_response";
 import { GoodPollingResponse } from "../services/smallcloud/types";
 import type { LinksForChatResponse } from "../services/refact/links";
-import {
-  // DeleteThreadDocument,
-  // CreateThreadDocument,
-  // MessageCreateMultipleDocument,
-  // ThreadPatchDocument,
-  ExpertsForGroupDocument,
-  ModelsForExpertDocument,
-  // ToolsForGroupDocument,
-  // ThreadConfirmationResponseDocument,
-  BasicStuffDocument,
-  // CreateWorkSpaceGroupDocument,
-} from "../../generated/documents";
+import { SaveTrajectoryResponse } from "../services/refact/knowledge";
+import { ToolConfirmationResponse } from "../services/refact";
 
 export const goodPing: HttpHandler = http.get(
   "http://127.0.0.1:8001/v1/ping",
@@ -24,10 +20,41 @@ export const goodPing: HttpHandler = http.get(
   },
 );
 
+export const goodCaps: HttpHandler = http.get(
+  "http://127.0.0.1:8001/v1/caps",
+  () => {
+    return HttpResponse.json(STUB_CAPS_RESPONSE);
+  },
+);
+
+export const goodCapsWithKnowledgeFeature: HttpHandler = http.get(
+  "http://127.0.0.1:8001/v1/caps",
+  () => {
+    return HttpResponse.json({
+      ...STUB_CAPS_RESPONSE,
+      metadata: { features: ["knowledge"] },
+    });
+  },
+);
+
+export const emptyCaps: HttpHandler = http.get(
+  `http://127.0.0.1:8001/v1/caps`,
+  () => {
+    return HttpResponse.json(EMPTY_CAPS_RESPONSE);
+  },
+);
+
 export const noTools: HttpHandler = http.get(
   "http://127.0.0.1:8001/v1/tools",
   () => {
     return HttpResponse.json([]);
+  },
+);
+
+export const goodPrompts: HttpHandler = http.get(
+  "http://127.0.0.1:8001/v1/customization",
+  () => {
+    return HttpResponse.json({ system_prompts: SYSTEM_PROMPTS });
   },
 );
 
@@ -109,6 +136,17 @@ export const goodTools: HttpHandler = http.get(
   },
 );
 
+export const makeKnowledgeFromChat: HttpHandler = http.post(
+  `http://127.0.0.1:8001${KNOWLEDGE_CREATE_URL}`,
+  () => {
+    const result: SaveTrajectoryResponse = {
+      memid: "foo",
+      trajectory: "something",
+    };
+    return HttpResponse.json(result);
+  },
+);
+
 export const loginPollingGood: HttpHandler = http.get(
   "https://www.smallcloud.ai/v1/streamlined-login-recall-ticket",
   () => {
@@ -186,143 +224,14 @@ export const telemetryNetwork = http.post(
   },
 );
 
-export const Experts = graphql.query(ExpertsForGroupDocument, () => {
-  return HttpResponse.json({
-    data: {
-      experts_effective_list: [
-        {
-          fexp_id: "id:agent:1",
-          fexp_name: "agent:1",
-        },
-        {
-          fexp_id: "id:ask:1",
-          fexp_name: "ask",
-        },
-        {
-          fexp_id: "id:compress_trajectory:1",
-          fexp_name: "compress_trajectory:1",
-        },
-        {
-          fexp_id: "id:configurator:1",
-          fexp_name: "configurator:1",
-        },
-        {
-          fexp_id: "id:create_memory_bank:1",
-          fexp_name: "create_memory_bank:1",
-        },
-        {
-          fexp_id: "id:default:1",
-          fexp_name: "default:1",
-        },
-        {
-          fexp_id: "id:edit:1",
-          fexp_name: "edit",
-        },
-        {
-          fexp_id: "id:explore:1",
-          fexp_name: "explore:1",
-        },
-        {
-          fexp_id: "id:generate_commit_message:1",
-          fexp_name: "generate_commit_message:1",
-        },
-        {
-          fexp_id: "id:generate_commit_message_with_prompt:1",
-          fexp_name: "generate_commit_message_with_prompt:1",
-        },
-        {
-          fexp_id: "id:generate_follow_up_message:1",
-          fexp_name: "generate_follow_up_message:1",
-        },
-        {
-          fexp_id: "id:greatbot:1",
-          fexp_name: "greatbot",
-        },
-        {
-          fexp_id: "id:locate:1",
-          fexp_name: "locate:1",
-        },
-        {
-          fexp_id: "id:project_summary:1",
-          fexp_name: "project_summary:1",
-        },
-        {
-          fexp_id: "id:strategic_planning:1",
-          fexp_name: "strategic_planning:1",
-        },
-      ],
-    },
-  });
-});
+export const ToolConfirmation = http.post(
+  "http://127.0.0.1:8001/v1/tools-check-if-confirmation-needed",
+  () => {
+    const response: ToolConfirmationResponse = {
+      pause: false,
+      pause_reasons: [],
+    };
 
-export const ModelsForExpert = graphql.query(ModelsForExpertDocument, () => {
-  return HttpResponse.json({
-    data: {
-      expert_choice_consequences: {
-        models: [
-          {
-            provm_name: "claude-3-7-sonnet-20250219",
-            provm_caps: {
-              modelcap_input_images: true,
-              modelcap_reasoning_effort: true,
-            },
-          },
-          {
-            provm_name: "claude-sonnet-4-20250514",
-            provm_caps: {
-              modelcap_input_images: true,
-              modelcap_reasoning_effort: true,
-            },
-          },
-          {
-            provm_name: "gpt-4.1",
-            provm_caps: {
-              modelcap_input_images: true,
-            },
-          },
-          {
-            provm_name: "gpt-4.1-mini",
-            provm_caps: {
-              modelcap_input_images: true,
-            },
-          },
-          {
-            provm_name: "nebius/Qwen/Qwen3-235B-A22B",
-            provm_caps: {
-              modelcap_input_images: false,
-            },
-          },
-          {
-            provm_name: "o4-mini",
-            provm_caps: {
-              modelcap_input_images: true,
-              modelcap_reasoning_effort: true,
-            },
-          },
-        ],
-      },
-    },
-  });
-});
-
-export const BasicStuff = graphql.query(BasicStuffDocument, () => {
-  return HttpResponse.json({
-    data: {
-      query_basic_stuff: {
-        fuser_id: "test@smallcloud.tech",
-        my_own_ws_id: "workspaceid",
-        workspaces: [
-          {
-            ws_id: "workspaceid",
-            ws_owner_fuser_id: "test@smallcloud.tech",
-            ws_root_group_id: "workspace_root",
-            root_group_name: "Test Workspace",
-            have_coins_exactly: -154716,
-            have_coins_enough: false,
-            have_admin: true,
-          },
-        ],
-      },
-    },
-  });
-});
+    return HttpResponse.json(response);
+  },
+);

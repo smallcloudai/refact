@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { useAppDispatch } from "./useAppDispatch";
 import { smallCloudApi } from "../services/smallcloud";
+import { isGoodResponse } from "../services/smallcloud/types";
 import {
   selectHost,
   setAddressURL,
@@ -9,7 +10,6 @@ import {
 } from "../features/Config/configSlice";
 import { useOpenUrl } from "./useOpenUrl";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
-// import { isGoodResponse } from "../services/smallcloud/types";
 
 function makeTicket() {
   return (
@@ -101,11 +101,8 @@ export const useLogin = () => {
   const loginWithProvider = useCallback(
     (provider: "google" | "github") => {
       const ticket = makeTicket();
-      // const baseUrl = new URL(`https://refact.smallcloud.ai/authentication`);
-      const baseUrl = new URL(
-        `https://app.refact.ai/v1/streamlined-login-by-oauth`,
-      );
-      baseUrl.searchParams.set("ticket", ticket);
+      const baseUrl = new URL(`https://refact.smallcloud.ai/authentication`);
+      baseUrl.searchParams.set("token", ticket);
       baseUrl.searchParams.set("utm_source", "plugin");
       baseUrl.searchParams.set("utm_medium", host);
       baseUrl.searchParams.set("utm_campaign", "login");
@@ -119,17 +116,18 @@ export const useLogin = () => {
   );
 
   useEffect(() => {
-    // TODO: removed isGoodResponse, need rework
-    if (loginPollingResult.data?.api_key) {
-      const apiKey = loginPollingResult.data.api_key;
-      const actions = [setApiKey(apiKey), setAddressURL("Refact")];
+    if (isGoodResponse(loginPollingResult.data)) {
+      const actions = [
+        setApiKey(loginPollingResult.data.secret_key),
+        setAddressURL("Refact"),
+      ];
 
       actions.forEach((action) => dispatch(action));
 
       setupHost({
         type: "cloud",
-        apiKey: apiKey,
-        userName: "",
+        apiKey: loginPollingResult.data.secret_key,
+        userName: loginPollingResult.data.account,
       });
     }
   }, [dispatch, loginPollingResult.data, setupHost]);

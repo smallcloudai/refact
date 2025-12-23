@@ -16,6 +16,7 @@ use crate::scratchpads::multimodality::MultimodalElement;
 use crate::postprocessing::pp_command_output::{OutputFilter, output_mini_postprocessing};
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
+use crate::integrations::docker::docker_container_manager::get_container_name;
 
 use tokio::time::sleep;
 use chrono::DateTime;
@@ -221,7 +222,7 @@ impl Tool for ToolChrome {
                     break
                 }
             };
-            match chrome_command_exec(&parsed_command, command_session.clone(), &self.settings_chrome).await {
+            match chrome_command_exec(&parsed_command, command_session.clone(), &self.settings_chrome, gcx.clone(), &chat_id).await {
                 Ok((execute_log, command_multimodal_els)) => {
                     tool_log.extend(execute_log);
                     mutlimodal_els.extend(command_multimodal_els);
@@ -636,6 +637,8 @@ async fn chrome_command_exec(
     cmd: &Command,
     chrome_session: Arc<AMutex<Box<dyn IntegrationSession>>>,
     settings_chrome: &SettingsChrome,
+    gcx: Arc<ARwLock<GlobalContext>>,
+    chat_id: &str,
 ) -> Result<(Vec<String>, Vec<MultimodalElement>), String> {
     let mut tool_log = vec![];
     let mut multimodal_els = vec![];
@@ -655,7 +658,13 @@ async fn chrome_command_exec(
                 let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
                 session_get_tab_arc(chrome_session, &args.tab_id).await?
             };
-            let url = args.uri.clone();
+            let mut url = args.uri.clone();
+            if settings_chrome.chrome_path.starts_with("container://") {
+                let is_inside_container = gcx.read().await.cmdline.inside_container;
+                if is_inside_container {
+                    url = replace_host_with_container_if_needed(&url, chat_id);
+                }
+            }
             let log = {
                 let tab_lock = tab.lock().await;
                 match {
@@ -1241,6 +1250,18 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
         },
         _ => Err(format!("Unknown command: {:?}.", command_name)),
     }
+}
+
+fn replace_host_with_container_if_needed(url: &str, chat_id: &str) -> String {
+    if let Ok(mut parsed_url) = url::Url::parse(url) {
+        if let Some(host) = parsed_url.host_str() {
+            if host == "127.0.0.1" || host == "0.0.0.0" || host == "localhost" {
+                parsed_url.set_host(Some(&get_container_name(chat_id))).unwrap();
+                return parsed_url.to_string();
+            }
+        }
+    }
+    url.to_string()
 }
 
 

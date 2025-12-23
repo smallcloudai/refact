@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { useAppDispatch, useAppSelector, useSendMessages } from "../../hooks";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useSendChatRequest,
+} from "../../hooks";
 import { selectPages, change, ChatPage } from "../../features/Pages/pagesSlice";
-import { setInputValue } from "./actions";
+import { setInputValue, addInputValue } from "./actions";
 import { debugRefact } from "../../debugConfig";
 
 export function useInputValue(
@@ -14,7 +18,7 @@ export function useInputValue(
 ] {
   const [value, setValue] = useState<string>("");
   const [isSendImmediately, setIsSendImmediately] = useState<boolean>(false);
-  const { sendMessage, sendMultipleMessages } = useSendMessages();
+  const { submit } = useSendChatRequest();
   const dispatch = useAppDispatch();
   const pages = useAppSelector(selectPages);
 
@@ -28,9 +32,7 @@ export function useInputValue(
 
   const handleEvent = useCallback(
     (event: MessageEvent) => {
-      if (
-        /* addInputValue.match(event.data) || */ setInputValue.match(event.data)
-      ) {
+      if (addInputValue.match(event.data) || setInputValue.match(event.data)) {
         const { payload } = event.data;
         debugRefact(
           `[DEBUG]: receiving event setInputValue/addInputValue with payload:`,
@@ -38,23 +40,40 @@ export function useInputValue(
         );
         setUpIfNotReady();
 
-        if (payload.messages && payload.send_immediately) {
+        if (payload.messages) {
           debugRefact(`[DEBUG]: payload messages: `, payload.messages);
-          void sendMultipleMessages(payload.messages);
+          setIsSendImmediately(true);
+          submit({
+            maybeMessages: payload.messages,
+          });
           return;
         }
+      }
 
-        if (payload.value && payload.send_immediately) {
-          void sendMessage(payload.value);
-        } else if (payload.value) {
-          debugRefact(`[DEBUG]: setInputValue triggered with:`, payload);
-          uncheckCheckboxes();
-          setValue(payload.value);
-          debugRefact(`[DEBUG]: setInputValue.payload: `, payload);
-        }
+      if (addInputValue.match(event.data)) {
+        const { payload } = event.data;
+        debugRefact(`[DEBUG]: addInputValue triggered with:`, payload);
+        const { send_immediately, value } = payload;
+        setValue((prev) => {
+          debugRefact(`[DEBUG]: Previous value: "${prev}", Adding: "${value}"`);
+          return prev + value;
+        });
+        setIsSendImmediately(send_immediately);
+        return;
+      }
+
+      if (setInputValue.match(event.data)) {
+        const { payload } = event.data;
+        debugRefact(`[DEBUG]: setInputValue triggered with:`, payload);
+        const { send_immediately, value } = payload;
+        uncheckCheckboxes();
+        setValue(value ?? "");
+        debugRefact(`[DEBUG]: setInputValue.payload: `, payload);
+        setIsSendImmediately(send_immediately);
+        return;
       }
     },
-    [sendMessage, sendMultipleMessages, setUpIfNotReady, uncheckCheckboxes],
+    [setUpIfNotReady, submit, uncheckCheckboxes],
   );
 
   useEffect(() => {

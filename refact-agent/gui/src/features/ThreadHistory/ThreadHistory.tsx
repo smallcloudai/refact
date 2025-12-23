@@ -4,7 +4,7 @@ import { Button, Flex } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { ChatRawJSON } from "../../components/ChatRawJSON";
 import { useAppDispatch, useAppSelector } from "../../hooks";
-
+import { getChatById } from "../History/historySlice";
 import { copyChatHistoryToClipboard } from "../../utils/copyChatHistoryToClipboard";
 import { clearError, getErrorMessage, setError } from "../Errors/errorsSlice";
 import {
@@ -17,7 +17,6 @@ import {
   InformationCallout,
 } from "../../components/Callout/Callout";
 import styles from "./ThreadHistory.module.css";
-import { useMessageSubscription } from "../../components/Chat/useMessageSubscription";
 
 type ThreadHistoryProps = {
   onCloseThreadHistory: () => void;
@@ -32,16 +31,18 @@ export const ThreadHistory: FC<ThreadHistoryProps> = ({
   backFromThreadHistory,
   host,
   tabbed,
-  // chatId,
+  chatId,
 }) => {
   const dispatch = useAppDispatch();
 
-  // TODO: move this to the hooks directory
-  useMessageSubscription();
-
-  const state = useAppSelector((state) => state.threadMessages, {
+  const historyThread = useAppSelector((state) => getChatById(state, chatId), {
     devModeChecks: { stabilityCheck: "never" },
   });
+
+  const historyThreadToPass = historyThread && {
+    ...historyThread,
+    model: historyThread.model || "gpt-4o-mini",
+  };
 
   const error = useAppSelector(getErrorMessage);
   const information = useAppSelector(getInformationMessage);
@@ -53,15 +54,15 @@ export const ThreadHistory: FC<ThreadHistoryProps> = ({
   );
 
   const handleCopyToClipboardJSON = useCallback(() => {
-    if (!Object.values(state.messages).length) {
+    if (!historyThread) {
       dispatch(setError("No history thread found"));
       return;
     }
 
-    void copyChatHistoryToClipboard(state).then(() => {
+    void copyChatHistoryToClipboard(historyThread).then(() => {
       dispatch(setInformation("Chat history copied to clipboard"));
     });
-  }, [dispatch, state]);
+  }, [dispatch, historyThread]);
 
   const handleBackFromThreadHistory = useCallback(
     (customBackFunction: () => void) => {
@@ -98,11 +99,10 @@ export const ThreadHistory: FC<ThreadHistoryProps> = ({
           Back
         </Button>
       )}
-      {state.thread && (
+      {historyThreadToPass && (
         <ChatRawJSON
-          thread={state.thread}
+          thread={historyThreadToPass}
           copyHandler={handleCopyToClipboardJSON}
-          messages={Object.values(state.messages)}
         />
       )}
       {information && (

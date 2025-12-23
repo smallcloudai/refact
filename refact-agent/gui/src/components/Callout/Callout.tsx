@@ -18,12 +18,12 @@ import classNames from "classnames";
 import {
   useAppDispatch,
   useAppSelector,
-  useCoinBallance,
   useConfig,
   useLogout,
   useOpenUrl,
 } from "../../hooks";
 import { getIsAuthError } from "../../features/Errors/errorsSlice";
+import { selectBalance } from "../../features/CoinBalance";
 import { dismissBalanceLowCallout } from "../../features/Errors/informationSlice";
 
 type RadixCalloutProps = React.ComponentProps<typeof RadixCallout.Root>;
@@ -248,8 +248,7 @@ export const BallanceCallOut: React.FC<
       <br />
       Please{" "}
       <Link
-        // href="https://refact.smallcloud.ai/?topup"
-        href="https://app.refact.ai/my-workspace?topup"
+        href="https://refact.smallcloud.ai/?topup"
         target="_blank"
         rel="noreferrer"
         onClick={handleLinkClick}
@@ -272,7 +271,7 @@ export const BallanceCallOut: React.FC<
 export const BallanceLowInformation: React.FC<Omit<CalloutProps, "type">> = (
   props,
 ) => {
-  const ballance = useCoinBallance();
+  const balance = useAppSelector(selectBalance);
   const dispatch = useAppDispatch();
   const handleClose = useCallback(() => {
     dispatch(dismissBalanceLowCallout());
@@ -298,15 +297,11 @@ export const BallanceLowInformation: React.FC<Omit<CalloutProps, "type">> = (
       onClick={handleClose}
       {...props}
     >
-      💸{" "}
-      <Strong>
-        Your balance is {ballance?.have_coins_exactly ?? "running low"}
-      </Strong>
+      💸 <Strong>Your balance is {balance}</Strong>
       <br />
       Please{" "}
       <Link
-        // href="https://refact.smallcloud.ai/?topup"
-        href="https://app.refact.ai/my-workspace?topup"
+        href="https://refact.smallcloud.ai/?topup"
         target="_blank"
         rel="noreferrer"
         onClick={handleLinkClick}

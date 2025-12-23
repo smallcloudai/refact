@@ -16,6 +16,8 @@ use crate::global_context::GlobalContext;
 use crate::completion_cache;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::completon_rag::retrieve_ast_based_extra_context;
+use crate::telemetry::snippets_collection;
+use crate::telemetry::telemetry_structs;
 
 
 const DEBUG: bool = false;
@@ -30,6 +32,7 @@ pub struct FillInTheMiddleScratchpad {
     pub extra_stop_tokens: Vec<String>,
     pub context_used: Value,
     pub data4cache: completion_cache::CompletionSaveToCache,
+    pub data4snippet: snippets_collection::SaveSnippet,
     pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
     pub global_context: Arc<ARwLock<GlobalContext>>,
 }
@@ -40,10 +43,12 @@ impl FillInTheMiddleScratchpad {
         post: &CodeCompletionPost,
         order: String,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
+        tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
         ast_service: Option<Arc<AMutex<AstIndexService>>>,
         global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
+        let data4snippet = snippets_collection::SaveSnippet::new(tele_storage, &post);
         FillInTheMiddleScratchpad {
             t: HasTokenizerAndEot::new(tokenizer),
             post: post.clone(),
@@ -54,6 +59,7 @@ impl FillInTheMiddleScratchpad {
             extra_stop_tokens: vec![],
             context_used: json!({}),
             data4cache,
+            data4snippet,
             ast_service,
             global_context,
         }
@@ -115,7 +121,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             tracing::warn!("will not use ast because {}{}{}{}", self.t.context_format.is_empty() as i32, self.post.use_ast as i32, (rag_tokens_n > 0) as i32, self.ast_service.is_some() as i32);
         }
 
-        let limit: usize = ((n_ctx as i32) - (self.post.parameters.max_new_tokens as i32) - (rag_tokens_n as i32)) as usize;
+        let limit: i32 = (n_ctx as i32) - (self.post.parameters.max_new_tokens as i32) - (rag_tokens_n as i32);
         if limit < 512 {
             let msg = format!("n_ctx={} - max_new_tokens={} - rag_tokens_n={} leaves too little {} space for completion to work",
             n_ctx, self.post.parameters.max_new_tokens, rag_tokens_n, limit);
@@ -168,7 +174,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
         let mut after = String::new();
         let mut fim_line1: i32 = i32::MAX;
         let mut fim_line2: i32 = i32::MIN;
-        tokens_used += self.t.count_text_tokens_with_tokenizer(
+        tokens_used += self.t.count_tokens(
             (cursor_line1.clone() + &cursor_line2).as_str()
         )?;
         let mut rel_line_n: i32 = 0;
@@ -176,7 +182,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             rel_line_n += 1;
             if let Some(before_line) = before_line {
                 let before_line = before_line.to_string();
-                let tokens = self.t.count_text_tokens_with_tokenizer(before_line.as_str())?;
+                let tokens = self.t.count_tokens(before_line.as_str())?;
                 if tokens_used + tokens > limit {
                     break;
                 }
@@ -186,7 +192,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             }
             if let Some(after_line) = after_line {
                 let after_line = after_line.to_string();
-                let tokens = self.t.count_text_tokens_with_tokenizer(after_line.as_str())?;
+                let tokens = self.t.count_tokens(after_line.as_str())?;
                 if tokens_used + tokens > limit {
                     break;
                 }
@@ -299,6 +305,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
         if DEBUG {
             info!("response_n_choices\n{:?}", json_choices);
         }
+        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache, self.context_used != json!({}));
         Ok(json!(
             {
                 "choices": json_choices,
@@ -334,6 +341,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             }])
         };
         self.data4cache.completion0_finish_reason = finish_reason.to_string();
+        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache, self.context_used != json!({}));
         Ok((json!({
             "choices": json_choices,
             "snippet_telemetry_id": self.data4cache.completion0_snippet_telemetry_id,
@@ -354,6 +362,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
 
     fn streaming_finished(&mut self, finish_reason: FinishReason) -> Result<Value, String> {
         self.data4cache.completion0_finish_reason = finish_reason.to_string();
+        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache, self.context_used != json!({}));
         Ok(json!({
             "choices": [{
                 "index": 0,

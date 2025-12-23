@@ -1,4 +1,4 @@
-import { selectThreadMessages } from "../features/ThreadMessages/threadMessagesSlice";
+import { selectMessages } from "../features/Chat";
 import {
   getTotalCostMeteringForMessages,
   getTotalTokenMeteringForMessages,
@@ -6,15 +6,11 @@ import {
 import { useAppSelector } from "./useAppSelector";
 
 export const useTotalCostForChat = () => {
-  const messages = useAppSelector(selectThreadMessages, {
-    devModeChecks: { stabilityCheck: "never" },
-  });
+  const messages = useAppSelector(selectMessages);
   return getTotalCostMeteringForMessages(messages);
 };
 
 export const useTotalTokenMeteringForChat = () => {
-  const messages = useAppSelector(selectThreadMessages, {
-    devModeChecks: { stabilityCheck: "never" },
-  });
+  const messages = useAppSelector(selectMessages);
   return getTotalTokenMeteringForMessages(messages);
 };

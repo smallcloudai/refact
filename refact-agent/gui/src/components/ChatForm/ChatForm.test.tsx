@@ -6,6 +6,8 @@ import { ChatForm, ChatFormProps } from "./ChatForm";
 
 import {
   server,
+  goodCaps,
+  goodPrompts,
   noTools,
   noCommandPreview,
   noCompletions,
@@ -13,13 +15,22 @@ import {
   goodUser,
 } from "../../utils/mockServer";
 
-const handlers = [goodUser, noTools, noCommandPreview, noCompletions, goodPing];
+const handlers = [
+  goodCaps,
+  goodUser,
+  goodPrompts,
+  noTools,
+  noCommandPreview,
+  noCompletions,
+  goodPing,
+];
 
 server.use(...handlers);
 
 const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
   const defaultProps: ChatFormProps = {
     onSubmit: (_str: string) => ({}),
+    unCalledTools: false,
     ...props,
   };
 

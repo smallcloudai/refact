@@ -42,14 +42,11 @@ export const STUB_LINKS_FOR_CHAT_RESPONSE: LinksForChatResponse = {
             "/Users/kot/code_aprojects/demotest/.refact/project_summary.yaml",
         },
         messages: [
-          // {
-          //   ftm_role: "user",
-          //   ftm_content:
-          //     "Make recommended_integrations an empty list, follow the system prompt.",
-          //   ftm_alt: 100,
-          //   ftm_num: 1,
-          //   ftm_prev_alt: 100,
-          // },
+          {
+            role: "user",
+            content:
+              "Make recommended_integrations an empty list, follow the system prompt.",
+          },
         ],
       },
     },

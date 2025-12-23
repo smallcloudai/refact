@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { createAction } from "@reduxjs/toolkit";
 import { usePostMessage } from "./usePostMessage";
+import type { ChatThread } from "../features/Chat/Thread/types";
 import {
   EVENT_NAMES_FROM_SETUP,
   HostSettings,
@@ -8,9 +9,10 @@ import {
 } from "../events/setup";
 import { pathApi } from "../services/refact/path";
 
-import { ToolEditResult } from "../services/refact/tools";
+import { telemetryApi } from "../services/refact/telemetry";
+import { ToolEditResult } from "../services/refact";
 import { TextDocToolCall } from "../components/Tools/types";
-import type { TeamsGroup, TeamsWorkspace } from "../services/smallcloud/types";
+import type { TeamsGroup } from "../services/smallcloud/types";
 
 export const ideDiffPasteBackAction = createAction<{
   content: string;
@@ -29,6 +31,10 @@ export type OpenFilePayload = {
   line?: number;
 };
 export const ideOpenFile = createAction<OpenFilePayload>("ide/openFile");
+
+export const ideOpenChatInNewTab = createAction<ChatThread>(
+  "ide/openChatInNewTab",
+);
 
 export const ideAnimateFileStart = createAction<string>(
   "ide/animateFile/start",
@@ -73,18 +79,15 @@ export const ideForceReloadProjectTreeFiles = createAction(
 export const ideSetActiveTeamsGroup = createAction<TeamsGroup>(
   "ide/setActiveTeamsGroup",
 );
-export const ideSetActiveTeamsWorkspace = createAction<TeamsWorkspace>(
-  "ide/setActiveTeamsWorkspace",
-);
 export const ideClearActiveTeamsGroup = createAction<undefined>(
   "ide/clearActiveTeamsGroup",
 );
-export const ideClearActiveTeamsWorkspace = createAction<undefined>(
-  "ide/clearActiveTeamsWorkspace",
-);
 
 export const useEventsBusForIDE = () => {
+  const [sendTelemetryEvent] =
+    telemetryApi.useLazySendTelemetryChatEventQuery();
   const postMessage = usePostMessage();
+  // const canPaste = useAppSelector((state) => state.active_file.can_paste);
 
   const startFileAnimation = useCallback(
     (fileName: string) => {
@@ -120,8 +123,13 @@ export const useEventsBusForIDE = () => {
     (content: string, chatId?: string, toolCallId?: string) => {
       const action = ideDiffPasteBackAction({ content, chatId, toolCallId });
       postMessage(action);
+      void sendTelemetryEvent({
+        scope: `replaceSelection`,
+        success: true,
+        error_message: "",
+      });
     },
-    [postMessage],
+    [postMessage, sendTelemetryEvent],
   );
 
   const openSettings = useCallback(() => {
@@ -160,6 +168,14 @@ export const useEventsBusForIDE = () => {
       postMessage(action);
     },
     [getFullPath, postMessage],
+  );
+
+  const openChatInNewTab = useCallback(
+    (thread: ChatThread) => {
+      const action = ideOpenChatInNewTab(thread);
+      postMessage(action);
+    },
+    [postMessage],
   );
 
   const chatPageChange = useCallback(
@@ -234,9 +250,21 @@ export const useEventsBusForIDE = () => {
       if (res) {
         const action = ideOpenFile({ file_path: res });
         postMessage(action);
+        const res_split = res.split("/");
+        void sendTelemetryEvent({
+          scope: `ideOpenFile/${res_split[res_split.length - 1]}`,
+          success: true,
+          error_message: "",
+        });
+      } else {
+        void sendTelemetryEvent({
+          scope: `ideOpenFile`,
+          success: false,
+          error_message: res?.toString() ?? "path is not found",
+        });
       }
     },
-    [postMessage],
+    [postMessage, sendTelemetryEvent],
   );
 
   const openCustomizationFile = () =>
@@ -260,21 +288,9 @@ export const useEventsBusForIDE = () => {
     },
     [postMessage],
   );
-  const setActiveTeamsWorkspaceInIDE = useCallback(
-    (workspace: TeamsWorkspace) => {
-      const action = ideSetActiveTeamsWorkspace(workspace);
-      postMessage(action);
-    },
-    [postMessage],
-  );
 
   const clearActiveTeamsGroupInIDE = useCallback(() => {
     const action = ideClearActiveTeamsGroup();
-    postMessage(action);
-  }, [postMessage]);
-
-  const clearActiveTeamsWorkspaceInIDE = useCallback(() => {
-    const action = ideClearActiveTeamsWorkspace();
     postMessage(action);
   }, [postMessage]);
 
@@ -284,6 +300,7 @@ export const useEventsBusForIDE = () => {
     newFile,
     openHotKeys,
     openFile,
+    openChatInNewTab,
     setupHost,
     queryPathThenOpenFile,
     openCustomizationFile,
@@ -300,8 +317,6 @@ export const useEventsBusForIDE = () => {
     setCodeCompletionModel,
     setLoginMessage,
     setActiveTeamsGroupInIDE,
-    setActiveTeamsWorkspaceInIDE,
     clearActiveTeamsGroupInIDE,
-    clearActiveTeamsWorkspaceInIDE,
   };
 };

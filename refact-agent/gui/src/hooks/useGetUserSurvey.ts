@@ -4,13 +4,12 @@ import {
   userSurveyWasAskedMoreThanADayAgo,
   setLastAsked,
 } from "../features/UserSurvey/userSurveySlice";
-
+import { useGetUser } from "./useGetUser";
 import { useAppSelector } from "./useAppSelector";
 import { useAppDispatch } from "./useAppDispatch";
-import { useBasicStuffQuery } from "./useBasicStuffQuery";
 
 export function useGetUserSurvey() {
-  const userData = useBasicStuffQuery();
+  const userData = useGetUser();
   const askedMoreThanADayAgo = useAppSelector(
     userSurveyWasAskedMoreThanADayAgo,
   );
@@ -21,9 +20,9 @@ export function useGetUserSurvey() {
 
   const shouldSkip = useMemo(() => {
     return (
-      !userData.data ||
-      // userData.data.retcode !== "OK" ||
-      // userData.data.questionnaire !== false ||
+      userData.data === undefined ||
+      userData.data.retcode !== "OK" ||
+      userData.data.questionnaire !== false ||
       !askedMoreThanADayAgo
     );
   }, [userData.data, askedMoreThanADayAgo]);

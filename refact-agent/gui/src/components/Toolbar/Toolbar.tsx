@@ -1,42 +1,49 @@
 import {
   Button,
-  // DropdownMenu,
+  DropdownMenu,
   Flex,
   IconButton,
-  // Spinner,
+  Spinner,
   TabNav,
   Text,
-  // TextField,
+  TextField,
 } from "@radix-ui/themes";
 import { Dropdown, DropdownNavigationOptions } from "./Dropdown";
 import {
-  // DotFilledIcon,
-  // DotsVerticalIcon,
+  DotFilledIcon,
+  DotsVerticalIcon,
   HomeIcon,
   PlusIcon,
 } from "@radix-ui/react-icons";
+import { newChatAction } from "../../events";
 import { restart, useTourRefs } from "../../features/Tour";
 import { popBackTo, push } from "../../features/Pages/pagesSlice";
 import {
-  // ChangeEvent,
-  // KeyboardEvent,
+  ChangeEvent,
+  KeyboardEvent,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-
-// import { TruncateLeft } from "../Text";
+import {
+  deleteChatById,
+  getHistory,
+  updateChatTitleById,
+} from "../../features/History/historySlice";
+import { restoreChat, saveTitle, selectThread } from "../../features/Chat";
+import { TruncateLeft } from "../Text";
 import {
   useAppDispatch,
-  // useAppSelector,
+  useAppSelector,
   useEventsBusForIDE,
 } from "../../hooks";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
+import { clearPauseReasonsAndHandleToolsStatus } from "../../features/ToolConfirmation/confirmationSlice";
+import { telemetryApi } from "../../services/refact/telemetry";
 
-// import styles from "./Toolbar.module.css";
-import { resetThread } from "../../features/ThreadMessages";
+import styles from "./Toolbar.module.css";
 import { useActiveTeamsGroup } from "../../hooks/useActiveTeamsGroup";
 
 export type DashboardTab = {
@@ -52,9 +59,9 @@ export type ChatTab = {
   id: string;
 };
 
-// function isChatTab(tab: Tab): tab is ChatTab {
-//   return tab.type === "chat";
-// }
+function isChatTab(tab: Tab): tab is ChatTab {
+  return tab.type === "chat";
+}
 
 export type Tab = DashboardTab | ChatTab;
 
@@ -67,23 +74,25 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const tabNav = useRef<HTMLElement | null>(null);
   const [tabNavWidth, setTabNavWidth] = useState(0);
   const { width: windowWidth } = useWindowDimensions();
-  const [focus, _setFocus] = useState<HTMLElement | null>(null);
+  const [focus, setFocus] = useState<HTMLElement | null>(null);
 
   const refs = useTourRefs();
+  const [sendTelemetryEvent] =
+    telemetryApi.useLazySendTelemetryChatEventQuery();
 
-  // const history = useAppSelector(getHistory, {
-  //   devModeChecks: { stabilityCheck: "never" },
-  // });
-  // const isStreaming = useAppSelector((app) => app.chat.streaming);
-  // const { isTitleGenerated, id: chatId } = useAppSelector(selectThread);
-  // const cache = useAppSelector((app) => app.chat.cache);
+  const history = useAppSelector(getHistory, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
+  const isStreaming = useAppSelector((app) => app.chat.streaming);
+  const { isTitleGenerated, id: chatId } = useAppSelector(selectThread);
+  const cache = useAppSelector((app) => app.chat.cache);
   const { newChatEnabled } = useActiveTeamsGroup();
 
   const { openSettings, openHotKeys } = useEventsBusForIDE();
 
   const [isOnlyOneChatTab, setIsOnlyOneChatTab] = useState(false);
-  const [_isRenaming, setIsRenaming] = useState(false);
-  // const [newTitle, setNewTitle] = useState<string | null>(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newTitle, setNewTitle] = useState<string | null>(null);
 
   const shouldChatTabLinkBeNotClickable = useMemo(() => {
     return isOnlyOneChatTab && !isDashboardTab(activeTab);
@@ -93,55 +102,101 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     (to: DropdownNavigationOptions | "chat") => {
       if (to === "settings") {
         openSettings();
+        void sendTelemetryEvent({
+          scope: `openSettings`,
+          success: true,
+          error_message: "",
+        });
       } else if (to === "hot keys") {
         openHotKeys();
+        void sendTelemetryEvent({
+          scope: `openHotkeys`,
+          success: true,
+          error_message: "",
+        });
       } else if (to === "fim") {
         dispatch(push({ name: "fill in the middle debug page" }));
+        void sendTelemetryEvent({
+          scope: `openDebugFim`,
+          success: true,
+          error_message: "",
+        });
       } else if (to === "stats") {
         dispatch(push({ name: "statistics page" }));
+        void sendTelemetryEvent({
+          scope: `openStats`,
+          success: true,
+          error_message: "",
+        });
       } else if (to === "restart tour") {
         dispatch(popBackTo({ name: "login page" }));
         dispatch(push({ name: "welcome" }));
         dispatch(restart());
+        void sendTelemetryEvent({
+          scope: `restartTour`,
+          success: true,
+          error_message: "",
+        });
       } else if (to === "integrations") {
         dispatch(push({ name: "integrations page" }));
+        void sendTelemetryEvent({
+          scope: `openIntegrations`,
+          success: true,
+          error_message: "",
+        });
       } else if (to === "providers") {
         dispatch(push({ name: "providers page" }));
+        void sendTelemetryEvent({
+          scope: `openProviders`,
+          success: true,
+          error_message: "",
+        });
       } else if (to === "chat") {
         dispatch(popBackTo({ name: "history" }));
         dispatch(push({ name: "chat" }));
       }
     },
-    [dispatch, openSettings, openHotKeys],
+    [dispatch, sendTelemetryEvent, openSettings, openHotKeys],
   );
 
   const onCreateNewChat = useCallback(() => {
     setIsRenaming((prev) => (prev ? !prev : prev));
-    // TODO: remove new chat action?
-    // dispatch(newChatAction());
-    dispatch(resetThread());
-    // clear out old chat
+    dispatch(newChatAction());
+    dispatch(
+      clearPauseReasonsAndHandleToolsStatus({
+        wasInteracted: false,
+        confirmationStatus: true,
+      }),
+    );
     handleNavigation("chat");
-  }, [dispatch, handleNavigation]);
+    void sendTelemetryEvent({
+      scope: `openNewChat`,
+      success: true,
+      error_message: "",
+    });
+  }, [dispatch, sendTelemetryEvent, handleNavigation]);
 
   const goToTab = useCallback(
     (tab: Tab) => {
       if (tab.type === "dashboard") {
         dispatch(popBackTo({ name: "history" }));
-        dispatch(resetThread());
-        // dispatch(newChatAction());
+        dispatch(newChatAction());
       } else {
         if (shouldChatTabLinkBeNotClickable) return;
-        // TODO: load the chat by passing ft_id to push
-        // const chat = history.find((chat) => chat.id === tab.id);
-        // if (chat != undefined) {
-        //   dispatch(restoreChat(chat));
-        // }
+        const chat = history.find((chat) => chat.id === tab.id);
+        if (chat != undefined) {
+          dispatch(restoreChat(chat));
+        }
         dispatch(popBackTo({ name: "history" }));
         dispatch(push({ name: "chat" }));
       }
+      void sendTelemetryEvent({
+        scope: `goToTab/${tab.type}`,
+        success: true,
+        error_message: "",
+      });
     },
-    [dispatch, shouldChatTabLinkBeNotClickable],
+    [dispatch, history, shouldChatTabLinkBeNotClickable, sendTelemetryEvent],
   );
 
   useEffect(() => {
@@ -162,14 +217,12 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   }, [focus]);
 
   const tabs = useMemo(() => {
-    // TODO: unread threads
-    return [];
-    // return history.filter(
-    //   (chat) =>
-    //     chat.read === false ||
-    //     (activeTab.type === "chat" && activeTab.id == chat.id),
-    // );
-  }, []);
+    return history.filter(
+      (chat) =>
+        chat.read === false ||
+        (activeTab.type === "chat" && activeTab.id == chat.id),
+    );
+  }, [history, activeTab]);
 
   const shouldCollapse = useMemo(() => {
     const dashboardWidth = windowWidth < 400 ? 47 : 70; // todo: compute this
@@ -177,41 +230,41 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     return tabNavWidth < totalWidth;
   }, [tabNavWidth, tabs.length, windowWidth]);
 
-  // const handleChatThreadDeletion = useCallback(() => {
-  //   dispatch(deleteChatById(chatId));
-  //   goToTab({ type: "dashboard" });
-  // }, [dispatch, chatId, goToTab]);
+  const handleChatThreadDeletion = useCallback(() => {
+    dispatch(deleteChatById(chatId));
+    goToTab({ type: "dashboard" });
+  }, [dispatch, chatId, goToTab]);
 
-  // const handleChatThreadRenaming = useCallback(() => {
-  //   setIsRenaming(true);
-  // }, []);
+  const handleChatThreadRenaming = useCallback(() => {
+    setIsRenaming(true);
+  }, []);
 
-  // const handleKeyUpOnRename = useCallback(
-  //   (event: KeyboardEvent<HTMLInputElement>) => {
-  //     if (event.code === "Escape") {
-  //       setIsRenaming(false);
-  //     }
-  //     if (event.code === "Enter") {
-  //       setIsRenaming(false);
-  //       if (!newTitle || newTitle.trim() === "") return;
-  //       if (!isTitleGenerated) {
-  //         dispatch(
-  //           saveTitle({
-  //             id: chatId,
-  //             title: newTitle,
-  //             isTitleGenerated: true,
-  //           }),
-  //         );
-  //       }
-  //       dispatch(updateChatTitleById({ chatId: chatId, newTitle: newTitle }));
-  //     }
-  //   },
-  //   [dispatch, newTitle, chatId, isTitleGenerated],
-  // );
+  const handleKeyUpOnRename = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.code === "Escape") {
+        setIsRenaming(false);
+      }
+      if (event.code === "Enter") {
+        setIsRenaming(false);
+        if (!newTitle || newTitle.trim() === "") return;
+        if (!isTitleGenerated) {
+          dispatch(
+            saveTitle({
+              id: chatId,
+              title: newTitle,
+              isTitleGenerated: true,
+            }),
+          );
+        }
+        dispatch(updateChatTitleById({ chatId: chatId, newTitle: newTitle }));
+      }
+    },
+    [dispatch, newTitle, chatId, isTitleGenerated],
+  );
 
-  // const handleChatTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
-  //   setNewTitle(event.target.value);
-  // };
+  const handleChatTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setNewTitle(event.target.value);
+  };
 
   useEffect(() => {
     setIsOnlyOneChatTab(tabs.length < 2);
@@ -232,7 +285,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           >
             {windowWidth < 400 || shouldCollapse ? <HomeIcon /> : "Home"}
           </TabNav.Link>
-          {/* {tabs.map((chat) => {
+          {tabs.map((chat) => {
             const isStreamingThisTab =
               chat.id in cache ||
               (isChatTab(activeTab) && chat.id === activeTab.id && isStreaming);
@@ -312,7 +365,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 </Flex>
               </TabNav.Link>
             );
-          })} */}
+          })}
         </TabNav.Root>
       </Flex>
       {windowWidth < 400 ? (
@@ -334,7 +387,6 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           <Text>New chat</Text>
         </Button>
       )}
-
       <Dropdown handleNavigation={handleNavigation} />
     </Flex>
   );
