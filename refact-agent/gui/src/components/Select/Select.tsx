@@ -93,10 +93,7 @@ export const Select: React.FC<SelectProps> = ({
       ) : (
         <Trigger title={title} placeholder={placeholder} />
       )}
-      <Content
-        position={contentPosition ? contentPosition : "popper"}
-        side="top"
-      >
+      <Content position={contentPosition ?? "popper"}>
         {options.map((option, index) => {
           if (typeof option === "string") {
             return (
@@ -114,7 +111,12 @@ export const Select: React.FC<SelectProps> = ({
                 <HoverCard.Root openDelay={1000}>
                   <HoverCard.Trigger>
                     <div>
-                      {option.children ?? option.textValue ?? option.value}
+                      <span className={styles.trigger_only}>
+                        {option.textValue ?? option.value}
+                      </span>
+                      <span className={styles.dropdown_only}>
+                        {option.children}
+                      </span>
                     </div>
                   </HoverCard.Trigger>
                   <HoverCard.Content size="1">
@@ -126,7 +128,10 @@ export const Select: React.FC<SelectProps> = ({
           }
           return (
             <Item key={`select-item-${index}-${option.value}`} {...option}>
-              {option.children ?? option.textValue ?? option.value}
+              <span className={styles.trigger_only}>
+                {option.textValue ?? option.value}
+              </span>
+              <span className={styles.dropdown_only}>{option.children}</span>
             </Item>
           );
         })}

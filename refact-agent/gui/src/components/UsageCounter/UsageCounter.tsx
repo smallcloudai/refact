@@ -7,10 +7,14 @@ import { calculateUsageInputTokens } from "../../utils/calculateUsageInputTokens
 import { ScrollArea } from "../ScrollArea";
 import { useUsageCounter } from "./useUsageCounter";
 
-// import { selectAllImages } from "../../features/AttachedImages";
+import { selectAllImages } from "../../features/AttachedImages";
+import {
+  selectThreadCurrentMessageTokens,
+  selectThreadMaximumTokens,
+} from "../../features/Chat";
 import { formatNumberToFixed } from "../../utils/formatNumberToFixed";
 import {
-  // useAppSelector,
+  useAppSelector,
   useEffectOnce,
   useTotalCostForChat,
   useTotalTokenMeteringForChat,
@@ -18,7 +22,7 @@ import {
 
 import styles from "./UsageCounter.module.css";
 import { Coin } from "../../images";
-import { Usage } from "../../services/refact";
+import { CompressionStrength, Usage } from "../../services/refact";
 
 type UsageCounterProps =
   | {
@@ -43,26 +47,16 @@ const TokenDisplay: React.FC<{ label: string; value: number }> = ({
 );
 
 const TokensDisplay: React.FC<{
-  currentThreadUsage?: Pick<
-    Usage,
-    | "tokens_cache_read"
-    | "tokens_cache_creation"
-    | "tokens_prompt"
-    | "tokens_completion_reasoning"
-  > | null;
+  currentThreadUsage?: Usage | null;
   inputTokens: number;
   outputTokens: number;
 }> = ({ currentThreadUsage, inputTokens, outputTokens }) => {
   if (!currentThreadUsage) return;
-
   const {
-    tokens_cache_read,
-    tokens_cache_creation,
-    tokens_prompt,
-    tokens_completion_reasoning,
-    // cache_creation_input_tokens,
-    // completion_tokens_details,
-    // prompt_tokens,
+    cache_read_input_tokens,
+    cache_creation_input_tokens,
+    completion_tokens_details,
+    prompt_tokens,
   } = currentThreadUsage;
 
   return (
@@ -72,25 +66,25 @@ const TokensDisplay: React.FC<{
       </Text>
       <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
 
-      <TokenDisplay label="Prompt tokens" value={tokens_prompt} />
+      <TokenDisplay label="Prompt tokens" value={prompt_tokens} />
 
-      {tokens_cache_read && (
+      {cache_read_input_tokens !== undefined && (
         <TokenDisplay
           label="Cache read input tokens"
-          value={tokens_cache_read}
+          value={cache_read_input_tokens}
         />
       )}
-      {tokens_cache_creation && (
+      {cache_creation_input_tokens !== undefined && (
         <TokenDisplay
           label="Cache creation input tokens"
-          value={tokens_cache_creation}
+          value={cache_creation_input_tokens}
         />
       )}
       <TokenDisplay label="Completion tokens" value={outputTokens} />
-      {tokens_completion_reasoning && (
+      {completion_tokens_details?.reasoning_tokens !== null && (
         <TokenDisplay
           label="Reasoning tokens"
-          value={tokens_completion_reasoning}
+          value={completion_tokens_details?.reasoning_tokens ?? 0}
         />
       )}
     </Flex>
@@ -149,28 +143,27 @@ const CoinsDisplay: React.FC<{
   );
 };
 
-// const InlineHoverCard: React.FC<{ messageTokens: number }> = ({
-//   messageTokens,
-// }) => {
-//   // TODO: where do we get this info from now?
-//   // const maximumThreadContextTokens = useAppSelector(selectThreadMaximumTokens);
+const InlineHoverCard: React.FC<{ messageTokens: number }> = ({
+  messageTokens,
+}) => {
+  const maximumThreadContextTokens = useAppSelector(selectThreadMaximumTokens);
 
-//   return (
-//     <Flex direction="column" align="start" gap="2">
-//       {/* TODO: upsale logic might be implemented here to extend maximum context size */}
-//       {/* {maximumThreadContextTokens && (
-//         <TokenDisplay
-//           label="Thread maximum context tokens amount"
-//           value={maximumThreadContextTokens}
-//         />
-//       )} */}
-//       <TokenDisplay
-//         label="Potential tokens amount for current message"
-//         value={messageTokens}
-//       />
-//     </Flex>
-//   );
-// };
+  return (
+    <Flex direction="column" align="start" gap="2">
+      {/* TODO: upsale logic might be implemented here to extend maximum context size */}
+      {maximumThreadContextTokens && (
+        <TokenDisplay
+          label="Thread maximum context tokens amount"
+          value={maximumThreadContextTokens}
+        />
+      )}
+      <TokenDisplay
+        label="Potential tokens amount for current message"
+        value={messageTokens}
+      />
+    </Flex>
+  );
+};
 
 const DefaultHoverCard: React.FC<{
   inputTokens: number;
@@ -212,12 +205,13 @@ const DefaultHoverCard: React.FC<{
 
   const renderContent = (optionValue: string) => {
     if (optionValue === "tokens" && meteringTokens && totalMetering !== null) {
-      const usage = {
-        tokens_prompt: meteringTokens.metering_prompt_tokens_n,
-        tokens_cache_creation: meteringTokens.metering_cache_creation_tokens_n,
-        tokens_cache_read: meteringTokens.metering_cache_read_tokens_n,
-        tokens_completion: meteringTokens.metering_generated_tokens_n,
-        tokens_completion_reasoning: meteringTokens.metering_generated_tokens_n,
+      const usage: Usage = {
+        prompt_tokens: meteringTokens.metering_prompt_tokens_n,
+        total_tokens: totalMetering,
+        cache_creation_input_tokens:
+          meteringTokens.metering_cache_creation_tokens_n,
+        cache_read_input_tokens: meteringTokens.metering_cache_read_tokens_n,
+        completion_tokens: meteringTokens.metering_generated_tokens_n,
       };
       return (
         <TokensDisplay
@@ -274,57 +268,136 @@ const DefaultHoverCard: React.FC<{
   );
 };
 
-// const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
-//   messageTokens,
-// }) => {
-//   return (
-//     <Flex align="center" gap="6px">
-//       <Text size="1" color="gray" wrap="nowrap">
-//         {formatNumberToFixed(messageTokens)}{" "}
-//         {messageTokens === 1 ? "token" : "tokens"}
-//       </Text>
-//     </Flex>
-//   );
-// };
+const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
+  messageTokens,
+}) => {
+  return (
+    <Flex align="center" gap="6px">
+      <Text size="1" color="gray" wrap="nowrap">
+        {formatNumberToFixed(messageTokens)}{" "}
+        {messageTokens === 1 ? "token" : "tokens"}
+      </Text>
+    </Flex>
+  );
+};
+
+const formatCompressionStage = (
+  strength: CompressionStrength | null | undefined,
+): string | null => {
+  switch (strength) {
+    case "low":
+      return "1/3";
+    case "medium":
+      return "2/3";
+    case "high":
+      return "3/3";
+    case "absent":
+    default:
+      return null;
+  }
+};
 
 const DefaultHoverTriggerContent: React.FC<{
   inputTokens: number;
   outputTokens: number;
-}> = ({ inputTokens, outputTokens }) => {
+  currentSessionTokens: number;
+  compressionStrength?: CompressionStrength | null;
+  totalCoins?: number;
+}> = ({
+  inputTokens,
+  outputTokens,
+  currentSessionTokens,
+  compressionStrength,
+  totalCoins,
+}) => {
+  const compressionLabel = formatCompressionStage(compressionStrength);
+  const hasCoinsOrContext =
+    (totalCoins !== undefined && totalCoins > 0) || currentSessionTokens !== 0;
+  const hasInputOutput = inputTokens !== 0 || outputTokens !== 0;
+
   return (
-    <>
-      {inputTokens !== 0 && (
-        <Flex align="center">
-          <ArrowUpIcon width="12" height="12" />
-          <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
+    <Flex direction="column" align="end" gap="1">
+      {hasCoinsOrContext && (
+        <Flex align="center" gap="2">
+          {totalCoins !== undefined && totalCoins > 0 && (
+            <Flex align="center" gap="1" title="Total coins spent">
+              <Text size="1">{Math.round(totalCoins)}</Text>
+              <Coin width="12px" height="12px" />
+            </Flex>
+          )}
+          {currentSessionTokens !== 0 && (
+            <Text size="1" color="gray" title="Current context window usage">
+              ctx: {formatNumberToFixed(currentSessionTokens)}
+            </Text>
+          )}
+          {compressionLabel && (
+            <Text
+              size="1"
+              color={
+                compressionStrength === "high"
+                  ? "red"
+                  : compressionStrength === "medium"
+                    ? "yellow"
+                    : "gray"
+              }
+              title="Compression stage"
+            >
+              ⚡{compressionLabel}
+            </Text>
+          )}
         </Flex>
       )}
-      {outputTokens !== 0 && (
-        <Flex align="center">
-          <ArrowDownIcon width="12" height="12" />
-          <Text size="1">{formatNumberToFixed(outputTokens)}</Text>
+      {hasInputOutput && (
+        <Flex align="center" gap="2" title="Total tokens: input ↑ / output ↓">
+          {inputTokens !== 0 && (
+            <Flex align="center">
+              <ArrowUpIcon width="12" height="12" />
+              <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
+            </Flex>
+          )}
+          {outputTokens !== 0 && (
+            <Flex align="center">
+              <ArrowDownIcon width="12" height="12" />
+              <Text size="1">{formatNumberToFixed(outputTokens)}</Text>
+            </Flex>
+          )}
         </Flex>
       )}
-    </>
+    </Flex>
   );
 };
 
 export const UsageCounter: React.FC<UsageCounterProps> = ({
   isInline = false,
-  // isMessageEmpty,
+  isMessageEmpty,
 }) => {
   const [open, setOpen] = useState(false);
-  // const maybeAttachedImages = useAppSelector(selectAllImages);
-  const { currentThreadUsage, isOverflown, isWarning } = useUsageCounter();
-  //TODO: move this comes from command preview, store it some where
-  // const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
+  const maybeAttachedImages = useAppSelector(selectAllImages);
+  const {
+    currentThreadUsage,
+    isOverflown,
+    isWarning,
+    compressionStrength,
+    currentSessionTokens,
+  } = useUsageCounter();
+  const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
   const meteringTokens = useTotalTokenMeteringForChat();
+  const cost = useTotalCostForChat();
 
-  // const messageTokens = useMemo(() => {
-  //   if (isMessageEmpty && maybeAttachedImages.length === 0) return 0;
-  //   if (!currentMessageTokens) return 0;
-  //   return currentMessageTokens;
-  // }, [currentMessageTokens, maybeAttachedImages, isMessageEmpty]);
+  const totalCoins = useMemo(() => {
+    return (
+      (cost?.metering_coins_prompt ?? 0) +
+      (cost?.metering_coins_generated ?? 0) +
+      (cost?.metering_coins_cache_creation ?? 0) +
+      (cost?.metering_coins_cache_read ?? 0)
+    );
+  }, [cost]);
+
+  const messageTokens = useMemo(() => {
+    if (isMessageEmpty && maybeAttachedImages.length === 0) return 0;
+    if (!currentMessageTokens) return 0;
+    return currentMessageTokens;
+  }, [currentMessageTokens, maybeAttachedImages, isMessageEmpty]);
 
   const inputMeteringTokens = useMemo(() => {
     if (meteringTokens === null) return null;
@@ -342,11 +415,15 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
 
   const inputUsageTokens = calculateUsageInputTokens({
     usage: currentThreadUsage,
-    keys: ["tokens_prompt", "tokens_cache_creation", "tokens_cache_read"],
+    keys: [
+      "prompt_tokens",
+      "cache_creation_input_tokens",
+      "cache_read_input_tokens",
+    ],
   });
   const outputUsageTokens = calculateUsageInputTokens({
     usage: currentThreadUsage,
-    keys: ["tokens_completion"],
+    keys: ["completion_tokens"],
   });
 
   const inputTokens = useMemo(() => {
@@ -388,18 +465,15 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
             [styles.isOverflown]: isOverflown,
           })}
         >
-          {/* {isInline ? (
+          {isInline ? (
             <InlineHoverTriggerContent messageTokens={messageTokens} />
           ) : (
             <DefaultHoverTriggerContent
               inputTokens={inputTokens}
               outputTokens={outputTokens}
-            />
-          )} */}
-          {!isInline && (
-            <DefaultHoverTriggerContent
-              inputTokens={inputTokens}
-              outputTokens={outputTokens}
+              currentSessionTokens={currentSessionTokens}
+              compressionStrength={compressionStrength}
+              totalCoins={totalCoins}
             />
           )}
         </Card>
@@ -415,15 +489,9 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           side="top"
           hideWhenDetached
         >
-          {/* {isInline ? (
+          {isInline ? (
             <InlineHoverCard messageTokens={messageTokens} />
           ) : (
-            <DefaultHoverCard
-              inputTokens={inputTokens}
-              outputTokens={outputTokens}
-            />
-          )} */}
-          {!isInline && (
             <DefaultHoverCard
               inputTokens={inputTokens}
               outputTokens={outputTokens}

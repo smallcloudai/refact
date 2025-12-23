@@ -1,118 +1,105 @@
 import React, { useCallback, useMemo } from "react";
-
+import {
+  ChatMessages,
+  isAssistantMessage,
+  isChatContextFileMessage,
+  isDiffMessage,
+  isToolMessage,
+  isUserMessage,
+  UserMessage,
+} from "../../services/refact";
+import { UserInput } from "./UserInput";
 import { ScrollArea, ScrollAreaWithAnchor } from "../ScrollArea";
 import { Flex, Container, Button, Box } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
-
+import { ContextFiles } from "./ContextFiles";
+import { AssistantInput } from "./AssistantInput";
+import { PlainText } from "./PlainText";
 import { useAppDispatch, useDiffFileReload } from "../../hooks";
 import { useAppSelector } from "../../hooks";
 import {
-  selectIntegrationMeta,
+  selectIntegration,
   selectIsStreaming,
-  selectIsThreadRunning,
   selectIsWaiting,
-  selectThreadId,
-  selectToolConfirmationRequests,
-} from "../../features/ThreadMessages";
-
-import { ChatLinks } from "../ChatLinks";
+  selectMessages,
+  selectQueuedMessages,
+  selectThread,
+} from "../../features/Chat/Thread/selectors";
+import { takeWhile } from "../../utils";
+import { GroupedDiffs } from "./DiffContent";
+import { popBackTo } from "../../features/Pages/pagesSlice";
+import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
+import { telemetryApi } from "../../services/refact/telemetry";
 import { PlaceHolderText } from "./PlaceHolderText";
 import { UsageCounter } from "../UsageCounter";
+import { QueuedMessage } from "./QueuedMessage";
+import {
+  getConfirmationPauseStatus,
+  getPauseReasonsWithPauseStatus,
+} from "../../features/ToolConfirmation/confirmationSlice";
 import { useUsageCounter } from "../UsageCounter/useUsageCounter.ts";
 import { LogoAnimation } from "../LogoAnimation/LogoAnimation.tsx";
-import { selectThreadMessageTrie } from "../../features/ThreadMessages";
-import { MessageNode } from "../MessageNode/MessageNode.tsx";
-import { isEmptyNode } from "../../features/ThreadMessages/makeMessageTrie.ts";
-import { graphqlQueriesAndMutations } from "../../services/graphql";
-import { popBackTo } from "../../features/Pages/pagesSlice.ts";
 
-const usePauseThread = () => {
-  const isThreadRunning = useAppSelector(selectIsThreadRunning);
-  const threadId = useAppSelector(selectThreadId);
-  const toolConfirmationRequests = useAppSelector(
-    selectToolConfirmationRequests,
-    { devModeChecks: { stabilityCheck: "never" } },
-  );
-
-  const [pauseThread, pauseThreadResponse] =
-    graphqlQueriesAndMutations.usePauseThreadMutation();
-
-  const shouldShowStopButton = useMemo(() => {
-    if (!threadId) return false;
-    if (toolConfirmationRequests.length > 0) return false;
-    if (pauseThreadResponse.isLoading) return true;
-    // if (pauseReasonsWithPause.pause) return false;
-    return isThreadRunning;
-  }, [
-    threadId,
-    toolConfirmationRequests.length,
-    pauseThreadResponse.isLoading,
-    isThreadRunning,
-  ]);
-
-  const handlePause = useCallback(() => {
-    if (!threadId) return;
-    void pauseThread({ id: threadId });
-  }, [pauseThread, threadId]);
-
-  const loading = useMemo(() => {
-    if (pauseThreadResponse.originalArgs?.id !== threadId) return false;
-    return pauseThreadResponse.isLoading;
-  }, [
-    pauseThreadResponse.isLoading,
-    pauseThreadResponse.originalArgs?.id,
-    threadId,
-  ]);
-
-  return {
-    shouldShowStopButton,
-    handlePause,
-    loading,
-  };
+export type ChatContentProps = {
+  onRetry: (index: number, question: UserMessage["content"]) => void;
+  onStopStreaming: () => void;
 };
 
-export const ChatContent: React.FC = () => {
+export const ChatContent: React.FC<ChatContentProps> = ({
+  onStopStreaming,
+  onRetry,
+}) => {
   const dispatch = useAppDispatch();
-  // TODO: stays when creating a new chat :/
-  const threadMessageTrie = useAppSelector(selectThreadMessageTrie, {
-    devModeChecks: { stabilityCheck: "never" },
-  });
+  const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
+  const messages = useAppSelector(selectMessages);
+  const queuedMessages = useAppSelector(selectQueuedMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
-
+  const thread = useAppSelector(selectThread);
   const { shouldShow } = useUsageCounter();
+  const isConfig = thread.mode === "CONFIGURE";
   const isWaiting = useAppSelector(selectIsWaiting);
+  const [sendTelemetryEvent] =
+    telemetryApi.useLazySendTelemetryChatEventQuery();
+  const integrationMeta = useAppSelector(selectIntegration);
+  const isWaitingForConfirmation = useAppSelector(getConfirmationPauseStatus);
 
-  const integrationMeta = useAppSelector(selectIntegrationMeta);
-  const toolConfirmationRequests = useAppSelector(
-    selectToolConfirmationRequests,
-    { devModeChecks: { stabilityCheck: "never" } },
-  );
-
-  const { shouldShowStopButton, handlePause, loading } = usePauseThread();
+  const onRetryWrapper = (index: number, question: UserMessage["content"]) => {
+    onRetry(index, question);
+  };
 
   const handleReturnToConfigurationClick = useCallback(() => {
     // console.log(`[DEBUG]: going back to configuration page`);
     // TBD: should it be allowed to run in the background?
+    onStopStreaming();
     dispatch(
       popBackTo({
         name: "integrations page",
-        projectPath: integrationMeta?.project,
-        integrationName: integrationMeta?.name,
-        integrationPath: integrationMeta?.path,
+        projectPath: thread.integration?.project,
+        integrationName: thread.integration?.name,
+        integrationPath: thread.integration?.path,
         wasOpenedThroughChat: true,
       }),
     );
   }, [
+    onStopStreaming,
     dispatch,
-    integrationMeta?.name,
-    integrationMeta?.path,
-    integrationMeta?.project,
+    thread.integration?.project,
+    thread.integration?.name,
+    thread.integration?.path,
   ]);
 
+  const handleManualStopStreamingClick = useCallback(() => {
+    onStopStreaming();
+    void sendTelemetryEvent({
+      scope: `stopStreaming`,
+      success: true,
+      error_message: "",
+    });
+  }, [onStopStreaming, sendTelemetryEvent]);
+
   const shouldConfigButtonBeVisible = useMemo(() => {
-    if (!integrationMeta) return false;
-    return !integrationMeta.path?.includes("project_summary");
-  }, [integrationMeta]);
+    return isConfig && !integrationMeta?.path?.includes("project_summary");
+  }, [isConfig, integrationMeta?.path]);
 
   // Dedicated hook for handling file reloads
   useDiffFileReload();
@@ -128,21 +115,32 @@ export const ChatContent: React.FC = () => {
         direction="column"
         className={styles.content}
         data-element="ChatContent"
+        p="2"
+        gap="1"
       >
-        {isEmptyNode(threadMessageTrie) ? (
+        {messages.length === 0 && (
           <Container>
             <PlaceHolderText />
           </Container>
-        ) : (
-          <MessageNode>{threadMessageTrie}</MessageNode>
         )}
-        {/* {renderMessages(messages, onRetryWrapper, isWaiting)} */}
-        {/* <Container>
+        {renderMessages(messages, onRetryWrapper, isWaiting)}
+        {queuedMessages.length > 0 && (
+          <Flex direction="column" gap="2" mt="2">
+            {queuedMessages.map((queuedMsg, index) => (
+              <QueuedMessage
+                key={queuedMsg.id}
+                queuedMessage={queuedMsg}
+                position={index + 1}
+              />
+            ))}
+          </Flex>
+        )}
+        <Container>
           <UncommittedChangesWarning />
-        </Container> */}
+        </Container>
         {shouldShow && <UsageCounter />}
         <Container pt="4" pb="8">
-          {toolConfirmationRequests.length === 0 && (
+          {!isWaitingForConfirmation && (
             <LogoAnimation
               size="8"
               isStreaming={isStreaming}
@@ -161,13 +159,12 @@ export const ChatContent: React.FC = () => {
       >
         <ScrollArea scrollbars="horizontal">
           <Flex align="start" gap="3" pb="2">
-            {shouldShowStopButton && (
+            {(isWaiting || isStreaming) && !pauseReasonsWithPause.pause && (
               <Button
                 // ml="auto"
                 color="red"
-                title="Pause thread"
-                onClick={handlePause}
-                loading={loading}
+                title="stop streaming"
+                onClick={handleManualStopStreamingClick}
               >
                 Stop
               </Button>
@@ -192,3 +189,95 @@ export const ChatContent: React.FC = () => {
 };
 
 ChatContent.displayName = "ChatContent";
+
+function renderMessages(
+  messages: ChatMessages,
+  onRetry: (index: number, question: UserMessage["content"]) => void,
+  waiting: boolean,
+  memo: React.ReactNode[] = [],
+  index = 0,
+) {
+  if (messages.length === 0) return memo;
+  const [head, ...tail] = messages;
+  if (head.role === "tool") {
+    return renderMessages(tail, onRetry, waiting, memo, index + 1);
+  }
+
+  if (head.role === "plain_text") {
+    const key = "plain-text-" + index;
+    const nextMemo = [...memo, <PlainText key={key}>{head.content}</PlainText>];
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
+  }
+
+  if (head.role === "assistant") {
+    const key = "assistant-input-" + index;
+    const isLast = !tail.some(isAssistantMessage);
+    const nextMemo = [
+      ...memo,
+      <AssistantInput
+        key={key}
+        message={head.content}
+        reasoningContent={head.reasoning_content}
+        toolCalls={head.tool_calls}
+        serverExecutedTools={head.server_executed_tools}
+        citations={head.citations}
+        isLast={isLast}
+        usage={head.usage}
+        metering_coins_prompt={head.metering_coins_prompt}
+        metering_coins_generated={head.metering_coins_generated}
+        metering_coins_cache_creation={head.metering_coins_cache_creation}
+        metering_coins_cache_read={head.metering_coins_cache_read}
+      />,
+    ];
+
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
+  }
+
+  if (head.role === "user") {
+    const key = "user-input-" + index;
+    const isLastUserMessage = !tail.some(isUserMessage);
+    const nextMemo = [
+      ...memo,
+      isLastUserMessage && (
+        <ScrollAreaWithAnchor.ScrollAnchor
+          key={`${key}-anchor`}
+          behavior="smooth"
+          block="start"
+          // my="-2"
+        />
+      ),
+      <UserInput onRetry={onRetry} key={key} messageIndex={index}>
+        {head.content}
+      </UserInput>,
+    ];
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
+  }
+
+  if (isChatContextFileMessage(head)) {
+    const key = "context-file-" + index;
+    const nextMemo = [...memo, <ContextFiles key={key} files={head.content} />];
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
+  }
+
+  if (isDiffMessage(head)) {
+    const restInTail = takeWhile(tail, (message) => {
+      return isDiffMessage(message) || isToolMessage(message);
+    });
+
+    const nextTail = tail.slice(restInTail.length);
+    const diffMessages = [head, ...restInTail.filter(isDiffMessage)];
+    const key = "diffs-" + index;
+
+    const nextMemo = [...memo, <GroupedDiffs key={key} diffs={diffMessages} />];
+
+    return renderMessages(
+      nextTail,
+      onRetry,
+      waiting,
+      nextMemo,
+      index + diffMessages.length,
+    );
+  }
+
+  return renderMessages(tail, onRetry, waiting, memo, index + 1);
+}

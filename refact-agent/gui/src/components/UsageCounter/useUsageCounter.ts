@@ -35,6 +35,11 @@ export function useUsageCounter() {
     return [...acc, cur.ftm_usage];
   }, []);
   const currentThreadUsage = mergeUsages(usages);
+  const lastAssistantMessage =
+    assistantMessages.length > 0
+      ? assistantMessages[assistantMessages.length - 1]
+      : undefined;
+  const lastUsage = lastAssistantMessage?.usage;
 
   const totalInputTokens = useMemo(() => {
     return calculateUsageInputTokens({
@@ -42,6 +47,10 @@ export function useUsageCounter() {
       keys: ["tokens_prompt", "tokens_cache_creation", "tokens_cache_read"],
     });
   }, [currentThreadUsage]);
+
+  const currentSessionTokens = useMemo(() => {
+    return lastUsage?.prompt_tokens ?? 0;
+  }, [lastUsage]);
 
   const isOverflown = useMemo(() => {
     // if (compressionStop.strength === "low") return true;
@@ -64,7 +73,9 @@ export function useUsageCounter() {
     shouldShow,
     currentThreadUsage,
     totalInputTokens,
+    currentSessionTokens,
     isOverflown,
     isWarning,
+    compressionStrength: compressionStop.strength,
   };
 }

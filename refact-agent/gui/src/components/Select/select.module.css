@@ -1,7 +1,4 @@
 .item {
-  height: unset;
-  min-height: var(--select-item-height);
-  overflow: auto;
   overflow-wrap: anywhere;
 }
 
@@ -9,5 +6,68 @@
   /* JB doesn't support dvw yet */
   max-width: 50vw;
   max-width: 80dvw;
-  max-height: 200px;
+  max-height: 300px;
+  z-index: 9999;
+}
+
+/* Show only plain text in trigger, hide rich content */
+:global(.rt-SelectTrigger) .dropdown_only {
+  display: none;
+}
+
+/* Show only rich content in dropdown, hide plain text */
+:global(.rt-SelectContent) .trigger_only {
+  display: none;
+}
+
+/* Fix Radix Themes Select - remove inner scrollbars */
+:global(.rt-SelectContent) {
+  max-height: 400px;
+  z-index: 9999;
+}
+
+:global(.rt-SelectContent [data-radix-scroll-area-viewport]) {
+  max-height: 380px !important;
+}
+
+:global(.rt-SelectItem) {
+  height: unset !important;
+  min-height: unset !important;
+  overflow: visible !important;
+  padding: 6px 8px 6px 28px !important;
+  position: relative;
+}
+
+/* Fix checkmark indicator positioning */
+:global(.rt-SelectItem .rt-SelectItemIndicator),
+:global(.rt-SelectItem [data-state]) {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+}
+
+:global(.rt-SelectViewport) {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+/* Remove any nested scrollbars */
+:global(.rt-SelectItem *) {
+  overflow: visible !important;
+}
+
+:global(.rt-ScrollAreaScrollbar[data-orientation="horizontal"]) {
+  display: none !important;
+}
+
+/* Compact group labels */
+:global(.rt-SelectLabel) {
+  padding: 6px 8px 4px !important;
+  font-size: 11px !important;
+  opacity: 0.7;
+}
+
+/* Separator styling */
+:global(.rt-SelectSeparator) {
+  margin: 4px 0 !important;
 }

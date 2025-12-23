@@ -4,8 +4,11 @@ export {
   BackToSideBarButton,
   RightButton,
   RightButtonGroup,
+  AgentUsageLinkButton,
+  AgentIntegrationsButton,
 } from "./Buttons";
 
-// export { ThinkingButton } from "./ThinkingButton";
+export { ThinkingButton } from "./ThinkingButton";
+export { ContextCapButton } from "./ContextCapButton";
 export { FadedButton } from "./FadedButton";
-export { CardButton } from "./CardButton";
+export { SendButtonWithDropdown } from "./SendButton";

@@ -1,31 +1,30 @@
 import { useMemo } from "react";
 import { useAppSelector } from "./useAppSelector";
-import {
-  selectActiveGroup,
-  selectIsSkippedWorkspaceSelection,
-} from "../features/Teams/teamsSlice";
+import { useCapsForToolUse } from "./useCapsForToolUse";
+import { selectActiveGroup } from "../features/Teams";
 
 /**
  * Use this hook to get states related to caps supported features alongside the current active teams group.
  **/
-// TODO: do we keep this?
 export function useActiveTeamsGroup() {
+  const { data: capsData } = useCapsForToolUse();
   const maybeActiveTeamsGroup = useAppSelector(selectActiveGroup);
-  const isWorkspaceSelectionSkipped = useAppSelector(
-    selectIsSkippedWorkspaceSelection,
-  );
+
+  const isKnowledgeFeatureAvailable = useMemo(() => {
+    return capsData?.metadata?.features?.includes("knowledge") === true;
+  }, [capsData?.metadata?.features]);
+
   const groupSelectionEnabled = useMemo(() => {
-    if (isWorkspaceSelectionSkipped) return false;
-    return !maybeActiveTeamsGroup;
-  }, [maybeActiveTeamsGroup, isWorkspaceSelectionSkipped]);
+    return isKnowledgeFeatureAvailable && !maybeActiveTeamsGroup;
+  }, [maybeActiveTeamsGroup, isKnowledgeFeatureAvailable]);
 
   const newChatEnabled = useMemo(() => {
-    if (isWorkspaceSelectionSkipped) return true;
-    return !!maybeActiveTeamsGroup;
-  }, [maybeActiveTeamsGroup, isWorkspaceSelectionSkipped]);
+    return true;
+  }, []);
 
   return {
     groupSelectionEnabled,
+    isKnowledgeFeatureAvailable,
     newChatEnabled,
   };
 }

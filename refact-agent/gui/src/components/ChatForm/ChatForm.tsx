@@ -1,21 +1,30 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 
-import { Flex, Card, Text } from "@radix-ui/themes";
+import { Flex, Card, Text, IconButton } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
-import { PaperPlaneButton, BackToSideBarButton } from "../Buttons";
+import {
+  BackToSideBarButton,
+  AgentIntegrationsButton,
+  ThinkingButton,
+  ContextCapButton,
+  SendButtonWithDropdown,
+} from "../Buttons";
 import { TextArea } from "../TextArea";
 import { Form } from "./Form";
 import {
   useOnPressedEnter,
   useIsOnline,
   useConfig,
+  useCapsForToolUse,
+  useSendChatRequest,
+  useCompressChat,
   useAutoFocusOnce,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
 import { FilesPreview } from "./FilesPreview";
-import { ChatControls } from "./ChatControls";
+import { CapsSelect, ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPreviewFiles";
 import { useAppSelector, useAppDispatch } from "../../hooks";
@@ -38,83 +47,87 @@ import {
   InformationCallout,
 } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
+import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { AttachImagesButton, FileList } from "../Dropzone";
+import { useAttachedImages } from "../../hooks/useAttachedImages";
 import {
+  selectChatError,
   selectIsStreaming,
   selectIsWaiting,
-  selectThreadMessagesIsEmpty,
-  selectToolConfirmationRequests,
-} from "../../features/ThreadMessages";
+  selectLastSentCompression,
+  selectMessages,
+  selectQueuedMessages,
+  selectThreadToolUse,
+  selectToolUse,
+} from "../../features/Chat";
+import { telemetryApi } from "../../services/refact";
+import { push } from "../../features/Pages/pagesSlice";
 import { AgentCapabilities } from "./AgentCapabilities/AgentCapabilities";
-// import { TokensPreview } from "./TokensPreview";
+import { TokensPreview } from "./TokensPreview";
 import classNames from "classnames";
+import { ArchiveIcon } from "@radix-ui/react-icons";
 
-import { ExpertSelect } from "../../features/ExpertsAndModels/Experts";
-import { ModelsForExpert } from "../../features/ExpertsAndModels";
-import { useCapabilitiesForModel } from "../../hooks";
-import { useAttachedImages } from "../../hooks/useAttachedImages";
+export type SendPolicy = "immediate" | "after_flow";
 
 export type ChatFormProps = {
-  onSubmit: (str: string) => void;
+  onSubmit: (str: string, sendPolicy?: SendPolicy) => void;
   onClose?: () => void;
   className?: string;
+  unCalledTools: boolean;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
   className,
+  unCalledTools,
 }) => {
   const dispatch = useAppDispatch();
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  // const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
-  const capabilities = useCapabilitiesForModel();
-
+  const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
   const config = useConfig();
-
+  const toolUse = useAppSelector(selectToolUse);
   const globalError = useAppSelector(getErrorMessage);
   const globalErrorType = useAppSelector(getErrorType);
-  // const chatError = useAppSelector(selectChatError);
+  const chatError = useAppSelector(selectChatError);
   const information = useAppSelector(getInformationMessage);
+  const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const isOnline = useIsOnline();
-  const toolConfirmationRequests = useAppSelector(
-    selectToolConfirmationRequests,
-    { devModeChecks: { stabilityCheck: "never" } },
-  );
-  // const { retry } = useSendChatRequest();
+  const { retry } = useSendChatRequest();
 
-  // const threadToolUse = useAppSelector(selectThreadToolUse);
-  const messagesAreEmpty = useAppSelector(selectThreadMessagesIsEmpty);
-  // TODO: compression removed?
-  // const { compressChat, compressChatRequest, isCompressing } =
-  //   useCompressChat();
+  const threadToolUse = useAppSelector(selectThreadToolUse);
+  const messages = useAppSelector(selectMessages);
+  const lastSentCompression = useAppSelector(selectLastSentCompression);
+  const queuedMessages = useAppSelector(selectQueuedMessages);
+  const { compressChat, compressChatRequest, isCompressing } =
+    useCompressChat();
   const autoFocus = useAutoFocusOnce();
   const attachedFiles = useAttachedFiles();
   const shouldShowBalanceLow = useAppSelector(showBalanceLowCallout);
 
-  // const shouldAgentCapabilitiesBeShown = useMemo(() => {
-  //   return threadToolUse === "agent";
-  // }, [threadToolUse]);
+  const shouldAgentCapabilitiesBeShown = useMemo(() => {
+    return threadToolUse === "agent";
+  }, [threadToolUse]);
 
   const onClearError = useCallback(() => {
-    // if (messages.length > 0 && chatError) {
-    //   retry(messages);
-    // }
+    if (messages.length > 0 && chatError) {
+      retry(messages);
+    }
     dispatch(clearError());
-  }, [dispatch]);
+  }, [dispatch, retry, messages, chatError]);
 
-  // const caps = useCapsForToolUse();
+  const caps = useCapsForToolUse();
 
-  // const allDisabled = caps.usableModelsForPlan.every((option) => {
-  //   if (typeof option === "string") return false;
-  //   return option.disabled;
-  // });
+  const allDisabled = caps.usableModelsForPlan.every((option) => {
+    if (typeof option === "string") return false;
+    return option.disabled;
+  });
 
   const disableSend = useMemo(() => {
     // TODO: if interrupting chat some errors can occur
-    // if (allDisabled) return true;
+    if (allDisabled) return true;
     // if (
     //   currentThreadMaximumContextTokens &&
     //   currentThreadUsage?.prompt_tokens &&
@@ -122,21 +135,16 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     // )
     //   return false;
     // if (arePromptTokensBiggerThanContext) return true;
-    if (messagesAreEmpty) return false;
+    if (messages.length === 0) return false;
     return isWaiting || isStreaming || !isOnline;
-  }, [
-    // allDisabled,
-    isOnline,
-    isStreaming,
-    isWaiting,
-    messagesAreEmpty,
-  ]);
+  }, [allDisabled, messages.length, isWaiting, isStreaming, isOnline]);
+
+  const isModelSelectVisible = useMemo(() => messages.length < 1, [messages]);
 
   const { processAndInsertImages } = useAttachedImages();
-  // TODO: disable pasting file
   const handlePastingFile = useCallback(
     (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      if (!capabilities.multimodal) return;
+      if (!isMultimodalitySupportedForCurrentModel) return;
       const files: File[] = [];
       const items = event.clipboardData.items;
       for (const item of items) {
@@ -150,7 +158,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         processAndInsertImages(files);
       }
     },
-    [capabilities.multimodal, processAndInsertImages],
+    [processAndInsertImages, isMultimodalitySupportedForCurrentModel],
   );
 
   const {
@@ -160,8 +168,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     setLineSelectionInteracted,
   } = useCheckboxes();
 
-  // const [sendTelemetryEvent] =
-  //   telemetryApi.useLazySendTelemetryChatEventQuery();
+  const [sendTelemetryEvent] =
+    telemetryApi.useLazySendTelemetryChatEventQuery();
 
   const [value, setValue, isSendImmediately, setIsSendImmediately] =
     useInputValue(() => unCheckAll());
@@ -179,33 +187,44 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const refs = useTourRefs();
 
-  const handleSubmit = useCallback(() => {
-    const trimmedValue = value.trim();
-    if (!disableSend && trimmedValue.length > 0) {
-      const valueWithFiles = attachedFiles.addFilesToInput(trimmedValue);
-      const valueIncludingChecks = addCheckboxValuesToInput(
-        valueWithFiles,
-        checkboxes,
-      );
-      // TODO: add @files
-      setLineSelectionInteracted(false);
-      onSubmit(valueIncludingChecks);
-      setValue(() => "");
-      unCheckAll();
-      attachedFiles.removeAll();
-    }
-  }, [
-    value,
-    disableSend,
-    attachedFiles,
-    checkboxes,
-    setLineSelectionInteracted,
-    onSubmit,
-    setValue,
-    unCheckAll,
-  ]);
+  const handleSubmit = useCallback(
+    (sendPolicy: SendPolicy = "after_flow") => {
+      const trimmedValue = value.trim();
+      // Both options queue during streaming, so both should be allowed
+      const canSubmit = trimmedValue.length > 0 && isOnline && !allDisabled;
 
-  const handleEnter = useOnPressedEnter(handleSubmit);
+      if (canSubmit) {
+        const valueWithFiles = attachedFiles.addFilesToInput(trimmedValue);
+        const valueIncludingChecks = addCheckboxValuesToInput(
+          valueWithFiles,
+          checkboxes,
+        );
+        // TODO: add @files
+        setLineSelectionInteracted(false);
+        onSubmit(valueIncludingChecks, sendPolicy);
+        setValue(() => "");
+        unCheckAll();
+        attachedFiles.removeAll();
+      }
+    },
+    [
+      value,
+      allDisabled,
+      isOnline,
+      attachedFiles,
+      checkboxes,
+      setLineSelectionInteracted,
+      onSubmit,
+      setValue,
+      unCheckAll,
+    ],
+  );
+
+  const handleSendImmediately = useCallback(() => {
+    handleSubmit("immediate");
+  }, [handleSubmit]);
+
+  const handleEnter = useOnPressedEnter(() => handleSubmit("after_flow"));
 
   const handleHelpInfo = useCallback((info: React.ReactNode | null) => {
     setHelpInfo(info);
@@ -255,14 +274,14 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [handleHelpInfo, setValue, setLineSelectionInteracted],
   );
 
-  // const handleAgentIntegrationsClick = useCallback(() => {
-  //   dispatch(push({ name: "integrations page" }));
-  //   void sendTelemetryEvent({
-  //     scope: `openIntegrations`,
-  //     success: true,
-  //     error_message: "",
-  //   });
-  // }, [dispatch, sendTelemetryEvent]);
+  const handleAgentIntegrationsClick = useCallback(() => {
+    dispatch(push({ name: "integrations page" }));
+    void sendTelemetryEvent({
+      scope: `openIntegrations`,
+      success: true,
+      error_message: "",
+    });
+  }, [dispatch, sendTelemetryEvent]);
 
   useEffect(() => {
     if (isSendImmediately && !isWaiting && !isStreaming) {
@@ -279,9 +298,21 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   if (globalError) {
     return (
-      <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
-        {globalError}
-      </ErrorCallout>
+      <Flex direction="column" mt="2" gap="2">
+        <ErrorCallout onClick={onClearError} timeout={null}>
+          {globalError}
+        </ErrorCallout>
+      </Flex>
+    );
+  }
+
+  if (chatError) {
+    return (
+      <Flex direction="column" mt="2" gap="2">
+        <ErrorCallout onClick={onClearError} timeout={null}>
+          {chatError}
+        </ErrorCallout>
+      </Flex>
     );
   }
 
@@ -293,9 +324,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     );
   }
 
-  if (toolConfirmationRequests.length > 0) {
+  if (!isStreaming && pauseReasonsWithPause.pause) {
     return (
-      <ToolConfirmation toolConfirmationRequests={toolConfirmationRequests} />
+      <ToolConfirmation pauseReasons={pauseReasonsWithPause.pauseReasons} />
     );
   }
 
@@ -331,12 +362,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             {helpInfo}
           </Flex>
         )}
-        {/* {shouldAgentCapabilitiesBeShown && <AgentCapabilities />} */}
-        <AgentCapabilities />
+        {shouldAgentCapabilitiesBeShown && <AgentCapabilities />}
         <Form
           disabled={disableSend}
           className={classNames(styles.chatForm__form, className)}
-          onSubmit={handleSubmit}
+          onSubmit={() => handleSubmit("after_flow")}
         >
           <FilesPreview files={previewFiles} />
 
@@ -364,41 +394,40 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               />
             )}
           />
-          <Flex gap="1" wrap="wrap" py="1" px="2">
-            <ExpertSelect
-              disabled={isStreaming || isWaiting || !messagesAreEmpty}
-            />
-            <ModelsForExpert
-              disabled={isStreaming || isWaiting || !messagesAreEmpty}
-            />
+          <Flex gap="2" wrap="wrap" py="1" px="2" align="center">
+            {isModelSelectVisible && <CapsSelect />}
+            <ContextCapButton />
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
-              {/* <ThinkingButton /> */}
-              {/* <TokensPreview
+              <ThinkingButton />
+              <TokensPreview
                 currentMessageQuery={attachedFiles.addFilesToInput(value)}
-              /> */}
+              />
               <Flex gap="2" align="center" justify="center">
-                {/* <IconButton
+                <IconButton
                   size="1"
                   variant="ghost"
-                  // TODO: last sent compression?
-                  // color={
-                  //   lastSentCompression === "high"
-                  //     ? "red"
-                  //     : lastSentCompression === "medium"
-                  //       ? "yellow"
-                  //       : undefined
-                  // }
-                  title="Compress chat and continue"
+                  color={
+                    lastSentCompression === "high"
+                      ? "red"
+                      : lastSentCompression === "medium"
+                        ? "yellow"
+                        : undefined
+                  }
+                  title="Summarize and continue in a new chat"
                   type="button"
                   onClick={() => void compressChat()}
-                  disabled={messagesAreEmpty || isStreaming || isWaiting}
+                  disabled={
+                    messages.length === 0 ||
+                    isStreaming ||
+                    isWaiting ||
+                    unCalledTools
+                  }
                   loading={compressChatRequest.isLoading || isCompressing}
                 >
                   <ArchiveIcon />
-                </IconButton> */}
-                {/* TODO: enable this? */}
-                {/* {toolUse === "agent" && (
+                </IconButton>
+                {toolUse === "agent" && (
                   <AgentIntegrationsButton
                     title="Set up Agent Integrations"
                     size="1"
@@ -406,7 +435,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                     onClick={handleAgentIntegrationsClick}
                     ref={(x) => refs.setSetupIntegrations(x)}
                   />
-                )} */}
+                )}
                 {onClose && (
                   <BackToSideBarButton
                     disabled={isStreaming}
@@ -415,14 +444,19 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                     onClick={onClose}
                   />
                 )}
-
-                {capabilities.multimodal && <AttachImagesButton />}
+                {config.features?.images !== false &&
+                  isMultimodalitySupportedForCurrentModel && (
+                    <AttachImagesButton />
+                  )}
                 {/* TODO: Reserved space for microphone button coming later on */}
-                <PaperPlaneButton
-                  disabled={disableSend}
-                  title="Send message"
-                  size="1"
-                  type="submit"
+                <SendButtonWithDropdown
+                  disabled={
+                    !isOnline || allDisabled || value.trim().length === 0
+                  }
+                  isStreaming={isStreaming || isWaiting}
+                  queuedCount={queuedMessages.length}
+                  onSend={() => handleSubmit("after_flow")}
+                  onSendImmediately={handleSendImmediately}
                 />
               </Flex>
             </Flex>

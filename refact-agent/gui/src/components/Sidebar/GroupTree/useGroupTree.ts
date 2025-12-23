@@ -1,22 +1,13 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlexusTreeNode } from "./GroupTree";
 import {
-  CreateGroupDocument,
-  CreateGroupMutation,
-  CreateGroupMutationVariables,
   NavTreeSubsDocument,
   NavTreeSubsSubscription,
   NavTreeWantWorkspacesDocument,
   NavTreeWantWorkspacesQuery,
   NavTreeWantWorkspacesQueryVariables,
 } from "../../../../generated/documents";
-import { useMutation, useQuery } from "urql";
+import { useQuery } from "urql";
 import {
   cleanupInsertedLater,
   markForDelete,
@@ -26,35 +17,21 @@ import {
 import { useSmartSubscription } from "../../../hooks/useSmartSubscription";
 import {
   useAppDispatch,
-  useAppSelector,
   useEventsBusForIDE,
-  useOpenUrl,
   useResizeObserver,
 } from "../../../hooks";
 import { isDetailMessage, teamsApi } from "../../../services/refact";
 import { NodeApi } from "react-arborist";
-import {
-  resetActiveGroup,
-  resetActiveWorkspace,
-  selectActiveWorkspace,
-  setActiveGroup,
-  setActiveWorkspace,
-  setSkippedWorkspaceSelection,
-} from "../../../features/Teams";
+import { resetActiveGroup, setActiveGroup } from "../../../features/Teams";
 import { setError } from "../../../features/Errors/errorsSlice";
-import { selectConfig } from "../../../features/Config/configSlice";
+
+export type TeamsWorkspace =
+  NavTreeWantWorkspacesQuery["query_basic_stuff"]["workspaces"][number];
 
 export function useGroupTree() {
   const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);
-  const [createFolderChecked, setCreateFolderChecked] = useState(false);
-
-  const currentTeamsWorkspace = useAppSelector(selectActiveWorkspace);
-  const openUrl = useOpenUrl();
-
-  const [_, createGroup] = useMutation<
-    CreateGroupMutation,
-    CreateGroupMutationVariables
-  >(CreateGroupDocument);
+  const [currentTeamsWorkspace, setCurrentTeamsWorkspace] =
+    useState<TeamsWorkspace | null>(null);
 
   const [teamsWorkspaces] = useQuery<
     NavTreeWantWorkspacesQuery,
@@ -138,8 +115,7 @@ export function useGroupTree() {
   });
 
   const dispatch = useAppDispatch();
-  const { setActiveTeamsGroupInIDE, setActiveTeamsWorkspaceInIDE } =
-    useEventsBusForIDE();
+  const { setActiveTeamsGroupInIDE } = useEventsBusForIDE();
 
   const [setActiveGroupIdTrigger] = teamsApi.useSetActiveGroupIdMutation();
   const [currentSelectedTeamsGroupNode, setCurrentSelectedTeamsGroupNode] =
@@ -172,122 +148,50 @@ export function useGroupTree() {
   }, []);
 
   const onGroupSelectionConfirm = useCallback(
-    async (group: FlexusTreeNode) => {
+    (group: FlexusTreeNode) => {
       const newGroup = {
         id: group.treenodeId,
         name: group.treenodeTitle,
       };
 
       setActiveTeamsGroupInIDE(newGroup);
-      try {
-        const result = await setActiveGroupIdTrigger({
-          group_id: group.treenodeId,
-        });
-        if (result.data) {
-          dispatch(setActiveGroup(newGroup));
-          return;
-        } else {
-          // TODO: rework error handling
-          let errorMessage: string;
-          if ("data" in result.error && isDetailMessage(result.error.data)) {
-            errorMessage = result.error.data.detail;
+      void setActiveGroupIdTrigger({
+        group_id: group.treenodeId,
+      })
+        .then((result) => {
+          if (result.data) {
+            dispatch(setActiveGroup(newGroup));
+            return;
           } else {
-            errorMessage =
-              "Error: Something went wrong while selecting a group. Try again.";
+            // TODO: rework error handling
+            let errorMessage: string;
+            if ("data" in result.error && isDetailMessage(result.error.data)) {
+              errorMessage = result.error.data.detail;
+            } else {
+              errorMessage =
+                "Error: Something went wrong while selecting a group. Try again.";
+            }
+            dispatch(setError(errorMessage));
           }
-          dispatch(setError(errorMessage));
-        }
-      } catch {
-        dispatch(resetActiveGroup());
-      }
+        })
+        .catch(() => {
+          dispatch(resetActiveGroup());
+        });
     },
     [dispatch, setActiveGroupIdTrigger, setActiveTeamsGroupInIDE],
   );
 
-  const onWorkspaceSelectChange = useCallback(
-    (value: string) => {
-      const maybeWorkspace =
+  const onWorkspaceSelection = useCallback(
+    (workspaceId: string) => {
+      setCurrentTeamsWorkspace(
         teamsWorkspaces.data?.query_basic_stuff.workspaces.find(
-          (w) => w.ws_id === value,
-        );
-      if (maybeWorkspace) {
-        setActiveTeamsWorkspaceInIDE(maybeWorkspace);
-        dispatch(setActiveWorkspace(maybeWorkspace));
-        setCurrentSelectedTeamsGroupNode(null);
-      }
-    },
-    [
-      dispatch,
-      setActiveTeamsWorkspaceInIDE,
-      teamsWorkspaces.data?.query_basic_stuff.workspaces,
-    ],
-  );
-
-  const handleCreateWorkspaceClick = useCallback(
-    (event: React.MouseEvent<HTMLAnchorElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      openUrl("http://app.refact.ai/profile?action=create-workspace");
-    },
-    [openUrl],
-  );
-
-  const currentWorkspaceName =
-    useAppSelector(selectConfig).currentWorkspaceName ?? "New Project";
-
-  const isMatchingGroupNameWithWorkspace = useMemo(() => {
-    return (
-      currentSelectedTeamsGroupNode?.treenodeTitle === currentWorkspaceName
-    );
-  }, [currentSelectedTeamsGroupNode?.treenodeTitle, currentWorkspaceName]);
-
-  const handleConfirmSelectionClick = useCallback(async () => {
-    if (!currentSelectedTeamsGroupNode) return;
-    if (createFolderChecked && !isMatchingGroupNameWithWorkspace) {
-      const result = await createGroup({
-        fgroup_name: currentWorkspaceName,
-        fgroup_parent_id: currentSelectedTeamsGroupNode.treenodeId,
-      });
-
-      if (result.error) {
-        dispatch(setError(result.error.message));
-        return;
-      }
-
-      const newGroup = result.data?.group_create;
-      if (newGroup) {
-        const newNode: FlexusTreeNode = {
-          treenodeId: newGroup.fgroup_id,
-          treenodeTitle: newGroup.fgroup_name,
-          treenodeType: "group",
-          treenodePath: `${currentSelectedTeamsGroupNode.treenodePath}/group:${newGroup.fgroup_id}`,
-          treenode__DeleteMe: false,
-          treenode__InsertedLater: false,
-          treenodeChildren: [],
-          treenodeExpanded: false,
-        };
-        setCurrentSelectedTeamsGroupNode(newNode);
-        void onGroupSelectionConfirm(newNode);
-      }
-    } else {
-      void onGroupSelectionConfirm(currentSelectedTeamsGroupNode);
+          (w) => w.ws_id === workspaceId,
+        ) ?? null,
+      );
       setCurrentSelectedTeamsGroupNode(null);
-    }
-  }, [
-    dispatch,
-    createGroup,
-    currentSelectedTeamsGroupNode,
-    setCurrentSelectedTeamsGroupNode,
-    onGroupSelectionConfirm,
-    currentWorkspaceName,
-    createFolderChecked,
-    isMatchingGroupNameWithWorkspace,
-  ]);
-
-  const handleSkipWorkspaceSelection = useCallback(() => {
-    dispatch(setSkippedWorkspaceSelection(true));
-    dispatch(resetActiveWorkspace());
-  }, [dispatch]);
+    },
+    [teamsWorkspaces.data?.query_basic_stuff.workspaces],
+  );
 
   const availableWorkspaces = useMemo(() => {
     if (teamsWorkspaces.data?.query_basic_stuff.workspaces) {
@@ -296,12 +200,8 @@ export function useGroupTree() {
     return [];
   }, [teamsWorkspaces.data?.query_basic_stuff.workspaces]);
 
-  useEffect(() => {
-    if (availableWorkspaces.length === 1) {
-      dispatch(setActiveWorkspace(availableWorkspaces[0]));
-      setActiveTeamsWorkspaceInIDE(availableWorkspaces[0]);
-    }
-  }, [dispatch, setActiveTeamsWorkspaceInIDE, availableWorkspaces]);
+  const hasError = teamsWorkspaces.error !== undefined;
+  const isLoading = teamsWorkspaces.fetching;
 
   return {
     // Refs
@@ -314,20 +214,19 @@ export function useGroupTree() {
     // Current states
     currentTeamsWorkspace,
     currentSelectedTeamsGroupNode,
-    createFolderChecked,
     // Dimensions
     treeHeight,
     // Actions
     onGroupSelect,
     onGroupSelectionConfirm,
-    onWorkspaceSelectChange,
+    onWorkspaceSelection,
     touchNode,
-    handleSkipWorkspaceSelection,
-    handleConfirmSelectionClick,
-    handleCreateWorkspaceClick,
     // Setters
+    setCurrentTeamsWorkspace,
     setGroupTreeData,
     setCurrentSelectedTeamsGroupNode,
-    setCreateFolderChecked,
+    // Status
+    hasError,
+    isLoading,
   };
 }

@@ -1,51 +1,59 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Chat } from "./Chat";
-// import { ChatThread } from "../../features/Chat/Thread/types";
+import { ChatThread } from "../../features/Chat/Thread/types";
 import { RootState, setUpStore } from "../../app/store";
 import { Provider } from "react-redux";
 import { Theme } from "../Theme";
+import { AbortControllerProvider } from "../../contexts/AbortControllers";
 import {
   CHAT_CONFIG_THREAD,
-  // CHAT_WITH_KNOWLEDGE_TOOL,
+  CHAT_WITH_KNOWLEDGE_TOOL,
 } from "../../__fixtures__";
 
 import {
+  goodCaps,
   goodPing,
+  goodPrompts,
   goodUser,
   chatLinks,
   goodTools,
   noTools,
   // noChatLinks,
+  makeKnowledgeFromChat,
 } from "../../__fixtures__/msw";
 import { TourProvider } from "../../features/Tour";
 import { Flex } from "@radix-ui/themes";
 import { http, HttpResponse } from "msw";
-import { BaseMessage } from "../../services/refact/types";
 
 const Template: React.FC<{
-  messages: BaseMessage[];
+  thread?: ChatThread;
   config?: RootState["config"];
-}> = ({ config, messages }) => {
+}> = ({ thread, config }) => {
+  const threadData = thread ?? {
+    id: "test",
+    model: "gpt-4o", // or any model from STUB CAPS REQUEst
+    messages: [],
+    new_chat_suggested: {
+      wasSuggested: false,
+    },
+  };
   const store = setUpStore({
     tour: {
       type: "finished",
     },
-    threadMessages: {
-      waitingBranches: [],
-      streamingBranches: [],
-      ft_id: null,
-      endNumber: 0,
-      endAlt: 0,
-      endPrevAlt: 0,
-      thread: null,
-      loading: false,
-      messages: messages.reduce((acc, message) => {
-        return {
-          ...acc,
-          [message.ftm_call_id]: message,
-        };
-      }, {}),
+    chat: {
+      streaming: false,
+      prevent_send: false,
+      waiting_for_response: false,
+      max_new_tokens: 4096,
+      tool_use: "agent",
+      send_immediately: false,
+      error: null,
+      cache: {},
+      system_prompt: {},
+      thread: threadData,
+      queued_messages: [],
     },
     config,
   });
@@ -54,14 +62,17 @@ const Template: React.FC<{
     <Provider store={store}>
       <Theme>
         <TourProvider>
-          <Flex direction="column" align="stretch" height="100dvh">
-            <Chat
-              host="web"
-              tabbed={false}
-              backFromChat={() => ({})}
-              maybeSendToSidebar={() => ({})}
-            />
-          </Flex>
+          <AbortControllerProvider>
+            <Flex direction="column" align="stretch" height="100dvh">
+              <Chat
+                unCalledTools={false}
+                host="web"
+                tabbed={false}
+                backFromChat={() => ({})}
+                maybeSendToSidebar={() => ({})}
+              />
+            </Flex>
+          </AbortControllerProvider>
         </TourProvider>
       </Theme>
     </Provider>
@@ -73,7 +84,14 @@ const meta: Meta<typeof Template> = {
   component: Template,
   parameters: {
     msw: {
-      handlers: [goodPing, goodUser, chatLinks, goodTools],
+      handlers: [
+        goodCaps,
+        goodPing,
+        goodPrompts,
+        goodUser,
+        chatLinks,
+        goodTools,
+      ],
     },
   },
   argTypes: {},
@@ -87,7 +105,7 @@ export const Primary: Story = {};
 
 export const Configuration: Story = {
   args: {
-    messages: CHAT_CONFIG_THREAD,
+    thread: CHAT_CONFIG_THREAD.thread,
   },
 };
 
@@ -103,14 +121,14 @@ export const IDE: Story = {
 
   parameters: {
     msw: {
-      handlers: [goodPing, goodUser, chatLinks, noTools],
+      handlers: [goodCaps, goodPing, goodPrompts, goodUser, chatLinks, noTools],
     },
   },
 };
 
 export const Knowledge: Story = {
   args: {
-    // thread: CHAT_WITH_KNOWLEDGE_TOOL,
+    thread: CHAT_WITH_KNOWLEDGE_TOOL,
     config: {
       host: "ide",
       lspPort: 8001,
@@ -123,12 +141,14 @@ export const Knowledge: Story = {
   parameters: {
     msw: {
       handlers: [
+        goodCaps,
         goodPing,
-
+        goodPrompts,
         goodUser,
         // noChatLinks,
         chatLinks,
         noTools,
+        makeKnowledgeFromChat,
       ],
     },
   },
@@ -136,42 +156,41 @@ export const Knowledge: Story = {
 
 export const EmptySpaceAtBottom: Story = {
   args: {
-    messages: [
-      {
-        ftm_role: "user",
-        ftm_content: "Hello",
+    thread: {
+      id: "test",
+      model: "gpt-4o", // or any model from STUB CAPS REQUEst
+      messages: [
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        // { role: "assistant", content: "👋" },
+      ],
+      new_chat_suggested: {
+        wasSuggested: false,
       },
-      {
-        ftm_role: "assistant",
-        ftm_content: "Hi",
-      },
-      {
-        ftm_role: "user",
-        ftm_content: "👋",
-      },
-      // { ftm_role: "assistant", ftm_content: "👋" },
-    ].map((message, index) => {
-      return {
-        ftm_belongs_to_ft_id: "test",
-        ftm_num: index,
-        ftm_alt: 100,
-        ftm_prev_alt: 100,
-        ftm_created_ts: Date.now(),
-        ftm_call_id: "",
-        ...message,
-      };
-    }),
+    },
   },
 
   parameters: {
     msw: {
       handlers: [
+        goodCaps,
         goodPing,
-
+        goodPrompts,
         goodUser,
         // noChatLinks,
         chatLinks,
         noTools,
+        makeKnowledgeFromChat,
       ],
     },
   },
@@ -179,81 +198,80 @@ export const EmptySpaceAtBottom: Story = {
 
 export const UserMessageEmptySpaceAtBottom: Story = {
   args: {
-    messages: [
-      {
-        ftm_role: "user",
-        ftm_content: "Hello",
+    thread: {
+      id: "test",
+      model: "gpt-4o", // or any model from STUB CAPS REQUEst
+      messages: [
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+      ],
+      new_chat_suggested: {
+        wasSuggested: false,
       },
-      {
-        ftm_role: "assistant",
-        ftm_content: "Hi",
-      },
-      {
-        ftm_role: "user",
-        ftm_content: "👋",
-      },
-      { ftm_role: "assistant", ftm_content: "👋" },
-      {
-        ftm_role: "user",
-        ftm_content: "Hello",
-      },
-      {
-        ftm_role: "assistant",
-        ftm_content: "Hi",
-      },
-      {
-        ftm_role: "user",
-        ftm_content: "👋",
-      },
-      { ftm_role: "assistant", ftm_content: "👋" },
-      {
-        ftm_role: "user",
-        ftm_content: "Hello",
-      },
-      {
-        ftm_role: "assistant",
-        ftm_content: "Hi",
-      },
-      {
-        ftm_role: "user",
-        ftm_content: "👋",
-      },
-      { ftm_role: "assistant", ftm_content: "👋" },
-      {
-        ftm_role: "user",
-        ftm_content: "Hello",
-      },
-      {
-        ftm_role: "assistant",
-        ftm_content: "Hi",
-      },
-      {
-        ftm_role: "user",
-        ftm_content: "👋",
-      },
-      { ftm_role: "assistant", ftm_content: "👋" },
-    ].map((message, index) => {
-      return {
-        ftm_belongs_to_ft_id: "test",
-        ftm_num: index,
-        ftm_alt: 100,
-        ftm_prev_alt: 100,
-        ftm_created_ts: Date.now(),
-        ftm_call_id: "",
-        ...message,
-      };
-    }),
+    },
   },
 
   parameters: {
     msw: {
       handlers: [
+        goodCaps,
         goodPing,
-
+        goodPrompts,
         goodUser,
         // noChatLinks,
         chatLinks,
         noTools,
+        makeKnowledgeFromChat,
       ],
     },
   },
@@ -261,83 +279,82 @@ export const UserMessageEmptySpaceAtBottom: Story = {
 
 export const CompressButton: Story = {
   args: {
-    messages: [
-      {
-        ftm_role: "user",
-        ftm_content: "Hello",
+    thread: {
+      id: "test",
+      model: "gpt-4o", // or any model from STUB CAPS REQUEst
+      messages: [
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+          // change this to see different button colours
+          compression_strength: "low",
+        },
+        { role: "assistant", content: "👋" },
+      ],
+      new_chat_suggested: {
+        wasSuggested: false,
       },
-      {
-        ftm_role: "assistant",
-        ftm_content: "Hi",
-      },
-      {
-        ftm_role: "user",
-        ftm_content: "👋",
-      },
-      { ftm_role: "assistant", ftm_content: "👋" },
-      {
-        ftm_role: "user",
-        ftm_content: "Hello",
-      },
-      {
-        ftm_role: "assistant",
-        ftm_content: "Hi",
-      },
-      {
-        ftm_role: "user",
-        ftm_content: "👋",
-      },
-      { ftm_role: "assistant", ftm_content: "👋" },
-      {
-        ftm_role: "user",
-        ftm_content: "Hello",
-      },
-      {
-        ftm_role: "assistant",
-        ftm_content: "Hi",
-      },
-      {
-        ftm_role: "user",
-        ftm_content: "👋",
-      },
-      { ftm_role: "assistant", ftm_content: "👋" },
-      {
-        ftm_role: "user",
-        ftm_content: "Hello",
-      },
-      {
-        ftm_role: "assistant",
-        ftm_content: "Hi",
-      },
-      {
-        ftm_role: "user",
-        ftm_content: "👋",
-        // change this to see different button colours
-        compression_strength: "low",
-      },
-      { ftm_role: "assistant", ftm_content: "👋" },
-    ].map((message, index) => {
-      return {
-        ftm_belongs_to_ft_id: "test",
-        ftm_num: index,
-        ftm_alt: 100,
-        ftm_prev_alt: 100,
-        ftm_created_ts: Date.now(),
-        ftm_call_id: "",
-        ...message,
-      };
-    }),
+    },
   },
 
   parameters: {
     msw: {
       handlers: [
+        goodCaps,
         goodPing,
-
+        goodPrompts,
         goodUser,
         // noChatLinks,
         chatLinks,
         noTools,
+        makeKnowledgeFromChat,
       ],
     },
   },
@@ -359,10 +376,12 @@ const lowBalance = http.get("https://www.smallcloud.ai/v1/login", () => {
 export const LowBalance: Story = {
   parameters: {
     msw: {
+      goodCaps,
       goodPing,
-
+      goodPrompts,
       chatLinks,
       noTools,
+      makeKnowledgeFromChat,
       lowBalance,
     },
   },

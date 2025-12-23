@@ -1,12 +1,7 @@
-import type { MessagesSubscriptionSubscription } from "../../../generated/documents";
+import { LspChatMode } from "../../features/Chat";
 import { Checkpoint } from "../../features/Checkpoints/types";
-import { Override } from "../../utils/Override";
 import { GetChatTitleActionPayload, GetChatTitleResponse, Usage } from "./chat";
 import { MCPArgs, MCPEnvs } from "./integrations";
-
-export type BaseMessage = NonNullable<
-  MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"]
->;
 
 export type ChatRole =
   | "user"
@@ -35,25 +30,23 @@ export type ToolCall = {
   };
   index: number;
   type?: "function";
-  id: string;
+  id?: string;
   attached_files?: string[];
   subchat?: string;
 };
-
-export function isToolCall(toolCall: unknown): toolCall is ToolCall {
-  if (!toolCall) return false;
-  if (typeof toolCall !== "object") return false;
-  if (!("type" in toolCall)) return false;
-  if (typeof toolCall.type !== "string") return false;
-  if (!("id" in toolCall)) return false;
-  if (typeof toolCall.id !== "string") return false;
-  return toolCall.type === "function";
-}
 
 export type ToolUsage = {
   functionName: string;
   amountOfCalls: number;
 };
+
+function isToolCall(call: unknown): call is ToolCall {
+  if (!call) return false;
+  if (typeof call !== "object") return false;
+  if (!("function" in call)) return false;
+  if (!("index" in call)) return false;
+  return true;
+}
 
 export const validateToolCall = (toolCall: ToolCall) => {
   if (!isToolCall(toolCall)) return false;
@@ -74,23 +67,21 @@ export function isToolContent(json: unknown): json is ToolContent {
   return false;
 }
 export interface BaseToolResult {
-  ftm_role: "tool";
-  ftm_call_id: string;
-  // tool_call_id: string;
+  tool_call_id: string;
   finish_reason?: string; // "call_failed" | "call_worked";
-  ftm_content: ToolContent;
+  content: ToolContent;
   compression_strength?: CompressionStrength;
   tool_failed?: boolean;
 }
 
 export interface SingleModelToolResult extends BaseToolResult {
-  ftm_content: string;
+  content: string;
 }
-export interface MultiModalToolMessage extends ToolMessage {
-  ftm_content: MultiModalToolContent[];
+export interface MultiModalToolResult extends BaseToolResult {
+  content: MultiModalToolContent[];
 }
 
-// export type ToolResult = SingleModelToolResult | MultiModalToolResult;
+export type ToolResult = SingleModelToolResult | MultiModalToolResult;
 
 export type MultiModalToolContent = {
   m_type: string; // "image/*" | "text" ... maybe narrow this?
@@ -98,14 +89,14 @@ export type MultiModalToolContent = {
 };
 
 export function isMultiModalToolContent(
-  ftm_content: unknown,
-): ftm_content is MultiModalToolContent {
-  if (!ftm_content) return false;
-  if (typeof ftm_content !== "object") return false;
-  if (!("m_type" in ftm_content)) return false;
-  if (typeof ftm_content.m_type !== "string") return false;
-  if (!("m_content" in ftm_content)) return false;
-  if (typeof ftm_content.m_content !== "string") return false;
+  content: unknown,
+): content is MultiModalToolContent {
+  if (!content) return false;
+  if (typeof content !== "object") return false;
+  if (!("m_type" in content)) return false;
+  if (typeof content.m_type !== "string") return false;
+  if (!("m_content" in content)) return false;
+  if (typeof content.m_content !== "string") return false;
   return true;
 }
 
@@ -114,21 +105,31 @@ export function isMultiModalToolContentArray(content: ToolContent) {
   return content.every(isMultiModalToolContent);
 }
 
-export function isMultiModalToolMessage(
-  toolMessage: unknown,
-): toolMessage is MultiModalToolMessage {
-  if (!isToolMessage(toolMessage)) return false;
-  return isMultiModalToolContentArray(toolMessage.ftm_content);
+export function isMultiModalToolResult(
+  toolResult: ToolResult,
+): toolResult is MultiModalToolResult {
+  return isMultiModalToolContentArray(toolResult.content);
 }
 
-export function isSingleModelToolMessage(toolMessage: ToolMessage) {
-  return typeof toolMessage.ftm_content === "string";
+export function isSingleModelToolResult(toolResult: ToolResult) {
+  return typeof toolResult.content === "string";
 }
 
-export type ChatContextFileMessage = Override<
-  BaseMessage,
-  { ftm_role: "context_file"; ftm_content: string }
->;
+interface BaseMessage {
+  role: ChatRole;
+  content:
+    | string
+    | ChatContextFile[]
+    | ToolResult
+    | DiffChunk[]
+    | null
+    | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
+}
+
+export interface ChatContextFileMessage extends BaseMessage {
+  role: "context_file";
+  content: ChatContextFile[];
+}
 
 export type UserImage = {
   type: "image_url";
@@ -141,58 +142,52 @@ export type UserMessageContentWithImage =
       text: string;
     }
   | UserImage;
-
-export type UserMessage = Override<
-  BaseMessage,
-  {
-    ftm_role: "user";
-    ftm_content:
-      | string
-      | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
-    checkpoints?: Checkpoint[];
-    compression_strength?: CompressionStrength;
-  }
->;
+export interface UserMessage extends BaseMessage {
+  role: "user";
+  content:
+    | string
+    | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
+  checkpoints?: Checkpoint[];
+  compression_strength?: CompressionStrength;
+}
 
 export type ProcessedUserMessageContentWithImages = {
   m_type: string;
   m_content: string;
 };
+export type WebSearchCitation = {
+  type: "web_search_result_location";
+  cited_text: string;
+  url: string;
+  title: string;
+  encrypted_index?: string;
+};
 
-export type AssistantMessage = Override<
-  BaseMessage,
-  {
-    ftm_role: "assistant";
-    ftm_content: string | null;
-    reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
-    ftm_tool_calls?: ToolCall[] | null;
-    thinking_blocks?: ThinkingBlock[] | null; // is this still here?
-    finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
-    usage?: Usage | null;
-  }
->; // & CostInfo
+export interface AssistantMessage extends BaseMessage, CostInfo {
+  role: "assistant";
+  content: string | null;
+  reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
+  tool_calls?: ToolCall[] | null;
+  server_executed_tools?: ToolCall[] | null; // Tools executed by the provider (srvtoolu_*), for display only
+  thinking_blocks?: ThinkingBlock[] | null;
+  citations?: WebSearchCitation[] | null; // Citations from server-executed tools like web_search
+  finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
+  usage?: Usage | null;
+}
 
-// TODO: is this still used?
 export interface ToolCallMessage extends AssistantMessage {
   tool_calls: ToolCall[];
 }
 
-export type SystemMessage = Override<
-  BaseMessage,
-  {
-    ftm_role: "system";
-    ftm_content: string;
-  }
->;
+export interface SystemMessage extends BaseMessage {
+  role: "system";
+  content: string;
+}
 
-export type ToolMessage = Override<
-  BaseMessage,
-  {
-    ftm_role: "tool";
-    ftm_content: ToolContent;
-    ftm_call_id: string;
-  }
->;
+export interface ToolMessage extends BaseMessage {
+  role: "tool";
+  content: ToolResult;
+}
 
 // TODO: There maybe sub-types for this
 export type DiffChunk = {
@@ -208,7 +203,7 @@ export type DiffChunk = {
   // chunk_id?: number;
 };
 
-export function isDiffChunk(json: unknown): json is DiffChunk {
+export function isDiffChunk(json: unknown) {
   if (!json) {
     return false;
   }
@@ -235,38 +230,25 @@ export function isDiffChunk(json: unknown): json is DiffChunk {
   }
   return true;
 }
-export type DiffMessage = Override<
-  BaseMessage,
-  {
-    ftm_role: "diff";
-    ftm_content: DiffChunk[];
-    tool_call_id: string;
-  }
->;
-
-export function isUserMessage(message: unknown): message is UserMessage {
-  if (!message) return false;
-  if (typeof message !== "object") return false;
-  if (!("ftm_role" in message)) return false;
-  if (typeof message.ftm_role !== "string") return false;
-  return message.ftm_role === "user";
+export interface DiffMessage extends BaseMessage {
+  role: "diff";
+  content: DiffChunk[];
+  tool_call_id: string;
 }
 
-export type PlainTextMessage = Override<
-  BaseMessage,
-  {
-    ftm_role: "plain_text";
-    ftm_content: string;
-  }
->;
+export function isUserMessage(message: ChatMessage): message is UserMessage {
+  return message.role === "user";
+}
 
-export type CDInstructionMessage = Override<
-  BaseMessage,
-  {
-    ftm_role: "cd_instruction";
-    ftm_content: string;
-  }
->;
+export interface PlainTextMessage extends BaseMessage {
+  role: "plain_text";
+  content: string;
+}
+
+export interface CDInstructionMessage extends BaseMessage {
+  role: "cd_instruction";
+  content: string;
+}
 
 export type ChatMessage =
   | UserMessage
@@ -278,29 +260,7 @@ export type ChatMessage =
   | PlainTextMessage
   | CDInstructionMessage;
 
-export function isChatMessage(message: unknown): message is ChatMessage {
-  if (!message) return false;
-  if (typeof message !== "object") return false;
-  const tmp = message as ChatMessage;
-  if (isUserMessage(tmp)) return true;
-  if (isAssistantMessage(tmp)) return true;
-  if (isChatContextFileMessage(tmp)) return true;
-  if (isSystemMessage(tmp)) return true;
-  if (isToolCallMessage(tmp)) return true;
-  if (isDiffMessage(tmp)) return true;
-  if (isPlainTextMessage(tmp)) return true;
-  if (isCDInstructionMessage(tmp)) return true;
-  return false;
-}
-
 export type ChatMessages = ChatMessage[];
-
-export type LspChatMode =
-  | "NO_TOOLS"
-  | "EXPLORE"
-  | "AGENT"
-  | "CONFIGURE"
-  | "PROJECT_SUMMARY";
 
 export type ChatMeta = {
   current_config_file?: string | undefined;
@@ -312,46 +272,34 @@ export type ChatMeta = {
 export function isChatContextFileMessage(
   message: ChatMessage,
 ): message is ChatContextFileMessage {
-  return message.ftm_role === "context_file";
+  return message.role === "context_file";
 }
 
 export function isAssistantMessage(
-  message: unknown,
+  message: ChatMessage,
 ): message is AssistantMessage {
-  if (!message) return false;
-  if (typeof message !== "object") return false;
-  if (!("ftm_role" in message)) return false;
-  if (typeof message.ftm_role !== "string") return false;
-  return message.ftm_role === "assistant";
+  return message.role === "assistant";
 }
 
-export function isToolMessage(message: unknown): message is ToolMessage {
-  if (!message) return false;
-  if (typeof message !== "object") return false;
-  if (!("ftm_role" in message)) return false;
-  if (typeof message.ftm_role !== "string") return false;
-  return message.ftm_role === "tool";
+export function isToolMessage(message: ChatMessage): message is ToolMessage {
+  return message.role === "tool";
 }
 
-export function isDiffMessage(message: unknown): message is DiffMessage {
-  if (!message) return false;
-  if (typeof message !== "object") return false;
-  if (!("ftm_role" in message)) return false;
-  if (typeof message.ftm_role !== "string") return false;
-  return message.ftm_role === "diff";
+export function isDiffMessage(message: ChatMessage): message is DiffMessage {
+  return message.role === "diff";
 }
 
 export function isSystemMessage(
   message: ChatMessage,
 ): message is SystemMessage {
-  return message.ftm_role === "system";
+  return message.role === "system";
 }
 
 export function isToolCallMessage(
   message: ChatMessage,
 ): message is ToolCallMessage {
   if (!isAssistantMessage(message)) return false;
-  const tool_calls = message.ftm_tool_calls;
+  const tool_calls = message.tool_calls;
   if (!tool_calls) return false;
   // TODO: check browser support of every
   return tool_calls.every(isToolCall);
@@ -360,46 +308,42 @@ export function isToolCallMessage(
 export function isPlainTextMessage(
   message: ChatMessage,
 ): message is PlainTextMessage {
-  return message.ftm_role === "plain_text";
+  return message.role === "plain_text";
 }
 
 export function isCDInstructionMessage(
-  message: unknown,
+  message: ChatMessage,
 ): message is CDInstructionMessage {
-  if (!message) return false;
-  if (typeof message !== "object") return false;
-  if (!("ftm_role" in message)) return false;
-  if (typeof message.ftm_role !== "string") return false;
-  return message.ftm_role === "cd_instruction";
+  return message.role === "cd_instruction";
 }
 
-// Is this still used?
 interface BaseDelta {
-  ftm_role?: ChatRole | null;
-  // TODO: what are these felids for
-  // provider_specific_fields?: null;
+  role?: ChatRole | null;
+  provider_specific_fields?: {
+    citation?: WebSearchCitation;
+    thinking_blocks?: ThinkingBlock[];
+  } | null;
   // refusal?: null;
   // function_call?: null;
   // audio?: null;
 }
 
 interface AssistantDelta extends BaseDelta {
-  ftm_role?: "assistant" | null;
-  ftm_content?: string | null; // might be undefined, will be null if tool_calls
+  role?: "assistant" | null;
+  content?: string | null; // might be undefined, will be null if tool_calls
   reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
   tool_calls?: ToolCall[] | null;
   thinking_blocks?: ThinkingBlock[] | null;
 }
 
-// TODO: can remove
 export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
   if (!delta) return false;
   if (typeof delta !== "object") return false;
-  if ("ftm_role" in delta) {
-    if (delta.ftm_role === null) return true;
-    if (delta.ftm_role !== "assistant") return false;
+  if ("role" in delta) {
+    if (delta.role === null) return true;
+    if (delta.role !== "assistant") return false;
   }
-  if (!("ftm_content" in delta)) return false;
+  if (!("content" in delta)) return false;
   if ("reasoning_content" in delta) {
     // reasoning_content is optional, but if present, must be a string
     if (
@@ -408,12 +352,12 @@ export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
     )
       return false;
   }
-  if (typeof delta.ftm_content !== "string") return false;
+  if (typeof delta.content !== "string") return false;
   return true;
 }
 interface ChatContextFileDelta extends BaseDelta {
-  ftm_role: "context_file";
-  ftm_content: ChatContextFile[];
+  role: "context_file";
+  content: ChatContextFile[];
 }
 
 export function isChatContextFileDelta(
@@ -421,8 +365,8 @@ export function isChatContextFileDelta(
 ): delta is ChatContextFileDelta {
   if (!delta) return false;
   if (typeof delta !== "object") return false;
-  if (!("ftm_role" in delta)) return false;
-  return delta.ftm_role === "context_file";
+  if (!("role" in delta)) return false;
+  return delta.role === "context_file";
 }
 
 interface ToolCallDelta extends BaseDelta {
@@ -486,15 +430,15 @@ export type ChatChoice = {
 export type ChatUserMessageResponse =
   | {
       id: string;
-      ftm_role: "user" | "context_file" | "context_memory";
-      ftm_content: string;
+      role: "user" | "context_file" | "context_memory";
+      content: string;
       checkpoints?: Checkpoint[];
       compression_strength?: CompressionStrength;
     }
   | {
       id: string;
-      ftm_role: "user";
-      ftm_content:
+      role: "user";
+      content:
         | string
         | (
             | UserMessageContentWithImage
@@ -504,12 +448,11 @@ export type ChatUserMessageResponse =
       compression_strength?: CompressionStrength;
     };
 
-// TODO: old lsp responses
 export type ToolResponse = {
   id: string;
-  ftm_role: "tool";
+  role: "tool";
   tool_failed?: boolean;
-} & ToolMessage;
+} & ToolResult;
 
 export function isChatUserMessageResponse(
   json: unknown,
@@ -517,17 +460,17 @@ export function isChatUserMessageResponse(
   if (!json) return false;
   if (typeof json !== "object") return false;
   if (!("id" in json)) return false;
-  if (!("ftm_content" in json)) return false;
-  if (!("ftm_role" in json)) return false;
+  if (!("content" in json)) return false;
+  if (!("role" in json)) return false;
   return (
-    json.ftm_role === "user" ||
-    json.ftm_role === "context_file" ||
-    json.ftm_role === "context_memory"
+    json.role === "user" ||
+    json.role === "context_file" ||
+    json.role === "context_memory"
   );
 }
 
 export type UserMessageResponse = ChatUserMessageResponse & {
-  ftm_role: "user";
+  role: "user";
 };
 
 export function isChatGetTitleResponse(
@@ -562,23 +505,23 @@ export function isChatGetTitleActionPayload(
 
 export function isUserResponse(json: unknown): json is UserMessageResponse {
   if (!isChatUserMessageResponse(json)) return false;
-  return json.ftm_role === "user";
+  return json.role === "user";
 }
 
 export type ContextFileResponse = ChatUserMessageResponse & {
-  ftm_role: "context_file";
+  role: "context_file";
 };
 
 export function isContextFileResponse(
   json: unknown,
 ): json is ContextFileResponse {
   if (!isChatUserMessageResponse(json)) return false;
-  return json.ftm_role === "context_file";
+  return json.role === "context_file";
 }
 
 export type SubchatContextFileResponse = {
-  ftm_content: string;
-  ftm_role: "context_file";
+  content: string;
+  role: "context_file";
 };
 
 export function isSubchatContextFileResponse(
@@ -586,51 +529,51 @@ export function isSubchatContextFileResponse(
 ): json is SubchatContextFileResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
-  if (!("ftm_content" in json)) return false;
-  if (!("ftm_role" in json)) return false;
-  return json.ftm_role === "context_file";
+  if (!("content" in json)) return false;
+  if (!("role" in json)) return false;
+  return json.role === "context_file";
 }
 
 export type ContextMemoryResponse = ChatUserMessageResponse & {
-  ftm_role: "context_memory";
+  role: "context_memory";
 };
 
 export function isContextMemoryResponse(
   json: unknown,
 ): json is ContextMemoryResponse {
   if (!isChatUserMessageResponse(json)) return false;
-  return json.ftm_role === "context_memory";
+  return json.role === "context_memory";
 }
 
 export function isToolResponse(json: unknown): json is ToolResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
   // if (!("id" in json)) return false;
-  if (!("ftm_content" in json)) return false;
-  if (!("ftm_role" in json)) return false;
+  if (!("content" in json)) return false;
+  if (!("role" in json)) return false;
   if (!("tool_call_id" in json)) return false;
   if (!("tool_failed" in json)) return false;
-  return json.ftm_role === "tool";
+  return json.role === "tool";
 }
 
 // TODO: isThinkingBlocksResponse
 
 export type DiffResponse = {
-  ftm_role: "diff";
-  ftm_content: string;
+  role: "diff";
+  content: string;
   tool_call_id: string;
 };
 
 export function isDiffResponse(json: unknown): json is DiffResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
-  if (!("ftm_content" in json)) return false;
-  if (!("ftm_role" in json)) return false;
-  return json.ftm_role === "diff";
+  if (!("content" in json)) return false;
+  if (!("role" in json)) return false;
+  return json.role === "diff";
 }
 export interface PlainTextResponse {
-  ftm_role: "plain_text";
-  ftm_content: string;
+  role: "plain_text";
+  content: string;
   tool_call_id: string;
   tool_calls?: ToolCall[];
 }
@@ -638,8 +581,8 @@ export interface PlainTextResponse {
 export function isPlainTextResponse(json: unknown): json is PlainTextResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
-  if (!("ftm_role" in json)) return false;
-  return json.ftm_role === "plain_text";
+  if (!("role" in json)) return false;
+  return json.role === "plain_text";
 }
 
 export type SubchatResponse = {
@@ -660,8 +603,8 @@ export function isSubchatResponse(json: unknown): json is SubchatResponse {
 export function isSystemResponse(json: unknown): json is SystemMessage {
   if (!json) return false;
   if (typeof json !== "object") return false;
-  if (!("ftm_role" in json)) return false;
-  return json.ftm_role === "system";
+  if (!("role" in json)) return false;
+  return json.role === "system";
 }
 
 export function isCDInstructionResponse(
@@ -669,8 +612,8 @@ export function isCDInstructionResponse(
 ): json is CDInstructionMessage {
   if (!json) return false;
   if (typeof json !== "object") return false;
-  if (!("ftm_role" in json)) return false;
-  return json.ftm_role === "cd_instruction";
+  if (!("role" in json)) return false;
+  return json.role === "cd_instruction";
 }
 
 type CostInfo = {

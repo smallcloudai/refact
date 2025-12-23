@@ -4,12 +4,12 @@ on:
   push:
     branches: [main, dev]
     paths:
-      - 'refact-agent/gui/**'
-      - '.github/workflows/agent_gui_*'
+      - "refact-agent/gui/**"
+      - ".github/workflows/agent_gui_*"
   pull_request:
     paths:
-      - 'refact-agent/gui/**'
-      - '.github/workflows/agent_gui_*'
+      - "refact-agent/gui/**"
+      - ".github/workflows/agent_gui_*"
   workflow_dispatch:
 
 defaults:
@@ -31,18 +31,18 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: refact-agent/gui/package-lock.json
 
-      # Disable Husky install during npm ci
+      # Disable Husky install during npm install --prefer-offline
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y libcairo2-dev libjpeg-dev libpango1.0-dev libgif-dev librsvg2-dev
           npm pkg delete scripts.prepare
-          npm ci
+          npm install --prefer-offline
 
-      # - run: npm run test
+      - run: npm run test
       - run: npm run format:check
       - run: npm run types
       - run: npm run lint

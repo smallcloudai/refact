@@ -1,17 +1,21 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   Text,
   Flex,
   HoverCard,
   Link,
+  Skeleton,
+  Box,
   Switch,
   Badge,
   Button,
 } from "@radix-ui/themes";
+import { Select, type SelectProps } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
 import { TruncateLeft } from "../Text";
 import styles from "./ChatForm.module.css";
 import classNames from "classnames";
+import { PromptSelect } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
 import {
   ExclamationTriangleIcon,
@@ -19,34 +23,42 @@ import {
   LockOpen1Icon,
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
-
+import { useTourRefs } from "../../features/Tour";
+import { ToolUseSwitch } from "./ToolUseSwitch";
 import {
-  selectPatchIsAutomatic,
-  selectThreadId,
-  selectToolConfirmationResponses,
-} from "../../features/ThreadMessages";
-import { useAppSelector } from "../../hooks";
+  ToolUse,
+  selectAreFollowUpsEnabled,
+  selectAutomaticPatch,
+  selectChatId,
+  selectCheckpointsEnabled,
+  selectIsStreaming,
+  selectIsTitleGenerationEnabled,
+  selectIsWaiting,
+  selectMessages,
+  selectToolUse,
+  selectUseCompression,
+  selectIncludeProjectInfo,
+  setAreFollowUpsEnabled,
+  setIsTitleGenerationEnabled,
+  setAutomaticPatch,
+  setEnabledCheckpoints,
+  setToolUse,
+  setUseCompression,
+  setIncludeProjectInfo,
+} from "../../features/Chat/Thread";
+import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
-import { graphqlQueriesAndMutations } from "../../services/graphql";
+import { push } from "../../features/Pages/pagesSlice";
+import { RichModelSelectItem } from "../Select/RichModelSelectItem";
+import { enrichAndGroupModels } from "../../utils/enrichModels";
 
 export const ApplyPatchSwitch: React.FC = () => {
-  const chatId = useAppSelector(selectThreadId);
-  const isPatchAutomatic = useAppSelector(selectPatchIsAutomatic);
-  const toolConfirmationResponses = useAppSelector(
-    selectToolConfirmationResponses,
-  );
-  const [toolConfirmation, _toolConfirmationResult] =
-    graphqlQueriesAndMutations.useToolConfirmationMutation();
+  const dispatch = useAppDispatch();
+  const chatId = useAppSelector(selectChatId);
+  const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
 
   const handleAutomaticPatchChange = (checked: boolean) => {
-    const value = checked
-      ? toolConfirmationResponses.filter((res) => res !== "*")
-      : [...toolConfirmationResponses, "*"];
-
-    void toolConfirmation({
-      ft_id: chatId,
-      confirmation_response: JSON.stringify(value),
-    });
+    dispatch(setAutomaticPatch({ chatId, value: checked }));
   };
 
   return (
@@ -94,17 +106,13 @@ export const ApplyPatchSwitch: React.FC = () => {
     </Flex>
   );
 };
-
-// TODO: figure out how this should work
 export const AgentRollbackSwitch: React.FC = () => {
-  // const dispatch = useAppDispatch();
-  // TODO: checkpoints
-  // const isAgentRollbackEnabled = true; // useAppSelector(selectCheckpointsEnabled);
+  const dispatch = useAppDispatch();
+  const isAgentRollbackEnabled = useAppSelector(selectCheckpointsEnabled);
 
-  // TODO: handle this
-  // const handleAgentRollbackChange = (checked: boolean) => {
-  //   dispatch(setEnabledCheckpoints(checked));
-  // };
+  const handleAgentRollbackChange = (checked: boolean) => {
+    dispatch(setEnabledCheckpoints(checked));
+  };
 
   return (
     <Flex
@@ -120,13 +128,12 @@ export const AgentRollbackSwitch: React.FC = () => {
         Changes rollback
       </Text>
       <Flex gap="2" align="center">
-        {/** TODO: figure out what is happening with checkpoints */}
-        {/* <Switch
+        <Switch
           size="1"
           title="Enable/disable changed rollback made by Agent"
           checked={isAgentRollbackEnabled}
           onCheckedChange={handleAgentRollbackChange}
-        /> */}
+        />
         <HoverCard.Root>
           <HoverCard.Trigger>
             <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
@@ -167,70 +174,379 @@ export const AgentRollbackSwitch: React.FC = () => {
     </Flex>
   );
 };
+export const FollowUpsSwitch: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
 
-// const FollowUpsSwitch: React.FC = () => {
-//   const dispatch = useAppDispatch();
-//   const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
+  const handleFollowUpsEnabledChange = (checked: boolean) => {
+    dispatch(setAreFollowUpsEnabled(checked));
+  };
 
-//   const handleFollowUpsEnabledChange = (checked: boolean) => {
-//     dispatch(setAreFollowUpsEnabled(checked));
-//   };
+  return (
+    <Flex
+      gap="4"
+      align="center"
+      wrap="wrap"
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
+      justify="between"
+    >
+      <Text size="2" mr="auto">
+        Follow-Ups messages
+      </Text>
+      <Flex gap="2" align="center">
+        <Switch
+          size="1"
+          title="Enable/disable follow-ups messages generation by Agent"
+          checked={areFollowUpsEnabled}
+          onCheckedChange={handleFollowUpsEnabledChange}
+        />
+        <HoverCard.Root>
+          <HoverCard.Trigger>
+            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+          </HoverCard.Trigger>
+          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
+            <Flex direction="column" gap="2">
+              <Text as="p" size="1">
+                When enabled, Refact Agent will automatically generate related
+                follow-ups to the conversation
+              </Text>
+              <Badge
+                color="yellow"
+                asChild
+                style={{
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                <Flex gap="2" p="2" align="center">
+                  <ExclamationTriangleIcon
+                    width={16}
+                    height={16}
+                    style={{ flexGrow: 1, flexShrink: 0 }}
+                  />
+                  <Text as="p" size="1">
+                    Warning: may increase coins spending
+                  </Text>
+                </Flex>
+              </Badge>
+            </Flex>
+          </HoverCard.Content>
+        </HoverCard.Root>
+      </Flex>
+    </Flex>
+  );
+};
 
-//   return (
-//     <Flex
-//       gap="4"
-//       align="center"
-//       wrap="wrap"
-//       flexGrow="1"
-//       flexShrink="0"
-//       width="100%"
-//       justify="between"
-//     >
-//       <Text size="2" mr="auto">
-//         Follow-Ups messages
-//       </Text>
-//       <Flex gap="2" align="center">
-//         <Switch
-//           size="1"
-//           title="Enable/disable follow-ups messages generation by Agent"
-//           checked={areFollowUpsEnabled}
-//           onCheckedChange={handleFollowUpsEnabledChange}
-//         />
-//         <HoverCard.Root>
-//           <HoverCard.Trigger>
-//             <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
-//           </HoverCard.Trigger>
-//           <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
-//             <Flex direction="column" gap="2">
-//               <Text as="p" size="1">
-//                 When enabled, Refact Agent will automatically generate related
-//                 follow-ups to the conversation
-//               </Text>
-//               <Badge
-//                 color="yellow"
-//                 asChild
-//                 style={{
-//                   whiteSpace: "pre-wrap",
-//                 }}
-//               >
-//                 <Flex gap="2" p="2" align="center">
-//                   <ExclamationTriangleIcon
-//                     width={16}
-//                     height={16}
-//                     style={{ flexGrow: 1, flexShrink: 0 }}
-//                   />
-//                   <Text as="p" size="1">
-//                     Warning: may increase coins spending
-//                   </Text>
-//                 </Flex>
-//               </Badge>
-//             </Flex>
-//           </HoverCard.Content>
-//         </HoverCard.Root>
-//       </Flex>
-//     </Flex>
-//   );
-// };
+export const TitleGenerationSwitch: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const isTitleGenerationEnabled = useAppSelector(
+    selectIsTitleGenerationEnabled,
+  );
+
+  const handleTitleGenerationEnabledChange = (checked: boolean) => {
+    dispatch(setIsTitleGenerationEnabled(checked));
+  };
+
+  return (
+    <Flex
+      gap="4"
+      align="center"
+      wrap="wrap"
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
+      justify="between"
+    >
+      <Text size="2" mr="auto">
+        Chat Titles
+      </Text>
+      <Flex gap="2" align="center">
+        <Switch
+          size="1"
+          title="Enable/disable chat titles generation by Agent"
+          checked={isTitleGenerationEnabled}
+          onCheckedChange={handleTitleGenerationEnabledChange}
+        />
+        <HoverCard.Root>
+          <HoverCard.Trigger>
+            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+          </HoverCard.Trigger>
+          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
+            <Flex direction="column" gap="2">
+              <Text as="p" size="1">
+                When enabled, Refact Agent will automatically generate
+                summarized chat title for the conversation
+              </Text>
+              <Badge
+                color="yellow"
+                asChild
+                style={{
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                <Flex gap="2" p="2" align="center">
+                  <ExclamationTriangleIcon
+                    width={16}
+                    height={16}
+                    style={{ flexGrow: 1, flexShrink: 0 }}
+                  />
+                  <Text as="p" size="1">
+                    Warning: may increase coins spending
+                  </Text>
+                </Flex>
+              </Badge>
+            </Flex>
+          </HoverCard.Content>
+        </HoverCard.Root>
+      </Flex>
+    </Flex>
+  );
+};
+
+export const UseCompressionSwitch: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const useCompression = useAppSelector(selectUseCompression);
+
+  const handleUseCompressionChange = (checked: boolean) => {
+    dispatch(setUseCompression(checked));
+  };
+
+  return (
+    <Flex
+      gap="4"
+      align="center"
+      wrap="wrap"
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
+      justify="between"
+    >
+      <Text size="2" mr="auto">
+        Use compression
+      </Text>
+      <Flex gap="2" align="center">
+        <Switch
+          size="1"
+          title="Enable/disable context compression"
+          checked={useCompression ?? false}
+          onCheckedChange={handleUseCompressionChange}
+        />
+        <HoverCard.Root>
+          <HoverCard.Trigger>
+            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+          </HoverCard.Trigger>
+          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
+            <Flex direction="column" gap="2">
+              <Text as="p" size="1">
+                When enabled, Refact Agent will compress the context to reduce
+                token usage for long conversations
+              </Text>
+              <Badge
+                color="yellow"
+                asChild
+                style={{
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                <Flex gap="2" p="2" align="center">
+                  <ExclamationTriangleIcon
+                    width={16}
+                    height={16}
+                    style={{ flexGrow: 1, flexShrink: 0 }}
+                  />
+                  <Text as="p" size="1">
+                    Warning: may increase coins spending because it breaks the
+                    cache
+                  </Text>
+                </Flex>
+              </Badge>
+            </Flex>
+          </HoverCard.Content>
+        </HoverCard.Root>
+      </Flex>
+    </Flex>
+  );
+};
+
+export const ProjectInfoSwitch: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const chatId = useAppSelector(selectChatId);
+  const messages = useAppSelector(selectMessages);
+  const includeProjectInfo = useAppSelector(selectIncludeProjectInfo);
+
+  const handleIncludeProjectInfoChange = (checked: boolean) => {
+    dispatch(setIncludeProjectInfo({ chatId, value: checked }));
+  };
+
+  const isNewChat = messages.length === 0;
+
+  return (
+    <Flex
+      gap="4"
+      align="center"
+      wrap="wrap"
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
+      justify="between"
+    >
+      <Text size="2" mr="auto">
+        Include project info
+      </Text>
+      <Flex gap="2" align="center">
+        <Switch
+          size="1"
+          title="Include project context information"
+          checked={includeProjectInfo ?? true}
+          onCheckedChange={handleIncludeProjectInfoChange}
+          disabled={!isNewChat}
+        />
+        <HoverCard.Root>
+          <HoverCard.Trigger>
+            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+          </HoverCard.Trigger>
+          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
+            <Flex direction="column" gap="2">
+              <Text as="p" size="1">
+                When enabled, extra project context information will be included
+                at the start of the chat to help the AI understand your codebase
+                better
+              </Text>
+              <Badge
+                color="yellow"
+                asChild
+                style={{
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                <Flex gap="2" p="2" align="center">
+                  <ExclamationTriangleIcon
+                    width={16}
+                    height={16}
+                    style={{ flexGrow: 1, flexShrink: 0 }}
+                  />
+                  <Text as="p" size="1">
+                    Note: This can consume a significant amount of tokens
+                    initially. Only available when starting a new chat.
+                  </Text>
+                </Flex>
+              </Badge>
+            </Flex>
+          </HoverCard.Content>
+        </HoverCard.Root>
+      </Flex>
+    </Flex>
+  );
+};
+
+export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
+  const refs = useTourRefs();
+  const caps = useCapsForToolUse();
+  const dispatch = useAppDispatch();
+
+  const handleAddNewModelClick = useCallback(() => {
+    dispatch(push({ name: "providers page" }));
+  }, [dispatch]);
+
+  const onSelectChange = useCallback(
+    (value: string) => {
+      if (value === "add-new-model") {
+        handleAddNewModelClick();
+        return;
+      }
+      caps.setCapModel(value);
+    },
+    [handleAddNewModelClick, caps],
+  );
+
+  const optionsWithToolTips: SelectProps["options"] = useMemo(() => {
+    const groupedModels = enrichAndGroupModels(
+      caps.usableModelsForPlan,
+      caps.data,
+    );
+
+    if (groupedModels.length === 0) {
+      return [
+        ...caps.usableModelsForPlan,
+        { type: "separator" },
+        {
+          value: "add-new-model",
+          textValue: "Add new model",
+        },
+      ];
+    }
+
+    const flatOptions: SelectProps["options"] = [];
+    groupedModels.forEach((group, index) => {
+      if (index > 0) {
+        flatOptions.push({ type: "separator" });
+      }
+      group.models.forEach((model) => {
+        flatOptions.push({
+          value: model.value,
+          textValue: model.displayName,
+          disabled: model.disabled,
+          children: (
+            <RichModelSelectItem
+              displayName={model.displayName}
+              pricing={model.pricing}
+              nCtx={model.nCtx}
+              capabilities={model.capabilities}
+              isDefault={model.isDefault}
+              isThinking={model.isThinking}
+              isLight={model.isLight}
+            />
+          ),
+        });
+      });
+    });
+
+    return [
+      ...flatOptions,
+      { type: "separator" },
+      {
+        value: "add-new-model",
+        textValue: "Add new model",
+      },
+    ];
+  }, [caps.data, caps.usableModelsForPlan]);
+
+  const allDisabled = caps.usableModelsForPlan.every((option) => {
+    if (typeof option === "string") return false;
+    return option.disabled;
+  });
+
+  return (
+    <Flex
+      gap="2"
+      align="center"
+      wrap="wrap"
+      // flexGrow="1"
+      // flexShrink="0"
+      // width="100%"
+      ref={(x) => refs.setUseModel(x)}
+    >
+      <Skeleton loading={caps.loading}>
+        <Box>
+          {allDisabled ? (
+            <Text size="1" color="gray">
+              No models available
+            </Text>
+          ) : (
+            <Select
+              title="chat model"
+              options={optionsWithToolTips}
+              value={caps.currentModel}
+              onChange={onSelectChange}
+              disabled={disabled}
+            />
+          )}
+        </Box>
+      </Skeleton>
+    </Flex>
+  );
+};
 
 type CheckboxHelp = {
   text: string;
@@ -336,6 +652,22 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   host,
   attachedFiles,
 }) => {
+  const refs = useTourRefs();
+  const dispatch = useAppDispatch();
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
+  const messages = useAppSelector(selectMessages);
+  const toolUse = useAppSelector(selectToolUse);
+  const onSetToolUse = useCallback(
+    (value: ToolUse) => dispatch(setToolUse(value)),
+    [dispatch],
+  );
+
+  const showControls = useMemo(
+    () => messages.length === 0 && !isStreaming && !isWaiting,
+    [isStreaming, isWaiting, messages],
+  );
+
   return (
     <Flex
       pt="2"
@@ -379,6 +711,18 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
         >
           Attach: {attachedFiles.activeFile.name}
         </Button>
+      )}
+
+      {showControls && (
+        <Flex gap="2" direction="column">
+          <ToolUseSwitch
+            ref={(x) => refs.setUseTools(x)}
+            toolUse={toolUse}
+            setToolUse={onSetToolUse}
+          />
+          {/* <CapsSelect /> */}
+          <PromptSelect />
+        </Flex>
       )}
     </Flex>
   );
