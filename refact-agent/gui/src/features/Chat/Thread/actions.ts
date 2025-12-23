@@ -114,7 +114,7 @@ export const switchToThread = createAction<PayloadWithId>(
   "chatThread/switchToThread",
 );
 
-export const closeThread = createAction<PayloadWithId>(
+export const closeThread = createAction<PayloadWithId & { force?: boolean }>(
   "chatThread/closeThread",
 );
 
@@ -208,7 +208,7 @@ export const setIntegrationData = createAction<Partial<IntegrationMeta> | null>(
   "chatThread/setIntegrationData",
 );
 
-export const setIsWaitingForResponse = createAction<boolean>(
+export const setIsWaitingForResponse = createAction<{ id: string; value: boolean }>(
   "chatThread/setIsWaiting",
 );
 
@@ -360,7 +360,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       })
       .catch((err: unknown) => {
         const isError = err instanceof Error;
-        thunkAPI.dispatch(doneStreaming({ id: chatId }));
+        // Note: doneStreaming is called in .finally() - don't duplicate here
         thunkAPI.dispatch(fixBrokenToolMessages({ id: chatId }));
 
         const errorObject: DetailMessageWithErrorType = {
@@ -405,7 +405,7 @@ export const sendCurrentChatToLspAfterToolCallUpdate = createAppAsyncThunk<
     );
 
     if (!toolUseInThisSet) return;
-    thunkApi.dispatch(setIsWaitingForResponse(true));
+    thunkApi.dispatch(setIsWaitingForResponse({ id: chatId, value: true }));
 
     return thunkApi.dispatch(
       chatAskQuestionThunk({

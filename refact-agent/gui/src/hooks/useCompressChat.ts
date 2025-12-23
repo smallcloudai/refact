@@ -18,12 +18,12 @@ export function useCompressChat() {
   const compressChat = useCallback(async () => {
     if (!thread) return;
 
-    dispatch(setIsWaitingForResponse(true));
+    dispatch(setIsWaitingForResponse({ id: thread.id, value: true }));
     const result = await submit({
       messages: thread.messages,
       project: thread.project_name ?? "",
     });
-    dispatch(setIsWaitingForResponse(false));
+    dispatch(setIsWaitingForResponse({ id: thread.id, value: false }));
 
     if (result.error) {
       // TODO: handle errors

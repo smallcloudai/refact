@@ -73,7 +73,8 @@ export function useTrajectoriesSubscription() {
           const data: TrajectoryEvent = JSON.parse(event.data);
           if (data.type === "deleted") {
             dispatch(deleteChatById(data.id));
-            dispatch(closeThread({ id: data.id }));
+            // Force delete runtime even if it's streaming - backend says it's gone
+            dispatch(closeThread({ id: data.id, force: true }));
           } else if (data.type === "updated" || data.type === "created") {
             dispatch(
               trajectoriesApi.endpoints.getTrajectory.initiate(data.id, {
@@ -84,9 +85,19 @@ export function useTrajectoriesSubscription() {
               .then((trajectory) => {
                 // Update history
                 dispatch(hydrateHistory([trajectory]));
-                // Also update open thread if it exists (subscription signal)
+                // Also update open thread metadata if it exists (subscription signal)
+                // IMPORTANT: Only sync metadata, NOT messages - messages are local-authoritative
+                // to prevent SSE from overwriting in-progress or recently-completed conversations
                 const thread = trajectoryDataToChatThread(trajectory);
-                dispatch(updateOpenThread({ id: data.id, thread }));
+                dispatch(updateOpenThread({
+                  id: data.id,
+                  thread: {
+                    title: thread.title,
+                    isTitleGenerated: thread.isTitleGenerated,
+                    // Don't sync `read` - it's a per-client concern
+                    // Don't pass messages - they could be stale from backend
+                  },
+                }));
               })
               .catch(() => {});
           }
@@ -97,6 +108,10 @@ export function useTrajectoriesSubscription() {
 
       eventSource.onerror = () => {
         eventSource.close();
+        // Clear any existing reconnect timer before scheduling a new one
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
         reconnectTimeoutRef.current = setTimeout(connect, 5000);
       };
     } catch {

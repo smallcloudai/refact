@@ -20,6 +20,7 @@ import {
   selectThreadToolUse,
   selectThreadConfirmationStatus,
   selectThreadImages,
+  selectThreadPause,
 } from "../features/Chat/Thread/selectors";
 import { useCheckForConfirmationMutation } from "./useGetToolGroupsQuery";
 import {
@@ -135,7 +136,7 @@ export const useSendChatRequest = () => {
 
   const sendMessages = useCallback(
     async (messages: ChatMessages, maybeMode?: LspChatMode) => {
-      dispatch(setIsWaitingForResponse(true));
+      dispatch(setIsWaitingForResponse({ id: chatId, value: true }));
       const lastMessage = messages.slice(-1)[0];
 
       if (
@@ -286,7 +287,7 @@ export const useSendChatRequest = () => {
     abortControllers.abort(chatId);
     dispatch(setPreventSend({ id: chatId }));
     dispatch(fixBrokenToolMessages({ id: chatId }));
-    dispatch(setIsWaitingForResponse(false));
+    dispatch(setIsWaitingForResponse({ id: chatId, value: false }));
     dispatch(doneStreaming({ id: chatId }));
   }, [abortControllers, chatId, dispatch]);
 
@@ -303,8 +304,10 @@ export const useSendChatRequest = () => {
   const confirmToolUsage = useCallback(() => {
     dispatch(clearThreadPauseReasons({ id: chatId }));
     dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: true, confirmationStatus: true }));
-    dispatch(setIsWaitingForResponse(false));
-  }, [dispatch, chatId]);
+    // Continue the conversation - sendMessages will set waiting=true and proceed
+    // since wasInteracted is now true, the confirmation check will be skipped
+    void sendMessages(currentMessages);
+  }, [dispatch, chatId, sendMessages, currentMessages]);
 
   const rejectToolUsage = useCallback(
     (toolCallIds: string[]) => {
@@ -315,7 +318,7 @@ export const useSendChatRequest = () => {
 
       dispatch(clearThreadPauseReasons({ id: chatId }));
       dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: false, confirmationStatus: true }));
-      dispatch(setIsWaitingForResponse(false));
+      dispatch(setIsWaitingForResponse({ id: chatId, value: false }));
       dispatch(doneStreaming({ id: chatId }));
       dispatch(setPreventSend({ id: chatId }));
     },
@@ -358,6 +361,7 @@ export function useAutoSend() {
   const confirmationStatus = useAppSelector(selectThreadConfirmationStatus);
   const wasInteracted = confirmationStatus.wasInteracted;
   const areToolsConfirmed = confirmationStatus.confirmationStatus;
+  const isPaused = useAppSelector(selectThreadPause);
   const hasUnsentTools = useAppSelector(selectHasUncalledTools);
   const queuedMessages = useAppSelector(selectQueuedMessages);
   const { sendMessages, messagesWithSystemPrompt } = useSendChatRequest();
@@ -381,8 +385,9 @@ export function useAutoSend() {
 
   const stopForToolConfirmation = useMemo(() => {
     if (isIntegration) return false;
+    if (isPaused) return true;
     return !wasInteracted && !areToolsConfirmed;
-  }, [isIntegration, wasInteracted, areToolsConfirmed]);
+  }, [isIntegration, isPaused, wasInteracted, areToolsConfirmed]);
 
   // Base conditions for flushing queue (streaming must be done)
   const canFlushBase = useMemo(() => {

@@ -56,6 +56,7 @@ import {
   addThreadImage,
   removeThreadImageByIndex,
   resetThreadImages,
+  chatAskQuestionThunk,
 } from "./actions";
 import { formatChatResponse, postProcessMessagesAfterStreaming } from "./utils";
 import {
@@ -319,7 +320,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(removeChatFromCache, (state, action) => {
     const id = action.payload.id;
-    if (state.threads[id] && !state.threads[id].streaming) {
+    const rt = state.threads[id];
+    if (rt && !rt.streaming && !rt.confirmation.pause) {
       delete state.threads[id];
       state.open_thread_ids = state.open_thread_ids.filter((tid) => tid !== id);
     }
@@ -327,8 +329,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(closeThread, (state, action) => {
     const id = action.payload.id;
+    const force = action.payload.force ?? false;
     state.open_thread_ids = state.open_thread_ids.filter((tid) => tid !== id);
-    if (!state.threads[id]?.streaming) {
+    const rt = state.threads[id];
+    if (rt && (force || (!rt.streaming && !rt.waiting_for_response && !rt.confirmation.pause))) {
       delete state.threads[id];
     }
     if (state.current_thread_id === id) {
@@ -339,7 +343,12 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(restoreChat, (state, action) => {
     const existingRt = getRuntime(state, action.payload.id);
     if (existingRt) {
+      // Runtime exists (possibly running in background) - re-add to open tabs if needed
+      if (!state.open_thread_ids.includes(action.payload.id)) {
+        state.open_thread_ids.push(action.payload.id);
+      }
       state.current_thread_id = action.payload.id;
+      existingRt.thread.read = true;
       return;
     }
 
@@ -396,18 +405,34 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(switchToThread, (state, action) => {
-    const existingRt = getRuntime(state, action.payload.id);
+    const id = action.payload.id;
+    const existingRt = getRuntime(state, id);
     if (existingRt) {
-      state.current_thread_id = action.payload.id;
+      if (!state.open_thread_ids.includes(id)) {
+        state.open_thread_ids.push(id);
+      }
+      state.current_thread_id = id;
       existingRt.thread.read = true;
     }
   });
 
   // Update an already-open thread with fresh data from backend (used by subscription)
-  // Only updates if the thread is not currently streaming
+  // Only updates if the thread is not currently streaming, waiting, or has an error
   builder.addCase(updateOpenThread, (state, action) => {
     const existingRt = getRuntime(state, action.payload.id);
-    if (existingRt && !existingRt.streaming && !existingRt.waiting_for_response) {
+    // Don't update if:
+    // - Thread doesn't exist
+    // - Thread is actively streaming
+    // - Thread is waiting for response
+    // - Thread has an error (avoid overwriting with stale data)
+    // - Thread is the current active thread (user is viewing it)
+    if (
+      existingRt &&
+      !existingRt.streaming &&
+      !existingRt.waiting_for_response &&
+      !existingRt.error &&
+      action.payload.id !== state.current_thread_id
+    ) {
       existingRt.thread = {
         ...existingRt.thread,
         ...action.payload.thread,
@@ -485,8 +510,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setIsWaitingForResponse, (state, action) => {
-    const rt = getCurrentRuntime(state);
-    if (rt) rt.waiting_for_response = action.payload;
+    const rt = getRuntime(state, action.payload.id);
+    if (rt) rt.waiting_for_response = action.payload.value;
   });
 
   builder.addCase(setMaxNewTokens, (state, action) => {
@@ -546,6 +571,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     if (rt) {
       rt.confirmation.pause = true;
       rt.confirmation.pause_reasons = action.payload.pauseReasons;
+      rt.confirmation.status.wasInteracted = false;
+      rt.confirmation.status.confirmationStatus = false;
+      rt.streaming = false;
+      rt.waiting_for_response = false;
     }
   });
 
@@ -619,6 +648,22 @@ export const chatReducer = createReducer(initialState, (builder) => {
       if (rt) {
         rt.thread.currentMaximumContextTokens = action.payload.number_context;
         rt.thread.currentMessageContextTokens = action.payload.current_context;
+      }
+    },
+  );
+
+  // Handle rejected chat requests - set error state so spinner hides and SSE doesn't overwrite
+  builder.addMatcher(
+    chatAskQuestionThunk.rejected.match,
+    (state, action) => {
+      const chatId = action.meta.arg.chatId;
+      const rt = getRuntime(state, chatId);
+      if (rt && action.payload) {
+        const payload = action.payload as { detail?: string };
+        rt.error = payload.detail ?? "Unknown error";
+        rt.prevent_send = true;
+        rt.streaming = false;
+        rt.waiting_for_response = false;
       }
     },
   );

@@ -20,6 +20,8 @@ import {
   setThreadConfirmationStatus,
   setThreadPauseReasons,
   resetThreadImages,
+  switchToThread,
+  selectCurrentThreadId,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -350,13 +352,13 @@ startListening({
 
     if (isCurrentThread) {
       listenerApi.dispatch(resetThreadImages({ id: chatId }));
-      return;
     }
 
     const runtime = state.chat.threads[chatId];
     if (!runtime) return;
     if (runtime.error) return;
     if (runtime.prevent_send) return;
+    if (runtime.confirmation.pause) return;
 
     const hasUncalledTools = selectHasUncalledToolsById(state, chatId);
     if (!hasUncalledTools) return;
@@ -379,6 +381,7 @@ startListening({
       }
     }
 
+    listenerApi.dispatch(setIsWaitingForResponse({ id: chatId, value: true }));
     void listenerApi.dispatch(
       chatAskQuestionThunk({
         messages: runtime.thread.messages,
@@ -554,7 +557,12 @@ startListening({
     if (pauseReasons.length === 0) {
       listenerApi.dispatch(clearThreadPauseReasons({ id: chatId }));
       listenerApi.dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: true, confirmationStatus: true }));
-      listenerApi.dispatch(setIsWaitingForResponse(false));
+      // If we're about to dispatch a follow-up, set waiting=true; otherwise false
+      if (action.payload.accepted) {
+        listenerApi.dispatch(setIsWaitingForResponse({ id: chatId, value: true }));
+      } else {
+        listenerApi.dispatch(setIsWaitingForResponse({ id: chatId, value: false }));
+      }
     } else {
       listenerApi.dispatch(setThreadPauseReasons({ id: chatId, pauseReasons }));
     }
@@ -581,6 +589,21 @@ startListening({
       document.body.className !== "vscode-dark"
     ) {
       document.body.className = "vscode-dark";
+    }
+  },
+});
+
+// Auto-switch to thread when it needs confirmation (background chat support)
+startListening({
+  actionCreator: setThreadPauseReasons,
+  effect: (action, listenerApi) => {
+    const state = listenerApi.getState();
+    const currentThreadId = selectCurrentThreadId(state);
+    const threadIdNeedingConfirmation = action.payload.id;
+
+    // If the thread needing confirmation is not the current one, switch to it
+    if (threadIdNeedingConfirmation !== currentThreadId) {
+      listenerApi.dispatch(switchToThread({ id: threadIdNeedingConfirmation }));
     }
   },
 });
