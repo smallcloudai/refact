@@ -6,9 +6,9 @@ use std::path::PathBuf;
 const LARGE_FILE_SIZE_THRESHOLD: u64 = 4096*1024; // 4Mb files
 const SMALL_FILE_SIZE_THRESHOLD: u64 = 5;        // 5 Bytes
 
-pub const KNOWLEDGE_FOLDER_NAME: &str = ".refact_knowledge";
+pub const KNOWLEDGE_FOLDER_NAME: &str = ".refact/knowledge";
 
-const ALLOWED_HIDDEN_FOLDERS: &[&str] = &[KNOWLEDGE_FOLDER_NAME];
+const ALLOWED_HIDDEN_FOLDERS: &[&str] = &[".refact"];
 
 pub const SOURCE_FILE_EXTENSIONS: &[&str] = &[
     "c", "cpp", "cc", "h", "hpp", "cs", "java", "py", "rb", "go", "rs", "swift",

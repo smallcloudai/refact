@@ -37,7 +37,7 @@ pub async fn build_knowledge_graph(gcx: Arc<ARwLock<GlobalContext>>) -> Knowledg
         .collect();
 
     if knowledge_dirs.is_empty() {
-        info!("knowledge_graph: no .refact_knowledge directories found");
+        info!("knowledge_graph: no .refact/knowledge directories found");
         return graph;
     }
 
