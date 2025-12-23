@@ -366,6 +366,11 @@ startListening({
     const lastMessage = runtime.thread.messages[runtime.thread.messages.length - 1];
     if (!lastMessage || !("tool_calls" in lastMessage) || !lastMessage.tool_calls) return;
 
+    // IMPORTANT: Set waiting=true immediately to prevent race conditions
+    // This blocks any other sender (like useAutoSend) from starting a duplicate request
+    // during the async confirmation check below
+    listenerApi.dispatch(setIsWaitingForResponse({ id: chatId, value: true }));
+
     const isIntegrationChat = runtime.thread.mode === "CONFIGURE";
     if (!isIntegrationChat) {
       const confirmationResult = await listenerApi.dispatch(
@@ -376,18 +381,26 @@ startListening({
       );
 
       if ("data" in confirmationResult && confirmationResult.data?.pause) {
+        // setThreadPauseReasons will reset waiting_for_response to false
         listenerApi.dispatch(setThreadPauseReasons({ id: chatId, pauseReasons: confirmationResult.data.pause_reasons }));
         return;
       }
     }
 
-    listenerApi.dispatch(setIsWaitingForResponse({ id: chatId, value: true }));
+    // Re-check state after async operation to prevent duplicate requests
+    const latestState = listenerApi.getState();
+    const latestRuntime = latestState.chat.threads[chatId];
+    if (!latestRuntime) return;
+    if (latestRuntime.streaming) return;
+    if (latestRuntime.prevent_send) return;
+    if (latestRuntime.confirmation.pause) return;
+
     void listenerApi.dispatch(
       chatAskQuestionThunk({
         messages: runtime.thread.messages,
         chatId,
         mode: runtime.thread.mode,
-        checkpointsEnabled: state.chat.checkpoints_enabled,
+        checkpointsEnabled: latestState.chat.checkpoints_enabled,
       }),
     );
   },

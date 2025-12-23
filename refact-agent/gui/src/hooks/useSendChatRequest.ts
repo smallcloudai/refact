@@ -351,7 +351,6 @@ export const useSendChatRequest = () => {
 
 export function useAutoSend() {
   const dispatch = useAppDispatch();
-  const chatId = useAppSelector(selectChatId);
   const streaming = useAppSelector(selectIsStreaming);
   const currentMessages = useAppSelector(selectMessages);
   const errored = useAppSelector(selectChatError);
@@ -442,24 +441,11 @@ export function useAutoSend() {
     [queuedMessages],
   );
 
-  useEffect(() => {
-    if (stop) return;
-    if (stopForToolConfirmation) return;
-    if (hasPriorityMessages) return;
+  // NOTE: Tool auto-continue is handled by middleware (doneStreaming listener)
+  // Having it here as well caused a race condition where both would fire,
+  // resulting in two overlapping streaming requests that mixed up messages.
+  // See middleware.ts doneStreaming listener for the single source of truth.
 
-    dispatch(clearThreadPauseReasons({ id: chatId }));
-    dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: false, confirmationStatus: areToolsConfirmed }));
-
-    void sendMessages(currentMessages, thread?.mode);
-  }, [
-    areToolsConfirmed,
-    chatId,
-    currentMessages,
-    dispatch,
-    hasPriorityMessages,
-    sendMessages,
-    stop,
-    stopForToolConfirmation,
-    thread?.mode,
-  ]);
+  // Export these for components that need to know idle state
+  return { stop, stopForToolConfirmation, hasPriorityMessages };
 }

@@ -348,6 +348,8 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
         const onAbort = () => {
           thunkAPI.dispatch(setPreventSend({ id: chatId }));
           thunkAPI.dispatch(fixBrokenToolMessages({ id: chatId }));
+          // Dispatch doneStreaming immediately on abort to clean up state
+          thunkAPI.dispatch(doneStreaming({ id: chatId }));
         };
         const onChunk = (json: Record<string, unknown>) => {
           const action = chatResponse({
@@ -360,7 +362,6 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       })
       .catch((err: unknown) => {
         const isError = err instanceof Error;
-        // Note: doneStreaming is called in .finally() - don't duplicate here
         thunkAPI.dispatch(fixBrokenToolMessages({ id: chatId }));
 
         const errorObject: DetailMessageWithErrorType = {
@@ -375,7 +376,11 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
         return thunkAPI.rejectWithValue(errorObject);
       })
       .finally(() => {
-        thunkAPI.dispatch(doneStreaming({ id: chatId }));
+        // Only dispatch doneStreaming if not aborted - abort handler already did it
+        // This prevents "late cleanup" from corrupting a new request that started
+        if (!thunkAPI.signal.aborted) {
+          thunkAPI.dispatch(doneStreaming({ id: chatId }));
+        }
       });
   },
 );

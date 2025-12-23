@@ -431,9 +431,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     }
 
     // For other fields, only update non-busy, non-current threads
+    // IMPORTANT: Exclude messages - local runtime is authoritative for messages
     const isCurrentThread = action.payload.id === state.current_thread_id;
     if (!existingRt.streaming && !existingRt.waiting_for_response && !existingRt.error && !isCurrentThread) {
-      const { title, isTitleGenerated, ...otherFields } = action.payload.thread;
+      const { title, isTitleGenerated, messages, ...otherFields } = action.payload.thread;
       existingRt.thread = {
         ...existingRt.thread,
         ...otherFields,
