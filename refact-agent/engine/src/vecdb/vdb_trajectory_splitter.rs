@@ -84,7 +84,7 @@ impl TrajectoryFileSplitter {
         messages.iter().enumerate()
             .filter_map(|(idx, msg)| {
                 let role = msg.get("role").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
-                if role == "context_file" || role == "cd_instruction" {
+                if role == "context_file" || role == "cd_instruction" || role == "system" {
                     return None;
                 }
 

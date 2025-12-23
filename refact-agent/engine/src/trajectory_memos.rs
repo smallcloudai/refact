@@ -164,7 +164,7 @@ fn build_chat_messages(messages: &[Value]) -> Vec<ChatMessage> {
     messages.iter()
         .filter_map(|msg| {
             let role = msg.get("role").and_then(|v| v.as_str())?;
-            if role == "context_file" || role == "cd_instruction" {
+            if role == "context_file" || role == "cd_instruction" || role == "system" {
                 return None;
             }
 

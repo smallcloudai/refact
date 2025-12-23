@@ -321,17 +321,18 @@ async fn vectorize_thread(
             continue;
         }
 
-        if let Err(err) = doc.does_text_look_good() {
-            info!("embeddings {} doesn't look good: {}", last_30_chars, err);
-            continue;
+        let is_trajectory = crate::vecdb::vdb_trajectory_splitter::is_trajectory_file(&doc.doc_path);
+        if !is_trajectory {
+            if let Err(err) = doc.does_text_look_good() {
+                info!("embeddings {} doesn't look good: {}", last_30_chars, err);
+                continue;
+            }
         }
 
         let is_markdown = doc.doc_path.extension()
             .map(|e| e.to_string_lossy().to_lowercase())
             .map(|e| e == "md" || e == "mdx")
             .unwrap_or(false);
-
-        let is_trajectory = crate::vecdb::vdb_trajectory_splitter::is_trajectory_file(&doc.doc_path);
 
         let mut splits = if is_trajectory {
             let traj_splitter = crate::vecdb::vdb_trajectory_splitter::TrajectoryFileSplitter::new(constants.splitter_window_size);

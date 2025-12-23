@@ -116,7 +116,7 @@ impl Tool for ToolTrajectoryContext {
             }
 
             let role = msg.get("role").and_then(|v| v.as_str()).unwrap_or("unknown");
-            if role == "context_file" || role == "cd_instruction" {
+            if role == "context_file" || role == "cd_instruction" || role == "system" {
                 continue;
             }
 
