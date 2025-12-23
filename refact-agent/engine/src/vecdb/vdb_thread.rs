@@ -331,7 +331,15 @@ async fn vectorize_thread(
             .map(|e| e == "md" || e == "mdx")
             .unwrap_or(false);
 
-        let mut splits = if is_markdown {
+        let is_trajectory = crate::vecdb::vdb_trajectory_splitter::is_trajectory_file(&doc.doc_path);
+
+        let mut splits = if is_trajectory {
+            let traj_splitter = crate::vecdb::vdb_trajectory_splitter::TrajectoryFileSplitter::new(constants.splitter_window_size);
+            traj_splitter.split(&doc, gcx.clone()).await.unwrap_or_else(|err| {
+                info!("{}", err);
+                vec![]
+            })
+        } else if is_markdown {
             let md_splitter = MarkdownFileSplitter::new(constants.embedding_model.base.n_ctx);
             md_splitter.split(&doc, gcx.clone()).await.unwrap_or_else(|err| {
                 info!("{}", err);

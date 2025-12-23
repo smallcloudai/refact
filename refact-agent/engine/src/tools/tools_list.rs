@@ -112,6 +112,8 @@ async fn get_builtin_tools(
         Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_search_trajectories::ToolSearchTrajectories{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_trajectory_context::ToolTrajectoryContext{config_path: config_path.clone()}),
     ];
 
     let mut tool_groups = vec![
