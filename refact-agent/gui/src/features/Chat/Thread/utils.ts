@@ -11,6 +11,7 @@ import {
   ToolMessage,
   ToolResult,
   UserMessage,
+  WebSearchCitation,
   isAssistantDelta,
   isAssistantMessage,
   isCDInstructionResponse,
@@ -39,7 +40,92 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
-import { checkForDetailMessage } from "./types";
+import { checkForDetailMessage, isServerExecutedTool } from "./types";
+
+function extractCitationFromDelta(
+  delta: unknown,
+): WebSearchCitation | undefined {
+  if (!delta || typeof delta !== "object") return undefined;
+  const d = delta as Record<string, unknown>;
+  const psf = d.provider_specific_fields;
+  if (!psf || typeof psf !== "object") return undefined;
+  const psfObj = psf as Record<string, unknown>;
+  const citation = psfObj.citation;
+  if (!citation || typeof citation !== "object") return undefined;
+  const c = citation as Record<string, unknown>;
+  // Validate it's a web search citation
+  if (
+    c.type === "web_search_result_location" &&
+    typeof c.url === "string" &&
+    typeof c.title === "string"
+  ) {
+    return citation as WebSearchCitation;
+  }
+  return undefined;
+}
+
+export function postProcessMessagesAfterStreaming(
+  messages: ChatMessages,
+): ChatMessages {
+  return messages.map((message) => {
+    if (!isAssistantMessage(message) || !message.tool_calls) {
+      return message;
+    }
+
+    const deduplicatedTools = deduplicateToolCalls(message.tool_calls);
+    const ignoredTools: ToolCall[] = [];
+    const keptTools: ToolCall[] = [];
+
+    deduplicatedTools.forEach((tool) => {
+      // Server-executed tools (srvtoolu_*) are already executed by the LLM provider
+      // They should not be sent to backend for execution
+      if (isServerExecutedTool(tool.id)) {
+        ignoredTools.push(tool);
+      } else {
+        keptTools.push(tool);
+      }
+    });
+
+    if (
+      ignoredTools.length === 0 &&
+      deduplicatedTools.length === message.tool_calls.length
+    ) {
+      return message;
+    }
+
+    // Store server-executed tools for display, but don't send them to backend
+    return {
+      ...message,
+      tool_calls: keptTools.length > 0 ? keptTools : undefined,
+      server_executed_tools: ignoredTools.length > 0 ? ignoredTools : undefined,
+    };
+  });
+}
+
+function deduplicateToolCalls(toolCalls: ToolCall[]): ToolCall[] {
+  const toolCallMap = new Map<string, ToolCall>();
+
+  toolCalls.forEach((tool) => {
+    if (!tool.id) return; // Skip tools without an id
+    const existingTool = toolCallMap.get(tool.id);
+
+    if (!existingTool) {
+      toolCallMap.set(tool.id, tool);
+    } else {
+      const existingHasArgs =
+        existingTool.function.arguments &&
+        existingTool.function.arguments.trim() !== "";
+      const newHasArgs =
+        tool.function.arguments && tool.function.arguments.trim() !== "";
+
+      if (!existingHasArgs && newHasArgs) {
+        toolCallMap.set(tool.id, tool);
+      }
+    }
+  });
+
+  return Array.from(toolCallMap.values());
+}
 
 // export const TAKE_NOTE_MESSAGE = [
 //   'How many times user has corrected or directed you? Write "Number of correction points N".',
@@ -347,12 +433,15 @@ export function formatChatResponse(
       typeof cur.delta.content === "string" &&
       cur.delta.role
     ) {
+      const newCitation = extractCitationFromDelta(cur.delta);
+      const citations = newCitation ? [newCitation] : undefined;
       const msg: AssistantMessage = {
         role: cur.delta.role,
         content: cur.delta.content,
         reasoning_content: cur.delta.reasoning_content,
         tool_calls: cur.delta.tool_calls,
         thinking_blocks: cur.delta.thinking_blocks,
+        citations: citations,
         finish_reason: cur.finish_reason,
         usage: response.usage,
         ...mergeMetering({}, response),
@@ -363,12 +452,16 @@ export function formatChatResponse(
     const lastMessage = acc[acc.length - 1];
 
     if (isToolCallDelta(cur.delta)) {
+      // Extract citation if present in this chunk
+      const deltaCitation = extractCitationFromDelta(cur.delta);
+
       if (!isAssistantMessage(lastMessage)) {
         return acc.concat([
           {
             role: "assistant",
             content: "", // should be like that?
             tool_calls: cur.delta.tool_calls,
+            citations: deltaCitation ? [deltaCitation] : undefined,
             finish_reason: cur.finish_reason,
           },
         ]);
@@ -377,6 +470,9 @@ export function formatChatResponse(
       const last = acc.slice(0, -1);
       const collectedCalls = lastMessage.tool_calls ?? [];
       const tool_calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
+      const citations = deltaCitation
+        ? [...(lastMessage.citations ?? []), deltaCitation]
+        : lastMessage.citations;
 
       return last.concat([
         {
@@ -385,6 +481,7 @@ export function formatChatResponse(
           reasoning_content: lastMessage.reasoning_content ?? "",
           tool_calls: tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
+          citations: citations,
           finish_reason: cur.finish_reason,
           usage: takeHighestUsage(lastMessage.usage, response.usage),
           ...mergeMetering(lastMessage, response),
@@ -393,6 +490,9 @@ export function formatChatResponse(
     }
 
     if (isThinkingBlocksDelta(cur.delta)) {
+      // Extract citation if present in this chunk
+      const deltaCitation = extractCitationFromDelta(cur.delta);
+
       if (!isAssistantMessage(lastMessage)) {
         return acc.concat([
           {
@@ -400,6 +500,7 @@ export function formatChatResponse(
             content: "", // should it be like this?
             thinking_blocks: cur.delta.thinking_blocks,
             reasoning_content: cur.delta.reasoning_content,
+            citations: deltaCitation ? [deltaCitation] : undefined,
             finish_reason: cur.finish_reason,
           },
         ]);
@@ -411,6 +512,9 @@ export function formatChatResponse(
         collectedThinkingBlocks,
         cur.delta.thinking_blocks ?? [],
       );
+      const citations = deltaCitation
+        ? [...(lastMessage.citations ?? []), deltaCitation]
+        : lastMessage.citations;
 
       return last.concat([
         {
@@ -420,6 +524,7 @@ export function formatChatResponse(
             (lastMessage.reasoning_content ?? "") + cur.delta.reasoning_content,
           tool_calls: lastMessage.tool_calls,
           thinking_blocks: thinking_blocks,
+          citations: citations,
           finish_reason: cur.finish_reason,
           usage: takeHighestUsage(lastMessage.usage, response.usage),
           ...mergeMetering(lastMessage, response),
@@ -433,6 +538,11 @@ export function formatChatResponse(
       typeof cur.delta.content === "string"
     ) {
       const last = acc.slice(0, -1);
+      // Extract citation from provider_specific_fields if present
+      const newCitation = extractCitationFromDelta(cur.delta);
+      const citations = newCitation
+        ? [...(lastMessage.citations ?? []), newCitation]
+        : lastMessage.citations;
       return last.concat([
         {
           role: "assistant",
@@ -442,6 +552,7 @@ export function formatChatResponse(
             (cur.delta.reasoning_content ?? ""),
           tool_calls: lastMessage.tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
+          citations: citations,
           finish_reason: cur.finish_reason,
           usage: takeHighestUsage(lastMessage.usage, response.usage),
           ...mergeMetering(lastMessage, response),
@@ -451,12 +562,15 @@ export function formatChatResponse(
       isAssistantDelta(cur.delta) &&
       typeof cur.delta.content === "string"
     ) {
+      const newCitation = extractCitationFromDelta(cur.delta);
+      const citations = newCitation ? [newCitation] : undefined;
       return acc.concat([
         {
           role: "assistant",
           content: cur.delta.content,
           reasoning_content: cur.delta.reasoning_content,
           thinking_blocks: cur.delta.thinking_blocks,
+          citations: citations,
           finish_reason: cur.finish_reason,
           // usage: currentUsage, // here?
           usage: response.usage,
@@ -474,6 +588,8 @@ export function formatChatResponse(
       // If cur.delta.role === 'assistant' || cur.delta.role === null, then if last message's role is not assistant, then creating a new assistant message
       // TODO: if cur.delta.role === 'assistant', then taking out from cur.delta all possible fields and values, attaching to current assistant message, sending back this one
       if (!isAssistantMessage(lastMessage) && isAssistantDelta(cur.delta)) {
+        const newCitation = extractCitationFromDelta(cur.delta);
+        const citations = newCitation ? [newCitation] : undefined;
         return acc.concat([
           {
             role: "assistant",
@@ -481,6 +597,7 @@ export function formatChatResponse(
             reasoning_content: cur.delta.reasoning_content,
             tool_calls: cur.delta.tool_calls,
             thinking_blocks: cur.delta.thinking_blocks,
+            citations: citations,
             finish_reason: cur.finish_reason,
             usage: response.usage,
             ...mergeMetering({}, response),
@@ -493,6 +610,10 @@ export function formatChatResponse(
         (isAssistantMessage(lastMessage) || isToolCallMessage(lastMessage)) &&
         isAssistantDelta(cur.delta)
       ) {
+        const newCitation = extractCitationFromDelta(cur.delta);
+        const citations = newCitation
+          ? [...(lastMessage.citations ?? []), newCitation]
+          : lastMessage.citations;
         return last.concat([
           {
             role: "assistant",
@@ -502,6 +623,7 @@ export function formatChatResponse(
               (cur.delta.reasoning_content ?? ""),
             tool_calls: lastMessage.tool_calls,
             thinking_blocks: lastMessage.thinking_blocks,
+            citations: citations,
             finish_reason: cur.finish_reason,
             usage: takeHighestUsage(lastMessage.usage, response.usage),
             ...mergeMetering(lastMessage, response),

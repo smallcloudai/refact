@@ -140,7 +140,7 @@ export const SuggestNewChat = ({
                   display="inline-flex"
                 >
                   <ArchiveIcon style={{ alignSelf: "start" }} />
-                  Compress and open in a new chat.
+                  Summarize and continue in a new chat.
                 </Flex>
               </Link>
             )}

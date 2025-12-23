@@ -15,7 +15,7 @@ export const ReasoningContent: React.FC<ReasoningContentProps> = ({
   onCopyClick,
 }) => {
   return (
-    <Box py="4">
+    <Box py="4" style={{ paddingRight: "50px" }}>
       <Flex direction="column" gap="2" className={styles.reasoningCallout}>
         <Heading as="h3" color="gray" size="2">
           Model Reasoning

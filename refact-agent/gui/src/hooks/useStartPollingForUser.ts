@@ -7,26 +7,26 @@ export function useStartPollingForUser() {
 
   useEffect(() => {
     let timer: NodeJS.Timeout | undefined = undefined;
-
-    if (pollingForUser && !user.isFetching && !user.isLoading) {
-      const refetchUser = () => {
-        user.refetch();
-      };
-      timer = setTimeout(refetchUser, 5000);
-    }
-
     if (
       pollingForUser &&
       !user.isFetching &&
       !user.isLoading &&
-      !user.isError &&
-      user.data // && user.data.plan === "PRO"
+      user.data &&
+      user.data.inference === "FREE"
     ) {
+      timer = setTimeout(() => {
+        void user.refetch();
+      }, 5000);
+    }
+
+    if (pollingForUser && user.data && user.data.inference !== "FREE") {
       clearTimeout(timer);
       setPollingForUser(false);
+      // TODO: maybe add an animation or thanks ?
     }
 
     return () => {
+      setPollingForUser(false);
       clearTimeout(timer);
     };
   }, [pollingForUser, user]);

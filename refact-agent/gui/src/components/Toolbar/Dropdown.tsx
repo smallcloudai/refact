@@ -1,4 +1,4 @@
-import React, { /*useCallback,*/ useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { selectHost, type Config } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
@@ -6,12 +6,11 @@ import {
   useLogout,
   useAppSelector,
   useAppDispatch,
-  // useStartPollingForUser,
+  useStartPollingForUser,
   useEventsBusForIDE,
 } from "../../hooks";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
 import {
-  Badge,
   Button,
   DropdownMenu,
   Flex,
@@ -29,18 +28,11 @@ import {
 import { clearHistory } from "../../features/History/historySlice";
 import { PuzzleIcon } from "../../images/PuzzleIcon";
 import { Coin } from "../../images";
-// import { useCoinBallance } from "../../hooks/useCoinBalance";
+import { useCoinBallance } from "../../hooks/useCoinBalance";
 import { isUserWithLoginMessage } from "../../services/smallcloud/types";
-import {
-  resetActiveGroup,
-  resetActiveWorkspace,
-  selectActiveGroup,
-  selectActiveWorkspace,
-  selectIsSkippedWorkspaceSelection,
-  setSkippedWorkspaceSelection,
-} from "../../features/Teams";
+import { resetActiveGroup, selectActiveGroup } from "../../features/Teams";
 import { popBackTo } from "../../features/Pages/pagesSlice";
-// import { useActiveTeamsGroup } from "../../hooks/useActiveTeamsGroup";
+import { useActiveTeamsGroup } from "../../hooks/useActiveTeamsGroup";
 
 export type DropdownNavigationOptions =
   | "fim"
@@ -71,51 +63,29 @@ function linkForBugReports(host: Config["host"]): string {
 function linkForAccount(host: Config["host"]): string {
   switch (host) {
     case "vscode":
-      return "https://app.refact.ai/profile?utm_source=plugin&utm_medium=vscode&utm_campaign=account";
+      return "https://refact.smallcloud.ai/account?utm_source=plugin&utm_medium=vscode&utm_campaign=account";
     case "jetbrains":
-      return "https://app.refact.ai/profile?utm_source=plugin&utm_medium=jetbrains&utm_campaign=account";
+      return "https://refact.smallcloud.ai/account?utm_source=plugin&utm_medium=jetbrains&utm_campaign=account";
     default:
-      return "https://app.refact.ai/profile?utm_source=plugin&utm_medium=unknown&utm_campaign=account";
+      return "https://refact.smallcloud.ai/account";
   }
 }
 
 export const Dropdown: React.FC<DropdownProps> = ({
   handleNavigation,
 }: DropdownProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-
   const refs = useTourRefs();
   const user = useGetUser();
   const host = useAppSelector(selectHost);
+  const activeGroup = useAppSelector(selectActiveGroup);
   const dispatch = useAppDispatch();
   // TODO: check how much of this is still used.
   // const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
-
-  const isWorkspaceSelectionSkipped = useAppSelector(
-    selectIsSkippedWorkspaceSelection,
-  );
-  const activeWorkspace = useAppSelector(selectActiveWorkspace);
-  const activeGroup = useAppSelector(selectActiveGroup);
-
-  const coinBalance = useMemo(() => {
-    const maybeWorkspaceWithCoins = user.data?.workspaces.find(
-      (w) => w.ws_id === activeWorkspace?.ws_id,
-    );
-    if (!maybeWorkspaceWithCoins) return null;
-    if (!maybeWorkspaceWithCoins.have_admin) return null;
-    if (maybeWorkspaceWithCoins.have_coins_exactly === 0) return null;
-    return Math.round(maybeWorkspaceWithCoins.have_coins_exactly / 1000);
-  }, [user.data, activeWorkspace?.ws_id]);
-
-  const isActiveRootGroup = useMemo(() => {
-    if (!activeWorkspace || !activeGroup) return false;
-    return activeWorkspace.root_group_name === activeGroup.name;
-  }, [activeWorkspace, activeGroup]);
-
+  const coinBalance = useCoinBallance();
   const logout = useLogout();
-  // const { startPollingForUser } = useStartPollingForUser();
+  const { startPollingForUser } = useStartPollingForUser();
 
-  // const { } = useActiveTeamsGroup();
+  const { isKnowledgeFeatureAvailable } = useActiveTeamsGroup();
 
   const bugUrl = linkForBugReports(host);
   const discordUrl = "https://www.smallcloud.ai/discord";
@@ -126,27 +96,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
     openPrivacyFile,
     setLoginMessage,
     clearActiveTeamsGroupInIDE,
-    clearActiveTeamsWorkspaceInIDE,
   } = useEventsBusForIDE();
-
-  useEffect(() => {
-    if (
-      user.data &&
-      !user.data.workspaces.some((w) => w.ws_id === activeWorkspace?.ws_id)
-    ) {
-      // current workspace is no longer in list of cloud ones, resetting state
-      clearActiveTeamsGroupInIDE();
-      clearActiveTeamsWorkspaceInIDE();
-      const actions = [resetActiveGroup(), resetActiveWorkspace()];
-      actions.forEach((action) => dispatch(action));
-    }
-  }, [
-    dispatch,
-    clearActiveTeamsGroupInIDE,
-    clearActiveTeamsWorkspaceInIDE,
-    activeWorkspace,
-    user.data,
-  ]);
 
   const handleChatHistoryCleanUp = () => {
     dispatch(clearHistory());
@@ -154,18 +104,14 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
   const handleActiveGroupCleanUp = () => {
     clearActiveTeamsGroupInIDE();
-    const actions = [
-      resetActiveGroup(),
-      resetActiveWorkspace(),
-      popBackTo({ name: "history" }),
-    ];
+    const actions = [resetActiveGroup(), popBackTo({ name: "history" })];
     actions.forEach((action) => dispatch(action));
   };
 
-  // const handleProUpgradeClick = useCallback(() => {
-  //   startPollingForUser();
-  //   openUrl("https://refact.smallcloud.ai/pro");
-  // }, [openUrl, startPollingForUser]);
+  const handleProUpgradeClick = useCallback(() => {
+    startPollingForUser();
+    openUrl("https://refact.smallcloud.ai/pro");
+  }, [openUrl, startPollingForUser]);
 
   useEffect(() => {
     if (isUserWithLoginMessage(user.data)) {
@@ -179,14 +125,14 @@ export const Dropdown: React.FC<DropdownProps> = ({
   }, [host]);
 
   return (
-    <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu.Root>
       <DropdownMenu.Trigger>
         <IconButton variant="outline" ref={(x) => refs.setMore(x)}>
           <HamburgerMenuIcon />
         </IconButton>
       </DropdownMenu.Trigger>
 
-      <DropdownMenu.Content align="center">
+      <DropdownMenu.Content>
         {user.data && (
           <DropdownMenu.Item
             onSelect={(event) => {
@@ -194,11 +140,11 @@ export const Dropdown: React.FC<DropdownProps> = ({
               openUrl(accountLink);
             }}
           >
-            {user.data.fuser_id}
+            {user.data.account}
           </DropdownMenu.Item>
         )}
 
-        {user.data && activeWorkspace && coinBalance && (
+        {user.data && (
           <DropdownMenu.Label>
             <Flex align="center" gap="1">
               {/**TODO: there could be multiple source for this */}
@@ -210,8 +156,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                 <HoverCard.Content size="2" maxWidth="280px">
                   <Flex direction="column" gap="2">
                     <Text as="p" size="2">
-                      Current coins balance on &apos;
-                      {activeWorkspace.root_group_name}&apos; workspace
+                      Current balance
                     </Text>
                   </Flex>
                 </HoverCard.Content>
@@ -219,65 +164,65 @@ export const Dropdown: React.FC<DropdownProps> = ({
             </Flex>
           </DropdownMenu.Label>
         )}
-
-        {/* {user.data && (
+        {user.data && (
           <DropdownMenu.Label>
             <Flex align="center" gap="1">
               Active plan: {user.data.inference}
             </Flex>
           </DropdownMenu.Label>
+        )}
+        {/* {user.data && user.data.workspaces.length > 0 && (
+          <DropdownMenu.Label style={{ height: "unset" }}>
+            <Flex
+              align="stretch"
+              mt="1"
+              gap="1"
+              direction="column"
+              width="100%"
+            >
+              <Flex align="center" gap="1">
+                <Text as="span" size="2">
+                  Active workspace:
+                </Text>
+                <HoverCard.Root>
+                  <HoverCard.Trigger>
+                    <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+                  </HoverCard.Trigger>
+                  <HoverCard.Content size="2" maxWidth="280px">
+                    <Flex direction="column" gap="2">
+                      <Text as="p" size="2">
+                        Selected workspace in Team Server
+                      </Text>
+                    </Flex>
+                  </HoverCard.Content>
+                </HoverCard.Root>
+              </Flex>
+              <Select.Root
+                size="1"
+                value={activeWorkspace?.workspace_name}
+                onValueChange={(value) => {
+                  const workspace = user.data?.workspaces.find(
+                    (w) => w.workspace_name === value,
+                  );
+                  if (workspace) {
+                    handleSetActiveGroup(workspace);
+                  }
+                }}
+              >
+                <Select.Trigger placeholder="Choose a workspace" />
+                <Select.Content position="popper">
+                  {user.data.workspaces.map((w) => (
+                    <Select.Item value={w.workspace_name} key={w.workspace_id}>
+                      {w.workspace_name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
+            </Flex>
+          </DropdownMenu.Label>
         )} */}
-
-        {(activeWorkspace ?? activeGroup) && <DropdownMenu.Separator />}
-        {activeWorkspace && (
-          <DropdownMenu.Label>
-            <Flex align="center" gap="1">
-              <Text as="span" size="2">
-                Active Workspace:{" "}
-                <Badge>{activeWorkspace.root_group_name}</Badge>
-              </Text>
-              <HoverCard.Root>
-                <HoverCard.Trigger>
-                  <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
-                </HoverCard.Trigger>
-                <HoverCard.Content size="2" maxWidth="280px">
-                  <Flex direction="column" gap="2">
-                    <Text as="p" size="2">
-                      Selected Workspace in Refact Cloud
-                    </Text>
-                  </Flex>
-                </HoverCard.Content>
-              </HoverCard.Root>
-            </Flex>
-          </DropdownMenu.Label>
-        )}
-        {activeGroup && activeWorkspace && (
-          <DropdownMenu.Label>
-            <Flex align="center" gap="1">
-              <Text as="span" size="2">
-                Active Group:{" "}
-                <Badge color={isActiveRootGroup ? "red" : undefined}>
-                  {activeGroup.name}
-                </Badge>
-              </Text>
-              <HoverCard.Root>
-                <HoverCard.Trigger>
-                  <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
-                </HoverCard.Trigger>
-                <HoverCard.Content size="2" maxWidth="280px">
-                  <Flex direction="column" gap="2">
-                    <Text as="p" size="2">
-                      Current selected group for knowledge
-                    </Text>
-                  </Flex>
-                </HoverCard.Content>
-              </HoverCard.Root>
-            </Flex>
-          </DropdownMenu.Label>
-        )}
         <Flex direction="column" gap="2" mt="2" mx="2">
-          {/* TODO: uncomment when plans are retrievable from flexus */}
-          {/* {user.data && user.data.inference === "FREE" && (
+          {user.data && user.data.inference === "FREE" && (
             <Button
               color="red"
               variant="outline"
@@ -285,7 +230,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
             >
               Upgrade to PRO
             </Button>
-          )} */}
+          )}
 
           <Button
             onClick={(event) => {
@@ -307,23 +252,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
         <DropdownMenu.Separator />
 
-        <Flex direction="column" gap="2" mb="1" mx="2">
-          {isWorkspaceSelectionSkipped && (
-            <Button
-              onClick={() => {
-                dispatch(setSkippedWorkspaceSelection(false));
-                setIsOpen(false);
-              }}
-              variant="outline"
-              color="red"
-            >
-              <Flex align="center" gap="3">
-                Select Workspace
-              </Flex>
-            </Button>
-          )}
-        </Flex>
-
         <DropdownMenu.Item onSelect={() => handleNavigation("integrations")}>
           <PuzzleIcon /> Set up Agent Integrations
         </DropdownMenu.Item>
@@ -332,11 +260,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
           <GearIcon /> Configure Providers
         </DropdownMenu.Item>
 
-        {activeGroup && (
+        {isKnowledgeFeatureAvailable && (
           <DropdownMenu.Item
-            onSelect={() =>
-              openUrl(`https://app.refact.ai/${activeGroup.id}/knowledge`)
-            }
+            // TODO: get real URL from cloud inference
+            onSelect={() => openUrl("https://flexus.team/")}
           >
             Manage Knowledge
           </DropdownMenu.Item>
@@ -389,14 +316,15 @@ export const Dropdown: React.FC<DropdownProps> = ({
           Your Stats
         </DropdownMenu.Item>
 
-        <DropdownMenu.Separator />
-
         <DropdownMenu.Item onSelect={handleChatHistoryCleanUp}>
           Clear Chat History
         </DropdownMenu.Item>
 
-        {activeGroup && (
-          <DropdownMenu.Item onSelect={handleActiveGroupCleanUp}>
+        {isKnowledgeFeatureAvailable && (
+          <DropdownMenu.Item
+            onSelect={handleActiveGroupCleanUp}
+            disabled={activeGroup === null}
+          >
             Unselect Active Group
           </DropdownMenu.Item>
         )}

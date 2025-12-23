@@ -155,12 +155,22 @@ export type ProcessedUserMessageContentWithImages = {
   m_type: string;
   m_content: string;
 };
+export type WebSearchCitation = {
+  type: "web_search_result_location";
+  cited_text: string;
+  url: string;
+  title: string;
+  encrypted_index?: string;
+};
+
 export interface AssistantMessage extends BaseMessage, CostInfo {
   role: "assistant";
   content: string | null;
   reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
   tool_calls?: ToolCall[] | null;
+  server_executed_tools?: ToolCall[] | null; // Tools executed by the provider (srvtoolu_*), for display only
   thinking_blocks?: ThinkingBlock[] | null;
+  citations?: WebSearchCitation[] | null; // Citations from server-executed tools like web_search
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
   usage?: Usage | null;
 }
@@ -309,8 +319,10 @@ export function isCDInstructionMessage(
 
 interface BaseDelta {
   role?: ChatRole | null;
-  // TODO: what are these felids for
-  // provider_specific_fields?: null;
+  provider_specific_fields?: {
+    citation?: WebSearchCitation;
+    thinking_blocks?: ThinkingBlock[];
+  } | null;
   // refusal?: null;
   // function_call?: null;
   // audio?: null;

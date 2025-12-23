@@ -19,6 +19,11 @@ export function useUsageCounter() {
   const assistantMessages = messages.filter(isAssistantMessage);
   const usages = assistantMessages.map((msg) => msg.usage);
   const currentThreadUsage = mergeUsages(usages);
+  const lastAssistantMessage =
+    assistantMessages.length > 0
+      ? assistantMessages[assistantMessages.length - 1]
+      : undefined;
+  const lastUsage = lastAssistantMessage?.usage;
 
   const totalInputTokens = useMemo(() => {
     return calculateUsageInputTokens({
@@ -30,6 +35,10 @@ export function useUsageCounter() {
       ],
     });
   }, [currentThreadUsage]);
+
+  const currentSessionTokens = useMemo(() => {
+    return lastUsage?.prompt_tokens ?? 0;
+  }, [lastUsage]);
 
   const isOverflown = useMemo(() => {
     if (compressionStop.strength === "low") return true;
@@ -52,7 +61,9 @@ export function useUsageCounter() {
     shouldShow,
     currentThreadUsage,
     totalInputTokens,
+    currentSessionTokens,
     isOverflown,
     isWarning,
+    compressionStrength: compressionStop.strength,
   };
 }

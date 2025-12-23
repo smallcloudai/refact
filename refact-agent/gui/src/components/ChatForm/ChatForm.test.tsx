@@ -102,7 +102,7 @@ describe("ChatForm", () => {
     await user.keyboard("{Enter}");
     const markdown = "```python\nprint(1)\n```\n";
     const expected = `${markdown}\n@file foo.txt:3\nfoo\n`;
-    expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
+    expect(fakeOnSubmit).toHaveBeenCalledWith(expected, "after_flow");
   });
 
   test.each([

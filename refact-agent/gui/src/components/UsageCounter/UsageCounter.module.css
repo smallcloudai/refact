@@ -1,5 +1,6 @@
 .usageCounterContainer {
   margin-left: auto;
+  margin-right: var(--space-3);
   display: flex;
   align-items: center;
   padding: var(--space-2) var(--space-3);

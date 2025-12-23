@@ -53,6 +53,7 @@ const Template: React.FC<{
       cache: {},
       system_prompt: {},
       thread: threadData,
+      queued_messages: [],
     },
     config,
   });

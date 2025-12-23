@@ -12,6 +12,7 @@ import {
   chatLinks,
   telemetryChat,
   telemetryNetwork,
+  goodCapsWithKnowledgeFeature,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 import { stubResizeObserver } from "../utils/test-utils";
@@ -47,8 +48,6 @@ describe("Start a new chat", () => {
         pages: [{ name: "history" }],
         teams: {
           group: { id: "123", name: "test" },
-          workspace: { ws_id: "123", root_group_name: "test" },
-          skipped: false,
         },
         config: {
           apiKey: "test",
@@ -65,14 +64,36 @@ describe("Start a new chat", () => {
     const textarea = app.container.querySelector("textarea");
     expect(textarea).not.toBeNull();
   });
-  test("open chat with New Chat Button when workspace selection is skipped", async () => {
+  test("open chat with New Chat Button when knowledge feature is available", async () => {
+    server.use(goodCapsWithKnowledgeFeature);
+
+    const { user, ...app } = render(<InnerApp />, {
+      preloadedState: {
+        pages: [{ name: "history" }],
+        teams: {
+          group: { id: "123", name: "test" },
+        },
+        config: {
+          apiKey: "test",
+          lspPort: 8001,
+          themeProps: {},
+          host: "vscode",
+          addressURL: "Refact",
+        },
+      },
+    });
+    const btn = app.getByText("New chat");
+    await user.click(btn);
+
+    const textarea = app.container.querySelector("textarea");
+    expect(textarea).not.toBeNull();
+  });
+  test("open chat with New Chat Button when knowledge feature is NOT available", async () => {
     const { user, ...app } = render(<InnerApp />, {
       preloadedState: {
         pages: [{ name: "history" }],
         teams: {
           group: null,
-          workspace: null,
-          skipped: true,
         },
         config: {
           apiKey: "test",

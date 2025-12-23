@@ -8,6 +8,7 @@ import {
   LspChatMode,
   PayloadWithChatAndMessageId,
   PayloadWithChatAndBoolean,
+  PayloadWithChatAndNumber,
 } from "./types";
 import {
   isAssistantDelta,
@@ -25,11 +26,7 @@ import {
 import type { AppDispatch, RootState } from "../../../app/store";
 import { type SystemPrompts } from "../../../services/refact/prompts";
 import { formatMessagesForLsp, consumeStream } from "./utils";
-import {
-  DEFAULT_MAX_NEW_TOKENS,
-  generateChatTitle,
-  sendChat,
-} from "../../../services/refact/chat";
+import { generateChatTitle, sendChat } from "../../../services/refact/chat";
 // import { ToolCommand, toolsApi } from "../../../services/refact/tools";
 import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 import { ChatHistoryItem } from "../../History/historySlice";
@@ -123,6 +120,10 @@ export const setIsTitleGenerationEnabled = createAction<boolean>(
   "chat/setIsTitleGenerationEnabled",
 );
 
+export const setUseCompression = createAction<boolean>(
+  "chat/setUseCompression",
+);
+
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
 
 export const setEnabledCheckpoints = createAction<boolean>(
@@ -143,6 +144,24 @@ export const saveTitle = createAction<PayloadWithIdAndTitle>(
 
 export const setSendImmediately = createAction<boolean>(
   "chatThread/setSendImmediately",
+);
+
+export type EnqueueUserMessagePayload = {
+  id: string;
+  message: import("../../../services/refact/types").UserMessage;
+  createdAt: number;
+};
+
+export const enqueueUserMessage = createAction<
+  EnqueueUserMessagePayload & { priority?: boolean }
+>("chatThread/enqueueUserMessage");
+
+export const dequeueUserMessage = createAction<{ queuedId: string }>(
+  "chatThread/dequeueUserMessage",
+);
+
+export const clearQueuedMessages = createAction(
+  "chatThread/clearQueuedMessages",
 );
 
 export const setChatMode = createAction<LspChatMode>("chatThread/setChatMode");
@@ -170,6 +189,14 @@ export const upsertToolCall = createAction<
 
 export const setIncreaseMaxTokens = createAction<boolean>(
   "chatThread/setIncreaseMaxTokens",
+);
+
+export const setIncludeProjectInfo = createAction<PayloadWithChatAndBoolean>(
+  "chatThread/setIncludeProjectInfo",
+);
+
+export const setContextTokensCap = createAction<PayloadWithChatAndNumber>(
+  "chatThread/setContextTokensCap",
 );
 
 // TODO: This is the circular dep when imported from hooks :/
@@ -334,6 +361,18 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     const maybeLastUserMessageId = thread?.last_user_message_id;
     const boostReasoning = thread?.boost_reasoning ?? false;
     const increaseMaxTokens = thread?.increase_max_tokens ?? false;
+    // Only send include_project_info on the first message of a chat
+    // Check if there's only one user message (the current one being sent)
+    const userMessageCount = messages.filter(isUserMessage).length;
+    const includeProjectInfo =
+      userMessageCount <= 1 ? thread?.include_project_info ?? true : undefined;
+
+    // Context tokens cap - send on every request, default to max if not set
+    const contextTokensCap =
+      thread?.context_tokens_cap ?? thread?.currentMaximumContextTokens;
+
+    // Use compression - get from state
+    const useCompression = state.chat.use_compression;
 
     return sendChat({
       messages: messagesForLsp,
@@ -350,6 +389,9 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       integration: thread?.integration,
       mode: realMode,
       boost_reasoning: boostReasoning,
+      include_project_info: includeProjectInfo,
+      context_tokens_cap: contextTokensCap,
+      use_compression: useCompression,
     })
       .then(async (response) => {
         if (!response.ok) {
@@ -389,7 +431,6 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
         return thunkAPI.rejectWithValue(errorObject);
       })
       .finally(() => {
-        thunkAPI.dispatch(setMaxNewTokens(DEFAULT_MAX_NEW_TOKENS));
         thunkAPI.dispatch(doneStreaming({ id: chatId }));
       });
   },

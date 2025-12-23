@@ -80,9 +80,7 @@ export {
   ideSetCodeCompletionModel,
   ideSetLoginMessage,
   ideSetActiveTeamsGroup,
-  ideSetActiveTeamsWorkspace,
   ideClearActiveTeamsGroup,
-  ideClearActiveTeamsWorkspace,
 } from "../hooks/useEventBusForIDE";
 
 export { ideAttachFileToChat } from "../hooks/useEventBusForApp";
@@ -119,7 +117,7 @@ export {
   isUserMessage,
 } from "../services/refact";
 
-export type { TeamsGroup, TeamsWorkspace } from "../services/smallcloud/types";
+export { type TeamsGroup } from "../services/smallcloud/types";
 
 // export type * from "../services/refact";
 

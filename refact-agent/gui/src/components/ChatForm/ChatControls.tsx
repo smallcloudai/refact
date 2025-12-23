@@ -9,7 +9,6 @@ import {
   Switch,
   Badge,
   Button,
-  DataList,
 } from "@radix-ui/themes";
 import { Select, type SelectProps } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
@@ -37,17 +36,21 @@ import {
   selectIsWaiting,
   selectMessages,
   selectToolUse,
+  selectUseCompression,
+  selectIncludeProjectInfo,
   setAreFollowUpsEnabled,
   setIsTitleGenerationEnabled,
   setAutomaticPatch,
   setEnabledCheckpoints,
   setToolUse,
+  setUseCompression,
+  setIncludeProjectInfo,
 } from "../../features/Chat/Thread";
 import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
-import { toPascalCase } from "../../utils/toPascalCase";
-import { Coin } from "../../images";
 import { push } from "../../features/Pages/pagesSlice";
+import { RichModelSelectItem } from "../Select/RichModelSelectItem";
+import { enrichAndGroupModels } from "../../utils/enrichModels";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -301,6 +304,142 @@ export const TitleGenerationSwitch: React.FC = () => {
   );
 };
 
+export const UseCompressionSwitch: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const useCompression = useAppSelector(selectUseCompression);
+
+  const handleUseCompressionChange = (checked: boolean) => {
+    dispatch(setUseCompression(checked));
+  };
+
+  return (
+    <Flex
+      gap="4"
+      align="center"
+      wrap="wrap"
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
+      justify="between"
+    >
+      <Text size="2" mr="auto">
+        Use compression
+      </Text>
+      <Flex gap="2" align="center">
+        <Switch
+          size="1"
+          title="Enable/disable context compression"
+          checked={useCompression ?? false}
+          onCheckedChange={handleUseCompressionChange}
+        />
+        <HoverCard.Root>
+          <HoverCard.Trigger>
+            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+          </HoverCard.Trigger>
+          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
+            <Flex direction="column" gap="2">
+              <Text as="p" size="1">
+                When enabled, Refact Agent will compress the context to reduce
+                token usage for long conversations
+              </Text>
+              <Badge
+                color="yellow"
+                asChild
+                style={{
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                <Flex gap="2" p="2" align="center">
+                  <ExclamationTriangleIcon
+                    width={16}
+                    height={16}
+                    style={{ flexGrow: 1, flexShrink: 0 }}
+                  />
+                  <Text as="p" size="1">
+                    Warning: may increase coins spending because it breaks the
+                    cache
+                  </Text>
+                </Flex>
+              </Badge>
+            </Flex>
+          </HoverCard.Content>
+        </HoverCard.Root>
+      </Flex>
+    </Flex>
+  );
+};
+
+export const ProjectInfoSwitch: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const chatId = useAppSelector(selectChatId);
+  const messages = useAppSelector(selectMessages);
+  const includeProjectInfo = useAppSelector(selectIncludeProjectInfo);
+
+  const handleIncludeProjectInfoChange = (checked: boolean) => {
+    dispatch(setIncludeProjectInfo({ chatId, value: checked }));
+  };
+
+  const isNewChat = messages.length === 0;
+
+  return (
+    <Flex
+      gap="4"
+      align="center"
+      wrap="wrap"
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
+      justify="between"
+    >
+      <Text size="2" mr="auto">
+        Include project info
+      </Text>
+      <Flex gap="2" align="center">
+        <Switch
+          size="1"
+          title="Include project context information"
+          checked={includeProjectInfo ?? true}
+          onCheckedChange={handleIncludeProjectInfoChange}
+          disabled={!isNewChat}
+        />
+        <HoverCard.Root>
+          <HoverCard.Trigger>
+            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+          </HoverCard.Trigger>
+          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
+            <Flex direction="column" gap="2">
+              <Text as="p" size="1">
+                When enabled, extra project context information will be included
+                at the start of the chat to help the AI understand your codebase
+                better
+              </Text>
+              <Badge
+                color="yellow"
+                asChild
+                style={{
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                <Flex gap="2" p="2" align="center">
+                  <ExclamationTriangleIcon
+                    width={16}
+                    height={16}
+                    style={{ flexGrow: 1, flexShrink: 0 }}
+                  />
+                  <Text as="p" size="1">
+                    Note: This can consume a significant amount of tokens
+                    initially. Only available when starting a new chat.
+                  </Text>
+                </Flex>
+              </Badge>
+            </Flex>
+          </HoverCard.Content>
+        </HoverCard.Root>
+      </Flex>
+    </Flex>
+  );
+};
+
 export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
   const refs = useTourRefs();
   const caps = useCapsForToolUse();
@@ -322,45 +461,49 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
   );
 
   const optionsWithToolTips: SelectProps["options"] = useMemo(() => {
-    // Map existing models with tooltips
-    const modelOptions = caps.usableModelsForPlan.map((option) => {
-      if (!caps.data) return option;
-      if (!caps.data.metadata) return option;
-      if (!caps.data.metadata.pricing) return option;
-      if (!option.value.startsWith("refact/")) return option;
-      const key = option.value.replace("refact/", "");
-      if (!(key in caps.data.metadata.pricing)) return option;
-      const pricingForModel = caps.data.metadata.pricing[key];
-      const tooltip = (
-        <Flex direction="column" gap="4">
-          <Text size="1">Cost per Million Tokens</Text>
-          <DataList.Root size="1" trim="both" className={styles.data_list}>
-            {Object.entries(pricingForModel).map(([key, value]) => {
-              return (
-                <DataList.Item key={key} align="stretch">
-                  <DataList.Label minWidth="88px">
-                    {toPascalCase(key)}
-                  </DataList.Label>
-                  <DataList.Value className={styles.data_list__value}>
-                    <Flex justify="between" align="center" gap="2">
-                      {value * 1_000} <Coin width="12px" height="12px" />
-                    </Flex>
-                  </DataList.Value>
-                </DataList.Item>
-              );
-            })}
-          </DataList.Root>
-        </Flex>
-      );
-      return {
-        ...option,
-        tooltip,
-        // title,
-      };
+    const groupedModels = enrichAndGroupModels(
+      caps.usableModelsForPlan,
+      caps.data,
+    );
+
+    if (groupedModels.length === 0) {
+      return [
+        ...caps.usableModelsForPlan,
+        { type: "separator" },
+        {
+          value: "add-new-model",
+          textValue: "Add new model",
+        },
+      ];
+    }
+
+    const flatOptions: SelectProps["options"] = [];
+    groupedModels.forEach((group, index) => {
+      if (index > 0) {
+        flatOptions.push({ type: "separator" });
+      }
+      group.models.forEach((model) => {
+        flatOptions.push({
+          value: model.value,
+          textValue: model.displayName,
+          disabled: model.disabled,
+          children: (
+            <RichModelSelectItem
+              displayName={model.displayName}
+              pricing={model.pricing}
+              nCtx={model.nCtx}
+              capabilities={model.capabilities}
+              isDefault={model.isDefault}
+              isThinking={model.isThinking}
+              isLight={model.isLight}
+            />
+          ),
+        });
+      });
     });
 
     return [
-      ...modelOptions,
+      ...flatOptions,
       { type: "separator" },
       {
         value: "add-new-model",

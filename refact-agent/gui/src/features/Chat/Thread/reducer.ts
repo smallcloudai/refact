@@ -41,8 +41,14 @@ import {
   setIncreaseMaxTokens,
   setAreFollowUpsEnabled,
   setIsTitleGenerationEnabled,
+  setIncludeProjectInfo,
+  setContextTokensCap,
+  setUseCompression,
+  enqueueUserMessage,
+  dequeueUserMessage,
+  clearQueuedMessages,
 } from "./actions";
-import { formatChatResponse } from "./utils";
+import { formatChatResponse, postProcessMessagesAfterStreaming } from "./utils";
 import {
   ChatMessages,
   commandsApi,
@@ -80,6 +86,8 @@ const createChatThread = (
     boost_reasoning: false,
     automatic_patch: false,
     increase_max_tokens: false,
+    include_project_info: true,
+    context_tokens_cap: undefined,
   };
   return chat;
 };
@@ -123,6 +131,7 @@ const createInitialState = ({
     tool_use,
     checkpoints_enabled: true,
     send_immediately: false,
+    queued_messages: [],
   };
 };
 
@@ -153,12 +162,17 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.title_generation_enabled = action.payload;
   });
 
+  builder.addCase(setUseCompression, (state, action) => {
+    state.use_compression = action.payload;
+  });
+
   builder.addCase(clearChatError, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
     state.error = null;
   });
 
   builder.addCase(setChatModel, (state, action) => {
+    state.thread.model = action.payload;
     state.thread.model = action.payload;
   });
 
@@ -180,7 +194,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
     next.checkpoints_enabled = state.checkpoints_enabled;
     next.follow_ups_enabled = state.follow_ups_enabled;
     next.title_generation_enabled = state.title_generation_enabled;
+    next.use_compression = state.use_compression;
     next.thread.boost_reasoning = state.thread.boost_reasoning;
+    next.queued_messages = [];
     // next.thread.automatic_patch = state.thread.automatic_patch;
     if (action.payload?.messages) {
       next.thread.messages = action.payload.messages;
@@ -241,6 +257,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.streaming = false;
     state.waiting_for_response = false;
     state.thread.read = true;
+    state.thread.messages = postProcessMessagesAfterStreaming(
+      state.thread.messages,
+    );
   });
 
   builder.addCase(setAutomaticPatch, (state, action) => {
@@ -323,6 +342,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
       new_chat_suggested: { wasSuggested: false },
       ...mostUptoDateThread,
     };
+    state.thread.messages = postProcessMessagesAfterStreaming(
+      state.thread.messages,
+    );
     state.thread.tool_use = state.thread.tool_use ?? state.tool_use;
     if (action.payload.mode && !isLspChatMode(action.payload.mode)) {
       state.thread.mode = "AGENT";
@@ -379,6 +401,33 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.send_immediately = action.payload;
   });
 
+  builder.addCase(enqueueUserMessage, (state, action) => {
+    const { priority, ...rest } = action.payload;
+    const messagePayload = { ...rest, priority };
+    if (priority) {
+      // Insert at front for "send next" (next available turn)
+      // Find the position after existing priority messages (stable FIFO among priority)
+      const insertAt = state.queued_messages.findIndex((m) => !m.priority);
+      if (insertAt === -1) {
+        state.queued_messages.push(messagePayload);
+      } else {
+        state.queued_messages.splice(insertAt, 0, messagePayload);
+      }
+    } else {
+      state.queued_messages.push(messagePayload);
+    }
+  });
+
+  builder.addCase(dequeueUserMessage, (state, action) => {
+    state.queued_messages = state.queued_messages.filter(
+      (q) => q.id !== action.payload.queuedId,
+    );
+  });
+
+  builder.addCase(clearQueuedMessages, (state) => {
+    state.queued_messages = [];
+  });
+
   builder.addCase(setChatMode, (state, action) => {
     state.thread.mode = action.payload;
   });
@@ -394,6 +443,13 @@ export const chatReducer = createReducer(initialState, (builder) => {
   // TBD: should be safe to remove?
   builder.addCase(setMaxNewTokens, (state, action) => {
     state.thread.currentMaximumContextTokens = action.payload;
+    // Also adjust context_tokens_cap if it exceeds the new max
+    if (
+      state.thread.context_tokens_cap === undefined ||
+      state.thread.context_tokens_cap > action.payload
+    ) {
+      state.thread.context_tokens_cap = action.payload;
+    }
   });
 
   builder.addCase(fixBrokenToolMessages, (state, action) => {
@@ -431,6 +487,16 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.thread.increase_max_tokens = action.payload;
   });
 
+  builder.addCase(setIncludeProjectInfo, (state, action) => {
+    if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.include_project_info = action.payload.value;
+  });
+
+  builder.addCase(setContextTokensCap, (state, action) => {
+    if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.context_tokens_cap = action.payload.value;
+  });
+
   builder.addMatcher(
     capsApi.endpoints.getCaps.matchFulfilled,
     (state, action) => {
@@ -444,6 +510,13 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
       state.thread.currentMaximumContextTokens =
         currentModelMaximumContextTokens;
+
+      if (
+        state.thread.context_tokens_cap === undefined ||
+        state.thread.context_tokens_cap > currentModelMaximumContextTokens
+      ) {
+        state.thread.context_tokens_cap = currentModelMaximumContextTokens;
+      }
     },
   );
 

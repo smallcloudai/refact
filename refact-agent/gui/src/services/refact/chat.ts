@@ -9,7 +9,7 @@ import {
   UserMessage,
 } from "./types";
 
-export const DEFAULT_MAX_NEW_TOKENS = 4096;
+export const DEFAULT_MAX_NEW_TOKENS = null;
 
 export type LspChatMessage =
   | {
@@ -68,6 +68,9 @@ type SendChatArgs = {
   mode?: LspChatMode; // used for chat actions
   boost_reasoning?: boolean;
   increase_max_tokens?: boolean;
+  include_project_info?: boolean;
+  context_tokens_cap?: number;
+  use_compression?: boolean;
 } & StreamArgs;
 
 type GetChatTitleArgs = {
@@ -158,6 +161,9 @@ export async function sendChat({
   mode,
   boost_reasoning,
   increase_max_tokens = false,
+  include_project_info,
+  context_tokens_cap,
+  use_compression,
 }: SendChatArgs): Promise<Response> {
   // const toolsResponse = await getAvailableTools();
 
@@ -187,6 +193,9 @@ export async function sendChat({
       // chat_mode: "EXPLORE", // NOTOOLS, EXPLORE, AGENT, CONFIGURE, PROJECTSUMMARY,
       // TODO: not clear, that if we set integration.path it's going to be set also in meta as current_config_file
       ...(integration?.path ? { current_config_file: integration.path } : {}),
+      ...(include_project_info !== undefined ? { include_project_info } : {}),
+      ...(context_tokens_cap !== undefined ? { context_tokens_cap } : {}),
+      ...(use_compression !== undefined ? { use_compression } : {}),
     },
   });
 

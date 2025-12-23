@@ -9,13 +9,12 @@ import {
 import { push } from "../../features/Pages/pagesSlice";
 import { restoreChat } from "../../features/Chat/Thread";
 import { FeatureMenu } from "../../features/Config/FeatureMenu";
-import { GroupTree } from "./GroupTree/";
+
 import { ErrorCallout } from "../Callout";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import classNames from "classnames";
 import { selectHost } from "../../features/Config/configSlice";
 import styles from "./Sidebar.module.css";
-import { useActiveTeamsGroup } from "../../hooks/useActiveTeamsGroup";
 
 export type SidebarProps = {
   takingNotes: boolean;
@@ -40,8 +39,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
     devModeChecks: { stabilityCheck: "never" },
   });
 
-  const { groupSelectionEnabled } = useActiveTeamsGroup();
-
   const onDeleteHistoryItem = useCallback(
     (id: string) => dispatch(deleteChatById(id)),
     [dispatch],
@@ -64,15 +61,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
         </Box>
       </Flex>
 
-      {!groupSelectionEnabled ? (
-        <ChatHistory
-          history={history}
-          onHistoryItemClick={onHistoryItemClick}
-          onDeleteHistoryItem={onDeleteHistoryItem}
-        />
-      ) : (
-        <GroupTree />
-      )}
+      <ChatHistory
+        history={history}
+        onHistoryItemClick={onHistoryItemClick}
+        onDeleteHistoryItem={onDeleteHistoryItem}
+      />
       {/* TODO: duplicated */}
       {globalError && (
         <ErrorCallout

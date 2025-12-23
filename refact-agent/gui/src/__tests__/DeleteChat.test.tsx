@@ -44,8 +44,6 @@ describe("Delete a Chat form history", () => {
         history,
         teams: {
           group: { id: "123", name: "test" },
-          workspace: { ws_id: "123", root_group_name: "test" },
-          skipped: false,
         },
         pages: [{ name: "history" }],
         config: {

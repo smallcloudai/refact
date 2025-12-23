@@ -12,7 +12,7 @@ import { pathApi } from "../services/refact/path";
 import { telemetryApi } from "../services/refact/telemetry";
 import { ToolEditResult } from "../services/refact";
 import { TextDocToolCall } from "../components/Tools/types";
-import type { TeamsGroup, TeamsWorkspace } from "../services/smallcloud/types";
+import type { TeamsGroup } from "../services/smallcloud/types";
 
 export const ideDiffPasteBackAction = createAction<{
   content: string;
@@ -79,14 +79,8 @@ export const ideForceReloadProjectTreeFiles = createAction(
 export const ideSetActiveTeamsGroup = createAction<TeamsGroup>(
   "ide/setActiveTeamsGroup",
 );
-export const ideSetActiveTeamsWorkspace = createAction<TeamsWorkspace>(
-  "ide/setActiveTeamsWorkspace",
-);
 export const ideClearActiveTeamsGroup = createAction<undefined>(
   "ide/clearActiveTeamsGroup",
-);
-export const ideClearActiveTeamsWorkspace = createAction<undefined>(
-  "ide/clearActiveTeamsWorkspace",
 );
 
 export const useEventsBusForIDE = () => {
@@ -294,21 +288,9 @@ export const useEventsBusForIDE = () => {
     },
     [postMessage],
   );
-  const setActiveTeamsWorkspaceInIDE = useCallback(
-    (workspace: TeamsWorkspace) => {
-      const action = ideSetActiveTeamsWorkspace(workspace);
-      postMessage(action);
-    },
-    [postMessage],
-  );
 
   const clearActiveTeamsGroupInIDE = useCallback(() => {
     const action = ideClearActiveTeamsGroup();
-    postMessage(action);
-  }, [postMessage]);
-
-  const clearActiveTeamsWorkspaceInIDE = useCallback(() => {
-    const action = ideClearActiveTeamsWorkspace();
     postMessage(action);
   }, [postMessage]);
 
@@ -335,8 +317,6 @@ export const useEventsBusForIDE = () => {
     setCodeCompletionModel,
     setLoginMessage,
     setActiveTeamsGroupInIDE,
-    setActiveTeamsWorkspaceInIDE,
     clearActiveTeamsGroupInIDE,
-    clearActiveTeamsWorkspaceInIDE,
   };
 };

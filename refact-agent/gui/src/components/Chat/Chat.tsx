@@ -7,7 +7,6 @@ import {
   useAppDispatch,
   useSendChatRequest,
   useAutoSend,
-  useCapsForToolUse,
 } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
 import {
@@ -25,6 +24,7 @@ import { DropzoneProvider } from "../Dropzone";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
 import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
+import { EnhancedModelSelector } from "./EnhancedModelSelector";
 
 export type ChatProps = {
   host: Config["host"];
@@ -51,7 +51,6 @@ export const Chat: React.FC<ChatProps> = ({
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
   const messages = useAppSelector(selectMessages);
-  const capsForToolUse = useCapsForToolUse();
 
   const { shouldCheckpointsPopupBeShown } = useCheckpoints();
 
@@ -61,9 +60,9 @@ export const Chat: React.FC<ChatProps> = ({
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
-  const handleSummit = useCallback(
-    (value: string) => {
-      submit({ question: value });
+  const handleSubmit = useCallback(
+    (value: string, sendPolicy?: "immediate" | "after_flow") => {
+      submit({ question: value, sendPolicy });
       if (isViewingRawJSON) {
         setIsViewingRawJSON(false);
       }
@@ -80,11 +79,10 @@ export const Chat: React.FC<ChatProps> = ({
   return (
     <DropzoneProvider asChild>
       <Flex
-        style={style}
+        style={{ ...style, minHeight: 0 }}
         direction="column"
         flexGrow="1"
         width="100%"
-        overflowY="auto"
         justify="between"
         px="1"
       >
@@ -115,7 +113,7 @@ export const Chat: React.FC<ChatProps> = ({
 
         <ChatForm
           key={chatId} // TODO: think of how can we not trigger re-render on chatId change (checkboxes)
-          onSubmit={handleSummit}
+          onSubmit={handleSubmit}
           onClose={maybeSendToSidebar}
           unCalledTools={unCalledTools}
         />
@@ -124,13 +122,18 @@ export const Chat: React.FC<ChatProps> = ({
           {/* Two flexboxes are left for the future UI element on the right side */}
           {messages.length > 0 && (
             <Flex align="center" justify="between" width="100%">
-              <Flex align="center" gap="1">
-                <Text size="1">model: {capsForToolUse.currentModel} </Text> •{" "}
+              <Flex align="center" gap="2">
+                <EnhancedModelSelector disabled={isStreaming} />
+                <Text size="1" color="gray">
+                  •
+                </Text>
                 <Text
                   size="1"
+                  color="gray"
                   onClick={() => setIsDebugChatHistoryVisible((prev) => !prev)}
+                  style={{ cursor: "pointer" }}
                 >
-                  mode: {chatToolUse}{" "}
+                  mode: {chatToolUse}
                 </Text>
               </Flex>
               {messages.length !== 0 &&

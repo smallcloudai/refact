@@ -22,6 +22,7 @@ import {
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
+  selectQueuedMessages,
   selectThread,
 } from "../../features/Chat/Thread/selectors";
 import { takeWhile } from "../../utils";
@@ -31,6 +32,7 @@ import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { PlaceHolderText } from "./PlaceHolderText";
 import { UsageCounter } from "../UsageCounter";
+import { QueuedMessage } from "./QueuedMessage";
 import {
   getConfirmationPauseStatus,
   getPauseReasonsWithPauseStatus,
@@ -50,6 +52,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const dispatch = useAppDispatch();
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const messages = useAppSelector(selectMessages);
+  const queuedMessages = useAppSelector(selectQueuedMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
   const { shouldShow } = useUsageCounter();
@@ -121,6 +124,17 @@ export const ChatContent: React.FC<ChatContentProps> = ({
           </Container>
         )}
         {renderMessages(messages, onRetryWrapper, isWaiting)}
+        {queuedMessages.length > 0 && (
+          <Flex direction="column" gap="2" mt="2">
+            {queuedMessages.map((queuedMsg, index) => (
+              <QueuedMessage
+                key={queuedMsg.id}
+                queuedMessage={queuedMsg}
+                position={index + 1}
+              />
+            ))}
+          </Flex>
+        )}
         <Container>
           <UncommittedChangesWarning />
         </Container>
@@ -205,7 +219,14 @@ function renderMessages(
         message={head.content}
         reasoningContent={head.reasoning_content}
         toolCalls={head.tool_calls}
+        serverExecutedTools={head.server_executed_tools}
+        citations={head.citations}
         isLast={isLast}
+        usage={head.usage}
+        metering_coins_prompt={head.metering_coins_prompt}
+        metering_coins_generated={head.metering_coins_generated}
+        metering_coins_cache_creation={head.metering_coins_cache_creation}
+        metering_coins_cache_read={head.metering_coins_cache_read}
       />,
     ];
 

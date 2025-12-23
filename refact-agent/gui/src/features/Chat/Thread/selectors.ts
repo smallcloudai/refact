@@ -26,6 +26,12 @@ export const selectCheckpointsEnabled = (state: RootState) =>
 export const selectThreadBoostReasoning = (state: RootState) =>
   state.chat.thread.boost_reasoning;
 
+export const selectIncludeProjectInfo = (state: RootState) =>
+  state.chat.thread.include_project_info;
+
+export const selectContextTokensCap = (state: RootState) =>
+  state.chat.thread.context_tokens_cap;
+
 // TBD: only used when `/links` suggests a new chat.
 export const selectThreadNewChatSuggested = (state: RootState) =>
   state.chat.thread.new_chat_suggested;
@@ -39,6 +45,8 @@ export const selectAreFollowUpsEnabled = (state: RootState) =>
   state.chat.follow_ups_enabled;
 export const selectIsTitleGenerationEnabled = (state: RootState) =>
   state.chat.title_generation_enabled;
+export const selectUseCompression = (state: RootState) =>
+  state.chat.use_compression;
 export const selectIsStreaming = (state: RootState) => state.chat.streaming;
 export const selectPreventSend = (state: RootState) => state.chat.prevent_send;
 export const selectChatError = (state: RootState) => state.chat.error;
@@ -116,6 +124,19 @@ export const selectLastSentCompression = createSelector(
 
     return lastCompression;
   },
+);
+
+export const selectQueuedMessages = (state: RootState) =>
+  state.chat.queued_messages;
+
+export const selectQueuedMessagesCount = createSelector(
+  selectQueuedMessages,
+  (queued) => queued.length,
+);
+
+export const selectHasQueuedMessages = createSelector(
+  selectQueuedMessages,
+  (queued) => queued.length > 0,
 );
 
 export const selectHasUncalledTools = createSelector(
