@@ -11,7 +11,6 @@ type MessageUsageInfoProps = {
   metering_coins_generated?: number;
   metering_coins_cache_creation?: number;
   metering_coins_cache_read?: number;
-  topOffset?: string;
 };
 
 const TokenDisplay: React.FC<{ label: string; value: number }> = ({
@@ -48,7 +47,6 @@ export const MessageUsageInfo: React.FC<MessageUsageInfoProps> = ({
   metering_coins_generated = 0,
   metering_coins_cache_creation = 0,
   metering_coins_cache_read = 0,
-  topOffset = "0",
 }) => {
   const outputTokens = useMemo(() => {
     return calculateUsageInputTokens({
@@ -76,13 +74,7 @@ export const MessageUsageInfo: React.FC<MessageUsageInfoProps> = ({
   if (!usage && totalCoins === 0) return null;
 
   return (
-    <Box
-      style={{
-        position: "absolute",
-        right: "var(--space-3)",
-        top: topOffset,
-      }}
-    >
+    <Flex justify="end" mt="2">
       <HoverCard.Root>
         <HoverCard.Trigger>
           <Card
@@ -92,9 +84,17 @@ export const MessageUsageInfo: React.FC<MessageUsageInfoProps> = ({
               cursor: "pointer",
             }}
           >
-            <Flex align="center" gap="1">
-              <Text size="1">{Math.round(totalCoins)}</Text>
-              <Coin width="10px" height="10px" />
+            <Flex align="center" gap="3">
+              {contextTokens > 0 && (
+                <Flex align="center" gap="1">
+                  <Text size="1" color="gray">ctx:</Text>
+                  <Text size="1">{formatNumberToFixed(contextTokens)}</Text>
+                </Flex>
+              )}
+              <Flex align="center" gap="1">
+                <Text size="1">{Math.round(totalCoins)}</Text>
+                <Coin width="10px" height="10px" />
+              </Flex>
             </Flex>
           </Card>
         </HoverCard.Trigger>
@@ -160,6 +160,6 @@ export const MessageUsageInfo: React.FC<MessageUsageInfoProps> = ({
           </Flex>
         </HoverCard.Content>
       </HoverCard.Root>
-    </Box>
+    </Flex>
   );
 };

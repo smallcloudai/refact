@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import {
   ChatMessages,
-  isAssistantMessage,
   isChatContextFileMessage,
   isDiffMessage,
   isToolMessage,
@@ -14,7 +13,9 @@ import { Flex, Container, Button, Box } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
+
 import { PlainText } from "./PlainText";
+import { MessageUsageInfo } from "./MessageUsageInfo";
 import { useAppDispatch, useDiffFileReload } from "../../hooks";
 import { useAppSelector } from "../../hooks";
 import {
@@ -31,13 +32,10 @@ import { popBackTo } from "../../features/Pages/pagesSlice";
 import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { PlaceHolderText } from "./PlaceHolderText";
-import { UsageCounter } from "../UsageCounter";
+
 import { QueuedMessage } from "./QueuedMessage";
-import {
-  getConfirmationPauseStatus,
-  getPauseReasonsWithPauseStatus,
-} from "../../features/ToolConfirmation/confirmationSlice";
-import { useUsageCounter } from "../UsageCounter/useUsageCounter.ts";
+import { selectThreadConfirmation, selectThreadPause } from "../../features/Chat";
+
 import { LogoAnimation } from "../LogoAnimation/LogoAnimation.tsx";
 
 export type ChatContentProps = {
@@ -50,18 +48,18 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   onRetry,
 }) => {
   const dispatch = useAppDispatch();
-  const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
+  const pauseReasonsWithPause = useAppSelector(selectThreadConfirmation);
   const messages = useAppSelector(selectMessages);
   const queuedMessages = useAppSelector(selectQueuedMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
-  const { shouldShow } = useUsageCounter();
-  const isConfig = thread.mode === "CONFIGURE";
+
+  const isConfig = thread?.mode === "CONFIGURE";
   const isWaiting = useAppSelector(selectIsWaiting);
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
   const integrationMeta = useAppSelector(selectIntegration);
-  const isWaitingForConfirmation = useAppSelector(getConfirmationPauseStatus);
+  const isWaitingForConfirmation = useAppSelector(selectThreadPause);
 
   const onRetryWrapper = (index: number, question: UserMessage["content"]) => {
     onRetry(index, question);
@@ -74,18 +72,18 @@ export const ChatContent: React.FC<ChatContentProps> = ({
     dispatch(
       popBackTo({
         name: "integrations page",
-        projectPath: thread.integration?.project,
-        integrationName: thread.integration?.name,
-        integrationPath: thread.integration?.path,
+        projectPath: thread?.integration?.project,
+        integrationName: thread?.integration?.name,
+        integrationPath: thread?.integration?.path,
         wasOpenedThroughChat: true,
       }),
     );
   }, [
     onStopStreaming,
     dispatch,
-    thread.integration?.project,
-    thread.integration?.name,
-    thread.integration?.path,
+    thread?.integration?.project,
+    thread?.integration?.name,
+    thread?.integration?.path,
   ]);
 
   const handleManualStopStreamingClick = useCallback(() => {
@@ -138,7 +136,6 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         <Container>
           <UncommittedChangesWarning />
         </Container>
-        {shouldShow && <UsageCounter />}
         <Container pt="4" pb="8">
           {!isWaitingForConfirmation && (
             <LogoAnimation
@@ -211,7 +208,31 @@ function renderMessages(
 
   if (head.role === "assistant") {
     const key = "assistant-input-" + index;
-    const isLast = !tail.some(isAssistantMessage);
+
+    // Find context_file messages that follow this assistant message (skipping tool messages)
+    const contextFilesAfter: React.ReactNode[] = [];
+    let skipCount = 0;
+    let tempTail = tail;
+
+    // Skip tool messages and collect context_file messages until we hit another message type
+    while (tempTail.length > 0) {
+      const nextMsg = tempTail[0];
+      if (isToolMessage(nextMsg)) {
+        // Skip tool messages (they're handled internally)
+        skipCount++;
+        tempTail = tempTail.slice(1);
+      } else if (isChatContextFileMessage(nextMsg)) {
+        // Collect context_file messages to render after assistant
+        const ctxKey = "context-file-" + (index + 1 + skipCount);
+        contextFilesAfter.push(<ContextFiles key={ctxKey} files={nextMsg.content} />);
+        skipCount++;
+        tempTail = tempTail.slice(1);
+      } else {
+        // Stop at any other message type (user, assistant, etc.)
+        break;
+      }
+    }
+
     const nextMemo = [
       ...memo,
       <AssistantInput
@@ -221,7 +242,10 @@ function renderMessages(
         toolCalls={head.tool_calls}
         serverExecutedTools={head.server_executed_tools}
         citations={head.citations}
-        isLast={isLast}
+      />,
+      ...contextFilesAfter,
+      <MessageUsageInfo
+        key={`usage-${key}`}
         usage={head.usage}
         metering_coins_prompt={head.metering_coins_prompt}
         metering_coins_generated={head.metering_coins_generated}
@@ -230,7 +254,9 @@ function renderMessages(
       />,
     ];
 
-    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
+    // Skip the tool and context_file messages we already processed
+    const newTail = tail.slice(skipCount);
+    return renderMessages(newTail, onRetry, waiting, nextMemo, index + 1 + skipCount);
   }
 
   if (head.role === "user") {

@@ -74,28 +74,4 @@ pub async fn handle_v1_trajectory_compress(
 }
 
 
-pub async fn handle_v1_trajectory_save(
-    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
-    body_bytes: hyper::body::Bytes,
-) -> axum::response::Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<CompressTrajectoryPost>(&body_bytes).map_err(|e| {
-        ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e))
-    })?;
 
-    let trajectory = compress_trajectory(gcx.clone(), &post.messages)
-        .await.map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
-
-    let file_path = crate::memories::save_trajectory(gcx, &trajectory)
-        .await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-
-    let response = serde_json::json!({
-        "trajectory": trajectory,
-        "file_path": file_path.to_string_lossy(),
-    });
-
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&response).unwrap()))
-        .unwrap())
-}

@@ -32,14 +32,12 @@ import {
   selectChatId,
   selectCheckpointsEnabled,
   selectIsStreaming,
-  selectIsTitleGenerationEnabled,
   selectIsWaiting,
   selectMessages,
   selectToolUse,
   selectUseCompression,
   selectIncludeProjectInfo,
   setAreFollowUpsEnabled,
-  setIsTitleGenerationEnabled,
   setAutomaticPatch,
   setEnabledCheckpoints,
   setToolUse,
@@ -211,72 +209,6 @@ export const FollowUpsSwitch: React.FC = () => {
               <Text as="p" size="1">
                 When enabled, Refact Agent will automatically generate related
                 follow-ups to the conversation
-              </Text>
-              <Badge
-                color="yellow"
-                asChild
-                style={{
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                <Flex gap="2" p="2" align="center">
-                  <ExclamationTriangleIcon
-                    width={16}
-                    height={16}
-                    style={{ flexGrow: 1, flexShrink: 0 }}
-                  />
-                  <Text as="p" size="1">
-                    Warning: may increase coins spending
-                  </Text>
-                </Flex>
-              </Badge>
-            </Flex>
-          </HoverCard.Content>
-        </HoverCard.Root>
-      </Flex>
-    </Flex>
-  );
-};
-
-export const TitleGenerationSwitch: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const isTitleGenerationEnabled = useAppSelector(
-    selectIsTitleGenerationEnabled,
-  );
-
-  const handleTitleGenerationEnabledChange = (checked: boolean) => {
-    dispatch(setIsTitleGenerationEnabled(checked));
-  };
-
-  return (
-    <Flex
-      gap="4"
-      align="center"
-      wrap="wrap"
-      flexGrow="1"
-      flexShrink="0"
-      width="100%"
-      justify="between"
-    >
-      <Text size="2" mr="auto">
-        Chat Titles
-      </Text>
-      <Flex gap="2" align="center">
-        <Switch
-          size="1"
-          title="Enable/disable chat titles generation by Agent"
-          checked={isTitleGenerationEnabled}
-          onCheckedChange={handleTitleGenerationEnabledChange}
-        />
-        <HoverCard.Root>
-          <HoverCard.Trigger>
-            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
-          </HoverCard.Trigger>
-          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
-            <Flex direction="column" gap="2">
-              <Text as="p" size="1">
-                When enabled, Refact Agent will automatically generate
-                summarized chat title for the conversation
               </Text>
               <Badge
                 color="yellow"

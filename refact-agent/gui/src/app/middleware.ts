@@ -15,6 +15,13 @@ import {
   sendCurrentChatToLspAfterToolCallUpdate,
   chatResponse,
   chatError,
+  selectHasUncalledToolsById,
+  clearThreadPauseReasons,
+  setThreadConfirmationStatus,
+  setThreadPauseReasons,
+  resetThreadImages,
+  switchToThread,
+  selectCurrentThreadId,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -35,14 +42,9 @@ import {
   setIsAuthError,
 } from "../features/Errors/errorsSlice";
 import { setThemeMode, updateConfig } from "../features/Config/configSlice";
-import { resetAttachedImagesSlice } from "../features/AttachedImages";
 import { nextTip } from "../features/TipOfTheDay";
 import { telemetryApi } from "../services/refact/telemetry";
 import { CONFIG_PATH_URL, FULL_PATH_URL } from "../services/refact/consts";
-import {
-  resetConfirmationInteractedState,
-  updateConfirmationAfterIdeToolUse,
-} from "../features/ToolConfirmation/confirmationSlice";
 import {
   ideToolCallResponse,
   ideForceReloadProjectTreeFiles,
@@ -60,24 +62,24 @@ const startListening = listenerMiddleware.startListening.withTypes<
 >();
 
 startListening({
-  // TODO: figure out why this breaks the tests when it's not a function :/
   matcher: isAnyOf(
     (d: unknown): d is ReturnType<typeof newChatAction> =>
       newChatAction.match(d),
     (d: unknown): d is ReturnType<typeof restoreChat> => restoreChat.match(d),
   ),
   effect: (_action, listenerApi) => {
+    const state = listenerApi.getState();
+    const chatId = state.chat.current_thread_id;
+
     [
-      // pingApi.util.resetApiState(),
       statisticsApi.util.resetApiState(),
-      // capsApi.util.resetApiState(),
-      // promptsApi.util.resetApiState(),
       toolsApi.util.resetApiState(),
       commandsApi.util.resetApiState(),
-      resetAttachedImagesSlice(),
-      resetConfirmationInteractedState(),
     ].forEach((api) => listenerApi.dispatch(api));
 
+    listenerApi.dispatch(resetThreadImages({ id: chatId }));
+    listenerApi.dispatch(clearThreadPauseReasons({ id: chatId }));
+    listenerApi.dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: false, confirmationStatus: true }));
     listenerApi.dispatch(clearError());
   },
 });
@@ -343,11 +345,64 @@ startListening({
 
 startListening({
   actionCreator: doneStreaming,
-  effect: (action, listenerApi) => {
+  effect: async (action, listenerApi) => {
     const state = listenerApi.getState();
-    if (action.payload.id === state.chat.thread.id) {
-      listenerApi.dispatch(resetAttachedImagesSlice());
+    const chatId = action.payload.id;
+    const isCurrentThread = chatId === state.chat.current_thread_id;
+
+    if (isCurrentThread) {
+      listenerApi.dispatch(resetThreadImages({ id: chatId }));
     }
+
+    const runtime = state.chat.threads[chatId];
+    if (!runtime) return;
+    if (runtime.error) return;
+    if (runtime.prevent_send) return;
+    if (runtime.confirmation.pause) return;
+
+    const hasUncalledTools = selectHasUncalledToolsById(state, chatId);
+    if (!hasUncalledTools) return;
+
+    const lastMessage = runtime.thread.messages[runtime.thread.messages.length - 1];
+    if (!lastMessage || !("tool_calls" in lastMessage) || !lastMessage.tool_calls) return;
+
+    // IMPORTANT: Set waiting=true immediately to prevent race conditions
+    // This blocks any other sender (like useAutoSend) from starting a duplicate request
+    // during the async confirmation check below
+    listenerApi.dispatch(setIsWaitingForResponse({ id: chatId, value: true }));
+
+    const isIntegrationChat = runtime.thread.mode === "CONFIGURE";
+    if (!isIntegrationChat) {
+      const confirmationResult = await listenerApi.dispatch(
+        toolsApi.endpoints.checkForConfirmation.initiate({
+          tool_calls: lastMessage.tool_calls,
+          messages: runtime.thread.messages,
+        }),
+      );
+
+      if ("data" in confirmationResult && confirmationResult.data?.pause) {
+        // setThreadPauseReasons will reset waiting_for_response to false
+        listenerApi.dispatch(setThreadPauseReasons({ id: chatId, pauseReasons: confirmationResult.data.pause_reasons }));
+        return;
+      }
+    }
+
+    // Re-check state after async operation to prevent duplicate requests
+    const latestState = listenerApi.getState();
+    const latestRuntime = latestState.chat.threads[chatId];
+    if (!latestRuntime) return;
+    if (latestRuntime.streaming) return;
+    if (latestRuntime.prevent_send) return;
+    if (latestRuntime.confirmation.pause) return;
+
+    void listenerApi.dispatch(
+      chatAskQuestionThunk({
+        messages: runtime.thread.messages,
+        chatId,
+        mode: runtime.thread.mode,
+        checkpointsEnabled: latestState.chat.checkpoints_enabled,
+      }),
+    );
   },
 });
 
@@ -377,12 +432,12 @@ startListening({
   actionCreator: newIntegrationChat,
   effect: async (_action, listenerApi) => {
     const state = listenerApi.getState();
-    // TODO: set mode to configure ? or infer it later
-    // TODO: create a dedicated thunk for this.
+    const runtime = state.chat.threads[state.chat.current_thread_id];
+    if (!runtime) return;
     await listenerApi.dispatch(
       chatAskQuestionThunk({
-        messages: state.chat.thread.messages,
-        chatId: state.chat.thread.id,
+        messages: runtime.thread.messages,
+        chatId: runtime.thread.id,
       }),
     );
   },
@@ -407,11 +462,9 @@ startListening({
     const state = listenerApi.getState();
     if (chatAskQuestionThunk.rejected.match(action) && !action.meta.condition) {
       const { chatId, mode } = action.meta.arg;
-      const thread =
-        chatId in state.chat.cache
-          ? state.chat.cache[chatId]
-          : state.chat.thread;
-      const scope = `sendChat_${thread.model}_${mode}`;
+      const runtime = state.chat.threads[chatId];
+      const thread = runtime?.thread;
+      const scope = `sendChat_${thread?.model ?? "unknown"}_${mode}`;
 
       if (isDetailMessageWithErrorType(action.payload)) {
         const errorMessage = action.payload.detail;
@@ -431,11 +484,9 @@ startListening({
 
     if (chatAskQuestionThunk.fulfilled.match(action)) {
       const { chatId, mode } = action.meta.arg;
-      const thread =
-        chatId in state.chat.cache
-          ? state.chat.cache[chatId]
-          : state.chat.thread;
-      const scope = `sendChat_${thread.model}_${mode}`;
+      const runtime = state.chat.threads[chatId];
+      const thread = runtime?.thread;
+      const scope = `sendChat_${thread?.model ?? "unknown"}_${mode}`;
 
       const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
         scope,
@@ -500,29 +551,39 @@ startListening({
   },
 });
 
-// Tool Call results from ide.
 startListening({
   actionCreator: ideToolCallResponse,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
+    const chatId = action.payload.chatId;
+    const runtime = state.chat.threads[chatId];
 
     listenerApi.dispatch(upsertToolCallIntoHistory(action.payload));
     listenerApi.dispatch(upsertToolCall(action.payload));
-    listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
 
-    const pauseReasons = state.confirmation.pauseReasons.filter(
+    if (!runtime) return;
+
+    const pauseReasons = runtime.confirmation.pause_reasons.filter(
       (reason) => reason.tool_call_id !== action.payload.toolCallId,
     );
 
     if (pauseReasons.length === 0) {
-      listenerApi.dispatch(resetConfirmationInteractedState());
-      listenerApi.dispatch(setIsWaitingForResponse(false));
+      listenerApi.dispatch(clearThreadPauseReasons({ id: chatId }));
+      listenerApi.dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: true, confirmationStatus: true }));
+      // If we're about to dispatch a follow-up, set waiting=true; otherwise false
+      if (action.payload.accepted) {
+        listenerApi.dispatch(setIsWaitingForResponse({ id: chatId, value: true }));
+      } else {
+        listenerApi.dispatch(setIsWaitingForResponse({ id: chatId, value: false }));
+      }
+    } else {
+      listenerApi.dispatch(setThreadPauseReasons({ id: chatId, pauseReasons }));
     }
 
     if (pauseReasons.length === 0 && action.payload.accepted) {
       void listenerApi.dispatch(
         sendCurrentChatToLspAfterToolCallUpdate({
-          chatId: action.payload.chatId,
+          chatId,
           toolCallId: action.payload.toolCallId,
         }),
       );
@@ -541,6 +602,21 @@ startListening({
       document.body.className !== "vscode-dark"
     ) {
       document.body.className = "vscode-dark";
+    }
+  },
+});
+
+// Auto-switch to thread when it needs confirmation (background chat support)
+startListening({
+  actionCreator: setThreadPauseReasons,
+  effect: (action, listenerApi) => {
+    const state = listenerApi.getState();
+    const currentThreadId = selectCurrentThreadId(state);
+    const threadIdNeedingConfirmation = action.payload.id;
+
+    // If the thread needing confirmation is not the current one, switch to it
+    if (threadIdNeedingConfirmation !== currentThreadId) {
+      listenerApi.dispatch(switchToThread({ id: threadIdNeedingConfirmation }));
     }
   },
 });

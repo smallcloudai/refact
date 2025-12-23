@@ -47,8 +47,9 @@ import {
   InformationCallout,
 } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
-import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
+import { selectThreadConfirmation } from "../../features/Chat";
 import { AttachImagesButton, FileList } from "../Dropzone";
+import { ResendButton } from "../ChatContent/ResendButton";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import {
   selectChatError,
@@ -92,7 +93,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const globalErrorType = useAppSelector(getErrorType);
   const chatError = useAppSelector(selectChatError);
   const information = useAppSelector(getInformationMessage);
-  const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
+  const pauseReasonsWithPause = useAppSelector(selectThreadConfirmation);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const isOnline = useIsOnline();
   const { retry } = useSendChatRequest();
@@ -324,9 +325,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     );
   }
 
-  if (!isStreaming && pauseReasonsWithPause.pause) {
+  if (pauseReasonsWithPause.pause) {
     return (
-      <ToolConfirmation pauseReasons={pauseReasonsWithPause.pauseReasons} />
+      <ToolConfirmation pauseReasons={pauseReasonsWithPause.pause_reasons} />
     );
   }
 
@@ -449,6 +450,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                     <AttachImagesButton />
                   )}
                 {/* TODO: Reserved space for microphone button coming later on */}
+                <ResendButton />
                 <SendButtonWithDropdown
                   disabled={
                     !isOnline || allDisabled || value.trim().length === 0

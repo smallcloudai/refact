@@ -2,35 +2,35 @@ import { useCallback, useEffect } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { useAppDispatch } from "./useAppDispatch";
 import {
-  selectAllImages,
-  removeImageByIndex,
-  addImage,
+  selectThreadImages,
+  selectChatId,
+  addThreadImage,
+  removeThreadImageByIndex,
+  resetThreadImages,
   type ImageFile,
-  resetAttachedImagesSlice,
-} from "../features/AttachedImages";
+} from "../features/Chat";
 import { setError } from "../features/Errors/errorsSlice";
 import { setInformation } from "../features/Errors/informationSlice";
 import { useCapsForToolUse } from "./useCapsForToolUse";
 
 export function useAttachedImages() {
-  const images = useAppSelector(selectAllImages);
+  const images = useAppSelector(selectThreadImages);
+  const chatId = useAppSelector(selectChatId);
   const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
   const dispatch = useAppDispatch();
 
   const removeImage = useCallback(
     (index: number) => {
-      const action = removeImageByIndex(index);
-      dispatch(action);
+      dispatch(removeThreadImageByIndex({ id: chatId, index }));
     },
-    [dispatch],
+    [dispatch, chatId],
   );
 
   const insertImage = useCallback(
     (file: ImageFile) => {
-      const action = addImage(file);
-      dispatch(action);
+      dispatch(addThreadImage({ id: chatId, image: file }));
     },
-    [dispatch],
+    [dispatch, chatId],
   );
 
   const handleError = useCallback(
@@ -63,10 +63,9 @@ export function useAttachedImages() {
 
   useEffect(() => {
     if (!isMultimodalitySupportedForCurrentModel) {
-      const action = resetAttachedImagesSlice();
-      dispatch(action);
+      dispatch(resetThreadImages({ id: chatId }));
     }
-  }, [isMultimodalitySupportedForCurrentModel, dispatch]);
+  }, [isMultimodalitySupportedForCurrentModel, dispatch, chatId]);
 
   return {
     images,

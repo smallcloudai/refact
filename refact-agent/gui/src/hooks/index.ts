@@ -38,3 +38,4 @@ export * from "./useCompressionStop";
 export * from "./useEventBusForApp";
 export * from "./useTotalCostForChat";
 export * from "./useCheckpoints";
+export * from "./useTrajectoriesSubscription";

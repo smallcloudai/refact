@@ -1,6 +1,6 @@
 import { LspChatMode } from "../../features/Chat";
 import { Checkpoint } from "../../features/Checkpoints/types";
-import { GetChatTitleActionPayload, GetChatTitleResponse, Usage } from "./chat";
+import { Usage } from "./chat";
 import { MCPArgs, MCPEnvs } from "./integrations";
 
 export type ChatRole =
@@ -472,36 +472,6 @@ export function isChatUserMessageResponse(
 export type UserMessageResponse = ChatUserMessageResponse & {
   role: "user";
 };
-
-export function isChatGetTitleResponse(
-  json: unknown,
-): json is GetChatTitleResponse {
-  if (!json || typeof json !== "object") return false;
-
-  const requiredKeys = [
-    "id",
-    "choices",
-    // "metering_balance", // not in BYOK
-    "model",
-    "object",
-    "system_fingerprint",
-    "usage",
-    "created",
-    "deterministic_messages",
-  ];
-
-  return requiredKeys.every((key) => key in json);
-}
-
-export function isChatGetTitleActionPayload(
-  json: unknown,
-): json is GetChatTitleActionPayload {
-  if (!json || typeof json !== "object") return false;
-
-  const requiredKeys = ["title", "chatId"];
-
-  return requiredKeys.every((key) => key in json);
-}
 
 export function isUserResponse(json: unknown): json is UserMessageResponse {
   if (!isChatUserMessageResponse(json)) return false;

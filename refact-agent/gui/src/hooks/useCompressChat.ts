@@ -12,16 +12,18 @@ export function useCompressChat() {
   const thread = useAppSelector(selectThread);
 
   const [submit, request] = knowledgeApi.useCompressMessagesMutation({
-    fixedCacheKey: thread.id,
+    fixedCacheKey: thread?.id ?? "",
   });
 
   const compressChat = useCallback(async () => {
-    dispatch(setIsWaitingForResponse(true));
+    if (!thread) return;
+
+    dispatch(setIsWaitingForResponse({ id: thread.id, value: true }));
     const result = await submit({
       messages: thread.messages,
       project: thread.project_name ?? "",
     });
-    dispatch(setIsWaitingForResponse(false));
+    dispatch(setIsWaitingForResponse({ id: thread.id, value: false }));
 
     if (result.error) {
       // TODO: handle errors
@@ -40,7 +42,7 @@ export function useCompressChat() {
       dispatch(action);
       dispatch(setSendImmediately(true));
     }
-  }, [dispatch, submit, thread.messages, thread.project_name, thread.title]);
+  }, [dispatch, submit, thread]);
 
   return {
     compressChat,

@@ -1,6 +1,6 @@
 use at_tools::handle_v1_post_tools;
 use axum::Router;
-use axum::routing::{get, post, delete};
+use axum::routing::{get, post, put, delete};
 use tower_http::cors::CorsLayer;
 
 use crate::http::utils::telemetry_middleware;
@@ -13,7 +13,6 @@ use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::caps::handle_v1_ping;
 use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions};
 use crate::http::routers::v1::chat_based_handlers::{handle_v1_commit_message_from_diff, handle_v1_trajectory_compress};
-use crate::http::routers::v1::chat_based_handlers::handle_v1_trajectory_save;
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::docker::{handle_v1_docker_container_action, handle_v1_docker_container_list};
 use crate::http::routers::v1::git::{handle_v1_git_commit, handle_v1_checkpoints_preview, handle_v1_checkpoints_restore};
@@ -40,6 +39,11 @@ use crate::http::routers::v1::v1_integrations::{handle_v1_integration_get, handl
 use crate::http::routers::v1::file_edit_tools::handle_v1_file_edit_tool_dry_run;
 use crate::http::routers::v1::code_edit::handle_v1_code_edit;
 use crate::http::routers::v1::workspace::{handle_v1_get_app_searchable_id, handle_v1_set_active_group_id};
+use crate::http::routers::v1::trajectories::{
+    handle_v1_trajectories_list, handle_v1_trajectories_get,
+    handle_v1_trajectories_save, handle_v1_trajectories_delete,
+    handle_v1_trajectories_subscribe,
+};
 
 mod ast;
 pub mod at_commands;
@@ -71,6 +75,7 @@ mod v1_integrations;
 pub mod vecdb;
 mod workspace;
 mod knowledge_graph;
+pub mod trajectories;
 
 pub fn make_v1_router() -> Router {
     let builder = Router::new()
@@ -171,8 +176,12 @@ pub fn make_v1_router() -> Router {
         .route("/vdb-search", post(handle_v1_vecdb_search))
         .route("/vdb-status", get(handle_v1_vecdb_status))
         .route("/knowledge-graph", get(handle_v1_knowledge_graph))
-        .route("/trajectory-save", post(handle_v1_trajectory_save))
         .route("/trajectory-compress", post(handle_v1_trajectory_compress))
+        .route("/trajectories", get(handle_v1_trajectories_list))
+        .route("/trajectories/subscribe", get(handle_v1_trajectories_subscribe))
+        .route("/trajectories/:id", get(handle_v1_trajectories_get))
+        .route("/trajectories/:id", put(handle_v1_trajectories_save))
+        .route("/trajectories/:id", delete(handle_v1_trajectories_delete))
         ;
 
     builder

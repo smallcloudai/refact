@@ -4,15 +4,15 @@ import { isAbsolutePath } from "../utils/isAbsolutePath";
 import { useAppDispatch } from "./useAppDispatch";
 import { popBackTo, push } from "../features/Pages/pagesSlice";
 import { useAppSelector } from "./useAppSelector";
-import { selectIntegration } from "../features/Chat/Thread/selectors";
+import { selectIntegration, selectChatId } from "../features/Chat/Thread/selectors";
 import { debugIntegrations } from "../debugConfig";
-import { newChatAction } from "../features/Chat/Thread/actions";
-import { clearPauseReasonsAndHandleToolsStatus } from "../features/ToolConfirmation/confirmationSlice";
+import { newChatAction, clearThreadPauseReasons, setThreadConfirmationStatus } from "../features/Chat/Thread/actions";
 
 export function useGoToLink() {
   const dispatch = useAppDispatch();
   const { queryPathThenOpenFile } = useEventsBusForIDE();
   const maybeIntegration = useAppSelector(selectIntegration);
+  const chatId = useAppSelector(selectChatId);
 
   const handleGoTo = useCallback(
     ({ goto }: { goto?: string }) => {
@@ -55,12 +55,8 @@ export function useGoToLink() {
 
         case "newchat": {
           dispatch(newChatAction());
-          dispatch(
-            clearPauseReasonsAndHandleToolsStatus({
-              wasInteracted: false,
-              confirmationStatus: true,
-            }),
-          );
+          dispatch(clearThreadPauseReasons({ id: chatId }));
+          dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: false, confirmationStatus: true }));
           dispatch(popBackTo({ name: "history" }));
           dispatch(push({ name: "chat" }));
           return;
@@ -72,15 +68,7 @@ export function useGoToLink() {
         }
       }
     },
-    [
-      dispatch,
-      // maybeIntegration?.name,
-      // maybeIntegration?.path,
-      // maybeIntegration?.project,
-      // maybeIntegration?.shouldIntermediatePageShowUp,
-      maybeIntegration,
-      queryPathThenOpenFile,
-    ],
+    [dispatch, chatId, maybeIntegration, queryPathThenOpenFile],
   );
 
   return { handleGoTo };

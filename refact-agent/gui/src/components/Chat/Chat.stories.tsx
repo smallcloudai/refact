@@ -20,7 +20,6 @@ import {
   goodTools,
   noTools,
   // noChatLinks,
-  makeKnowledgeFromChat,
 } from "../../__fixtures__/msw";
 import { TourProvider } from "../../features/Tour";
 import { Flex } from "@radix-ui/themes";
@@ -38,22 +37,34 @@ const Template: React.FC<{
       wasSuggested: false,
     },
   };
+  const threadId = threadData.id ?? "test";
   const store = setUpStore({
     tour: {
       type: "finished",
     },
     chat: {
-      streaming: false,
-      prevent_send: false,
-      waiting_for_response: false,
+      current_thread_id: threadId,
+      open_thread_ids: [threadId],
+      threads: {
+        [threadId]: {
+          thread: threadData,
+          streaming: false,
+          waiting_for_response: false,
+          prevent_send: false,
+          error: null,
+          queued_messages: [],
+          send_immediately: false,
+          attached_images: [],
+          confirmation: {
+            pause: false,
+            pause_reasons: [],
+            status: { wasInteracted: false, confirmationStatus: true },
+          },
+        },
+      },
       max_new_tokens: 4096,
       tool_use: "agent",
-      send_immediately: false,
-      error: null,
-      cache: {},
       system_prompt: {},
-      thread: threadData,
-      queued_messages: [],
     },
     config,
   });
@@ -105,7 +116,8 @@ export const Primary: Story = {};
 
 export const Configuration: Story = {
   args: {
-    thread: CHAT_CONFIG_THREAD.thread,
+    thread:
+      CHAT_CONFIG_THREAD.threads[CHAT_CONFIG_THREAD.current_thread_id]?.thread,
   },
 };
 
@@ -148,7 +160,7 @@ export const Knowledge: Story = {
         // noChatLinks,
         chatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
       ],
     },
   },
@@ -190,7 +202,7 @@ export const EmptySpaceAtBottom: Story = {
         // noChatLinks,
         chatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
       ],
     },
   },
@@ -271,7 +283,7 @@ export const UserMessageEmptySpaceAtBottom: Story = {
         // noChatLinks,
         chatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
       ],
     },
   },
@@ -354,7 +366,7 @@ export const CompressButton: Story = {
         // noChatLinks,
         chatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
       ],
     },
   },
@@ -381,7 +393,6 @@ export const LowBalance: Story = {
       goodPrompts,
       chatLinks,
       noTools,
-      makeKnowledgeFromChat,
       lowBalance,
     },
   },

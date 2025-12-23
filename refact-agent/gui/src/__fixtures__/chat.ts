@@ -1,9 +1,8 @@
-import type { RootState } from "../app/store";
+import type { ChatThread } from "../features/Chat/Thread/types";
 import { ChatHistoryItem } from "../features/History/historySlice";
 
 export * from "./some_chrome_screenshots";
 
-type ChatThread = RootState["chat"]["thread"];
 type ChatMessages = ChatThread["messages"];
 
 export const MARS_ROVER_CHAT: ChatHistoryItem = {

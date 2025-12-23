@@ -6,76 +6,150 @@ import {
   isDiffMessage,
   isToolMessage,
   isUserMessage,
+  ChatMessages,
 } from "../../../services/refact/types";
 import { takeFromLast } from "../../../utils/takeFromLast";
+import { ChatThreadRuntime, QueuedUserMessage, ThreadConfirmation } from "./types";
 
-export const selectThread = (state: RootState) => state.chat.thread;
-export const selectThreadTitle = (state: RootState) => state.chat.thread.title;
-export const selectChatId = (state: RootState) => state.chat.thread.id;
-export const selectModel = (state: RootState) => state.chat.thread.model;
-export const selectMessages = (state: RootState) => state.chat.thread.messages;
+// Constant default values to avoid creating new references on each selector call
+const EMPTY_MESSAGES: ChatMessages = [];
+const EMPTY_QUEUED: QueuedUserMessage[] = [];
+const EMPTY_PAUSE_REASONS: string[] = [];
+const EMPTY_IMAGES: string[] = [];
+const DEFAULT_NEW_CHAT_SUGGESTED = { wasSuggested: false } as const;
+const DEFAULT_CONFIRMATION: ThreadConfirmation = {
+  pause: false,
+  pause_reasons: [],
+  status: { wasInteracted: false, confirmationStatus: true },
+};
+const DEFAULT_CONFIRMATION_STATUS = { wasInteracted: false, confirmationStatus: true } as const;
+
+export const selectCurrentThreadId = (state: RootState) => state.chat.current_thread_id;
+export const selectOpenThreadIds = (state: RootState) => state.chat.open_thread_ids;
+export const selectAllThreads = (state: RootState) => state.chat.threads;
+
+export const selectRuntimeById = (state: RootState, chatId: string): ChatThreadRuntime | null =>
+  state.chat.threads[chatId] ?? null;
+
+export const selectCurrentRuntime = (state: RootState): ChatThreadRuntime | null =>
+  state.chat.threads[state.chat.current_thread_id] ?? null;
+
+export const selectThreadById = (state: RootState, chatId: string) =>
+  state.chat.threads[chatId]?.thread ?? null;
+
+export const selectThread = (state: RootState) =>
+  state.chat.threads[state.chat.current_thread_id]?.thread ?? null;
+
+export const selectThreadTitle = (state: RootState) =>
+  state.chat.threads[state.chat.current_thread_id]?.thread.title;
+
+export const selectChatId = (state: RootState) =>
+  state.chat.current_thread_id;
+
+export const selectModel = (state: RootState) =>
+  state.chat.threads[state.chat.current_thread_id]?.thread.model ?? "";
+
+export const selectMessages = (state: RootState) =>
+  state.chat.threads[state.chat.current_thread_id]?.thread.messages ?? EMPTY_MESSAGES;
+
+export const selectMessagesById = (state: RootState, chatId: string) =>
+  state.chat.threads[chatId]?.thread.messages ?? EMPTY_MESSAGES;
+
 export const selectToolUse = (state: RootState) => state.chat.tool_use;
+
 export const selectThreadToolUse = (state: RootState) =>
-  state.chat.thread.tool_use;
+  state.chat.threads[state.chat.current_thread_id]?.thread.tool_use;
+
 export const selectAutomaticPatch = (state: RootState) =>
-  state.chat.thread.automatic_patch;
+  state.chat.threads[state.chat.current_thread_id]?.thread.automatic_patch;
 
 export const selectCheckpointsEnabled = (state: RootState) =>
   state.chat.checkpoints_enabled;
 
 export const selectThreadBoostReasoning = (state: RootState) =>
-  state.chat.thread.boost_reasoning;
+  state.chat.threads[state.chat.current_thread_id]?.thread.boost_reasoning;
 
 export const selectIncludeProjectInfo = (state: RootState) =>
-  state.chat.thread.include_project_info;
+  state.chat.threads[state.chat.current_thread_id]?.thread.include_project_info;
 
 export const selectContextTokensCap = (state: RootState) =>
-  state.chat.thread.context_tokens_cap;
+  state.chat.threads[state.chat.current_thread_id]?.thread.context_tokens_cap;
 
-// TBD: only used when `/links` suggests a new chat.
 export const selectThreadNewChatSuggested = (state: RootState) =>
-  state.chat.thread.new_chat_suggested;
+  state.chat.threads[state.chat.current_thread_id]?.thread.new_chat_suggested ?? DEFAULT_NEW_CHAT_SUGGESTED;
+
 export const selectThreadMaximumTokens = (state: RootState) =>
-  state.chat.thread.currentMaximumContextTokens;
+  state.chat.threads[state.chat.current_thread_id]?.thread.currentMaximumContextTokens;
+
 export const selectThreadCurrentMessageTokens = (state: RootState) =>
-  state.chat.thread.currentMessageContextTokens;
+  state.chat.threads[state.chat.current_thread_id]?.thread.currentMessageContextTokens;
+
 export const selectIsWaiting = (state: RootState) =>
-  state.chat.waiting_for_response;
+  state.chat.threads[state.chat.current_thread_id]?.waiting_for_response ?? false;
+
+export const selectIsWaitingById = (state: RootState, chatId: string) =>
+  state.chat.threads[chatId]?.waiting_for_response ?? false;
+
 export const selectAreFollowUpsEnabled = (state: RootState) =>
   state.chat.follow_ups_enabled;
-export const selectIsTitleGenerationEnabled = (state: RootState) =>
-  state.chat.title_generation_enabled;
+
 export const selectUseCompression = (state: RootState) =>
   state.chat.use_compression;
-export const selectIsStreaming = (state: RootState) => state.chat.streaming;
-export const selectPreventSend = (state: RootState) => state.chat.prevent_send;
-export const selectChatError = (state: RootState) => state.chat.error;
+
+export const selectIsStreaming = (state: RootState) =>
+  state.chat.threads[state.chat.current_thread_id]?.streaming ?? false;
+
+export const selectIsStreamingById = (state: RootState, chatId: string) =>
+  state.chat.threads[chatId]?.streaming ?? false;
+
+export const selectPreventSend = (state: RootState) =>
+  state.chat.threads[state.chat.current_thread_id]?.prevent_send ?? false;
+
+export const selectPreventSendById = (state: RootState, chatId: string) =>
+  state.chat.threads[chatId]?.prevent_send ?? false;
+
+export const selectChatError = (state: RootState) =>
+  state.chat.threads[state.chat.current_thread_id]?.error ?? null;
+
+export const selectChatErrorById = (state: RootState, chatId: string) =>
+  state.chat.threads[chatId]?.error ?? null;
+
 export const selectSendImmediately = (state: RootState) =>
-  state.chat.send_immediately;
+  state.chat.threads[state.chat.current_thread_id]?.send_immediately ?? false;
+
 export const getSelectedSystemPrompt = (state: RootState) =>
   state.chat.system_prompt;
 
+export const selectAnyThreadStreaming = createSelector(
+  [selectAllThreads],
+  (threads) => Object.values(threads).some((rt) => rt.streaming),
+);
+
+export const selectStreamingThreadIds = createSelector(
+  [selectAllThreads],
+  (threads) =>
+    Object.entries(threads)
+      .filter(([, rt]) => rt.streaming)
+      .map(([id]) => id),
+);
+
 export const toolMessagesSelector = createSelector(
   selectMessages,
-  (messages) => {
-    return messages.filter(isToolMessage);
-  },
+  (messages) => messages.filter(isToolMessage),
 );
 
 export const selectToolResultById = createSelector(
   [toolMessagesSelector, (_, id?: string) => id],
-  (messages, id) => {
-    return messages.find((message) => message.content.tool_call_id === id)
-      ?.content;
-  },
+  (messages, id) =>
+    messages.find((message) => message.content.tool_call_id === id)?.content,
 );
 
 export const selectManyToolResultsByIds = (ids: string[]) =>
-  createSelector(toolMessagesSelector, (messages) => {
-    return messages
+  createSelector(toolMessagesSelector, (messages) =>
+    messages
       .filter((message) => ids.includes(message.content.tool_call_id))
-      .map((toolMessage) => toolMessage.content);
-  });
+      .map((toolMessage) => toolMessage.content),
+  );
 
 const selectDiffMessages = createSelector(selectMessages, (messages) =>
   messages.filter(isDiffMessage),
@@ -83,27 +157,25 @@ const selectDiffMessages = createSelector(selectMessages, (messages) =>
 
 export const selectDiffMessageById = createSelector(
   [selectDiffMessages, (_, id?: string) => id],
-  (messages, id) => {
-    return messages.find((message) => message.tool_call_id === id);
-  },
+  (messages, id) => messages.find((message) => message.tool_call_id === id),
 );
 
 export const selectManyDiffMessageByIds = (ids: string[]) =>
-  createSelector(selectDiffMessages, (diffs) => {
-    return diffs.filter((message) => ids.includes(message.tool_call_id));
-  });
+  createSelector(selectDiffMessages, (diffs) =>
+    diffs.filter((message) => ids.includes(message.tool_call_id)),
+  );
 
 export const getSelectedToolUse = (state: RootState) =>
-  state.chat.thread.tool_use;
+  state.chat.threads[state.chat.current_thread_id]?.thread.tool_use;
 
 export const selectIntegration = createSelector(
   selectThread,
-  (thread) => thread.integration,
+  (thread) => thread?.integration,
 );
 
 export const selectThreadMode = createSelector(
   selectThread,
-  (thread) => thread.mode,
+  (thread) => thread?.mode,
 );
 
 export const selectLastSentCompression = createSelector(
@@ -121,13 +193,12 @@ export const selectLastSentCompression = createSelector(
       },
       null,
     );
-
     return lastCompression;
   },
 );
 
 export const selectQueuedMessages = (state: RootState) =>
-  state.chat.queued_messages;
+  state.chat.threads[state.chat.current_thread_id]?.queued_messages ?? EMPTY_QUEUED;
 
 export const selectQueuedMessagesCount = createSelector(
   selectQueuedMessages,
@@ -139,40 +210,58 @@ export const selectHasQueuedMessages = createSelector(
   (queued) => queued.length > 0,
 );
 
+function hasUncalledToolsInMessages(messages: ReturnType<typeof selectMessages>): boolean {
+  if (messages.length === 0) return false;
+  const tailMessages = takeFromLast(messages, isUserMessage);
+
+  const toolCalls = tailMessages.reduce<string[]>((acc, cur) => {
+    if (!isAssistantMessage(cur)) return acc;
+    if (!cur.tool_calls || cur.tool_calls.length === 0) return acc;
+    const curToolCallIds = cur.tool_calls
+      .map((toolCall) => toolCall.id)
+      .filter((id) => id !== undefined);
+    return [...acc, ...curToolCallIds];
+  }, []);
+
+  if (toolCalls.length === 0) return false;
+
+  const toolMessages = tailMessages
+    .map((msg) => {
+      if (isToolMessage(msg)) return msg.content.tool_call_id;
+      if ("tool_call_id" in msg && typeof msg.tool_call_id === "string")
+        return msg.tool_call_id;
+      return undefined;
+    })
+    .filter((id): id is string => typeof id === "string");
+
+  return toolCalls.some((toolCallId) => !toolMessages.includes(toolCallId));
+}
+
+export const selectHasUncalledToolsById = (state: RootState, chatId: string): boolean =>
+  hasUncalledToolsInMessages(selectMessagesById(state, chatId));
+
 export const selectHasUncalledTools = createSelector(
   selectMessages,
-  (messages) => {
-    if (messages.length === 0) return false;
-    const tailMessages = takeFromLast(messages, isUserMessage);
-
-    const toolCalls = tailMessages.reduce<string[]>((acc, cur) => {
-      if (!isAssistantMessage(cur)) return acc;
-      if (!cur.tool_calls || cur.tool_calls.length === 0) return acc;
-      const curToolCallIds = cur.tool_calls
-        .map((toolCall) => toolCall.id)
-        .filter((id) => id !== undefined);
-
-      return [...acc, ...curToolCallIds];
-    }, []);
-
-    if (toolCalls.length === 0) return false;
-
-    const toolMessages = tailMessages
-      .map((msg) => {
-        if (isToolMessage(msg)) {
-          return msg.content.tool_call_id;
-        }
-        if ("tool_call_id" in msg && typeof msg.tool_call_id === "string") {
-          return msg.tool_call_id;
-        }
-        return undefined;
-      })
-      .filter((id): id is string => typeof id === "string");
-
-    const hasUnsentTools = toolCalls.some(
-      (toolCallId) => !toolMessages.includes(toolCallId),
-    );
-
-    return hasUnsentTools;
-  },
+  hasUncalledToolsInMessages,
 );
+
+export const selectThreadConfirmation = (state: RootState) =>
+  state.chat.threads[state.chat.current_thread_id]?.confirmation ?? DEFAULT_CONFIRMATION;
+
+export const selectThreadConfirmationById = (state: RootState, chatId: string) =>
+  state.chat.threads[chatId]?.confirmation ?? DEFAULT_CONFIRMATION;
+
+export const selectThreadPauseReasons = (state: RootState) =>
+  state.chat.threads[state.chat.current_thread_id]?.confirmation.pause_reasons ?? EMPTY_PAUSE_REASONS;
+
+export const selectThreadPause = (state: RootState) =>
+  state.chat.threads[state.chat.current_thread_id]?.confirmation.pause ?? false;
+
+export const selectThreadConfirmationStatus = (state: RootState) =>
+  state.chat.threads[state.chat.current_thread_id]?.confirmation.status ?? DEFAULT_CONFIRMATION_STATUS;
+
+export const selectThreadImages = (state: RootState) =>
+  state.chat.threads[state.chat.current_thread_id]?.attached_images ?? EMPTY_IMAGES;
+
+export const selectThreadImagesById = (state: RootState, chatId: string) =>
+  state.chat.threads[chatId]?.attached_images ?? EMPTY_IMAGES;

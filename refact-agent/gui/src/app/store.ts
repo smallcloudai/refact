@@ -25,6 +25,7 @@ import {
   providersApi,
   modelsApi,
   teamsApi,
+  trajectoriesApi,
 } from "../services/refact";
 import { smallCloudApi } from "../services/smallcloud";
 import { reducer as fimReducer } from "../features/FIM/reducer";
@@ -44,8 +45,6 @@ import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
 import { informationSlice } from "../features/Errors/informationSlice";
-import { confirmationSlice } from "../features/ToolConfirmation/confirmationSlice";
-import { attachedImagesSlice } from "../features/AttachedImages";
 import { teamsSlice } from "../features/Teams";
 import { userSurveySlice } from "../features/UserSurvey/userSurveySlice";
 import { linksApi } from "../services/refact/links";
@@ -95,6 +94,7 @@ const rootReducer = combineSlices(
     [teamsApi.reducerPath]: teamsApi.reducer,
     [providersApi.reducerPath]: providersApi.reducer,
     [modelsApi.reducerPath]: modelsApi.reducer,
+    [trajectoriesApi.reducerPath]: trajectoriesApi.reducer,
   },
   historySlice,
   errorSlice,
@@ -102,8 +102,6 @@ const rootReducer = combineSlices(
   pagesSlice,
   integrationsApi,
   dockerApi,
-  confirmationSlice,
-  attachedImagesSlice,
   userSurveySlice,
   teamsSlice,
   integrationsSlice,
@@ -115,7 +113,7 @@ const rootReducer = combineSlices(
 const rootPersistConfig = {
   key: "root",
   storage: storage(),
-  whitelist: [historySlice.reducerPath, "tour", userSurveySlice.reducerPath],
+  whitelist: ["tour", userSurveySlice.reducerPath],
   stateReconciler: mergeInitialState,
 };
 
@@ -179,6 +177,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
             providersApi.middleware,
             modelsApi.middleware,
             teamsApi.middleware,
+            trajectoriesApi.middleware,
           )
           .prepend(historyMiddleware.middleware)
           // .prepend(errorMiddleware.middleware)

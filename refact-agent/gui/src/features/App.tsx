@@ -8,6 +8,7 @@ import {
   useConfig,
   useEffectOnce,
   useEventsBusForIDE,
+  useTrajectoriesSubscription,
 } from "../hooks";
 import { FIMDebug } from "./FIM";
 import { store, persistor, RootState } from "../app/store";
@@ -70,6 +71,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   useEventBusForWeb();
   useEventBusForApp();
   usePatchesAndDiffsEventsForIDE();
+  useTrajectoriesSubscription();
 
   const [isPaddingApplied, setIsPaddingApplied] = useState<boolean>(false);
 

@@ -19,7 +19,7 @@ export const HistoryItem: React.FC<{
 }> = ({ historyItem, onClick, onDelete, onOpenInTab, disabled }) => {
   const dateCreated = new Date(historyItem.createdAt);
   const dateTimeString = dateCreated.toLocaleString();
-  const cache = useAppSelector((app) => app.chat.cache);
+  const threads = useAppSelector((app) => app.chat.threads);
 
   const totalCost = useMemo(() => {
     const totals = getTotalCostMeteringForMessages(historyItem.messages);
@@ -34,7 +34,9 @@ export const HistoryItem: React.FC<{
     );
   }, [historyItem.messages]);
 
-  const isStreaming = historyItem.id in cache;
+  const isStreaming = threads[historyItem.id]?.streaming ?? false;
+  const isWaiting = threads[historyItem.id]?.waiting_for_response ?? false;
+  const isBusy = isStreaming || isWaiting;
   return (
     <Box style={{ position: "relative", width: "100%" }}>
       <Card
@@ -56,9 +58,9 @@ export const HistoryItem: React.FC<{
             onClick();
           }}
         >
-          <Flex gap="2px" align="center">
-            {isStreaming && <Spinner style={{ minWidth: 16, minHeight: 16 }} />}
-            {!isStreaming && historyItem.read === false && (
+          <Flex gap="1" align="center">
+            {isBusy && <Spinner style={{ minWidth: 16, minHeight: 16 }} />}
+            {!isBusy && historyItem.read === false && (
               <DotFilledIcon style={{ minWidth: 16, minHeight: 16 }} />
             )}
             <Text

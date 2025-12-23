@@ -1,5 +1,4 @@
-import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
-import { Box, Card, Flex, HoverCard, Tabs, Text } from "@radix-ui/themes";
+import { Card, Flex, HoverCard, Text, Box } from "@radix-ui/themes";
 import classNames from "classnames";
 import React, { useMemo, useState } from "react";
 
@@ -7,10 +6,10 @@ import { calculateUsageInputTokens } from "../../utils/calculateUsageInputTokens
 import { ScrollArea } from "../ScrollArea";
 import { useUsageCounter } from "./useUsageCounter";
 
-import { selectAllImages } from "../../features/AttachedImages";
 import {
   selectThreadCurrentMessageTokens,
   selectThreadMaximumTokens,
+  selectThreadImages,
 } from "../../features/Chat";
 import { formatNumberToFixed } from "../../utils/formatNumberToFixed";
 import {
@@ -22,7 +21,57 @@ import {
 
 import styles from "./UsageCounter.module.css";
 import { Coin } from "../../images";
-import { CompressionStrength, Usage } from "../../services/refact";
+
+type CircularProgressProps = {
+  value: number;
+  max: number;
+  size?: number;
+  strokeWidth?: number;
+};
+
+const CircularProgress: React.FC<CircularProgressProps> = ({
+  value,
+  max,
+  size = 20,
+  strokeWidth = 3,
+}) => {
+  const percentage = max > 0 ? Math.min((value / max) * 100, 100) : 0;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  const isWarning = percentage >= 70 && percentage < 90;
+  const isOverflown = percentage >= 90;
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      className={styles.circularProgress}
+    >
+      <circle
+        className={styles.circularProgressBg}
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        strokeWidth={strokeWidth}
+      />
+      <circle
+        className={classNames(styles.circularProgressFill, {
+          [styles.circularProgressFillWarning]: isWarning,
+          [styles.circularProgressFillOverflown]: isOverflown,
+        })}
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        strokeWidth={strokeWidth}
+        strokeDasharray={circumference}
+        strokeDashoffset={strokeDashoffset}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+};
 
 type UsageCounterProps =
   | {
@@ -46,51 +95,6 @@ const TokenDisplay: React.FC<{ label: string; value: number }> = ({
   </Flex>
 );
 
-const TokensDisplay: React.FC<{
-  currentThreadUsage?: Usage | null;
-  inputTokens: number;
-  outputTokens: number;
-}> = ({ currentThreadUsage, inputTokens, outputTokens }) => {
-  if (!currentThreadUsage) return;
-  const {
-    cache_read_input_tokens,
-    cache_creation_input_tokens,
-    completion_tokens_details,
-    prompt_tokens,
-  } = currentThreadUsage;
-
-  return (
-    <Flex direction="column" align="start" gap="2">
-      <Text size="2" mb="2">
-        Tokens spent per chat thread:
-      </Text>
-      <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
-
-      <TokenDisplay label="Prompt tokens" value={prompt_tokens} />
-
-      {cache_read_input_tokens !== undefined && (
-        <TokenDisplay
-          label="Cache read input tokens"
-          value={cache_read_input_tokens}
-        />
-      )}
-      {cache_creation_input_tokens !== undefined && (
-        <TokenDisplay
-          label="Cache creation input tokens"
-          value={cache_creation_input_tokens}
-        />
-      )}
-      <TokenDisplay label="Completion tokens" value={outputTokens} />
-      {completion_tokens_details?.reasoning_tokens !== null && (
-        <TokenDisplay
-          label="Reasoning tokens"
-          value={completion_tokens_details?.reasoning_tokens ?? 0}
-        />
-      )}
-    </Flex>
-  );
-};
-
 const CoinDisplay: React.FC<{ label: React.ReactNode; value: number }> = ({
   label,
   value,
@@ -105,40 +109,6 @@ const CoinDisplay: React.FC<{ label: React.ReactNode; value: number }> = ({
           {Math.round(value)} <Coin width="12px" height="12px" />
         </Flex>
       </Text>
-    </Flex>
-  );
-};
-
-const CoinsDisplay: React.FC<{
-  total: number;
-  prompt?: number;
-  generated?: number;
-  cacheRead?: number;
-  cacheCreation?: number;
-}> = ({ total, prompt, generated, cacheRead, cacheCreation }) => {
-  return (
-    <Flex direction="column" align="start" gap="2">
-      <Flex align="center" justify="between" width="100%" gap="4" mb="2">
-        <Text size="2">Coins spent</Text>
-        <Text size="2">
-          <Flex align="center" gap="2">
-            {Math.round(total)} <Coin width="15px" height="15px" />
-          </Flex>
-        </Text>
-      </Flex>
-
-      {prompt && <CoinDisplay label="Prompt" value={prompt} />}
-
-      {generated !== undefined && (
-        <CoinDisplay label="Completion" value={generated} />
-      )}
-
-      {cacheRead !== undefined && (
-        <CoinDisplay label="Prompt cache read" value={cacheRead} />
-      )}
-      {cacheCreation !== undefined && (
-        <CoinDisplay label="Prompt cache creation" value={cacheCreation} />
-      )}
     </Flex>
   );
 };
@@ -165,109 +135,6 @@ const InlineHoverCard: React.FC<{ messageTokens: number }> = ({
   );
 };
 
-const DefaultHoverCard: React.FC<{
-  inputTokens: number;
-  outputTokens: number;
-}> = ({ inputTokens, outputTokens }) => {
-  const cost = useTotalCostForChat();
-  const meteringTokens = useTotalTokenMeteringForChat();
-  const { currentThreadUsage } = useUsageCounter();
-  const total = useMemo(() => {
-    return (
-      (cost?.metering_coins_prompt ?? 0) +
-      (cost?.metering_coins_generated ?? 0) +
-      (cost?.metering_coins_cache_creation ?? 0) +
-      (cost?.metering_coins_cache_read ?? 0)
-    );
-  }, [cost]);
-  const totalMetering = useMemo(() => {
-    if (meteringTokens === null) return null;
-    return Object.values(meteringTokens).reduce<number>(
-      (acc, cur) => acc + cur,
-      0,
-    );
-  }, [meteringTokens]);
-
-  const tabsOptions = useMemo(() => {
-    const options = [];
-    if (total > 0) {
-      options.push({
-        value: "coins",
-        label: "Coins",
-      });
-    }
-    options.push({
-      value: "tokens",
-      label: "Tokens",
-    });
-    return options;
-  }, [total]);
-
-  const renderContent = (optionValue: string) => {
-    if (optionValue === "tokens" && meteringTokens && totalMetering !== null) {
-      const usage: Usage = {
-        prompt_tokens: meteringTokens.metering_prompt_tokens_n,
-        total_tokens: totalMetering,
-        cache_creation_input_tokens:
-          meteringTokens.metering_cache_creation_tokens_n,
-        cache_read_input_tokens: meteringTokens.metering_cache_read_tokens_n,
-        completion_tokens: meteringTokens.metering_generated_tokens_n,
-      };
-      return (
-        <TokensDisplay
-          currentThreadUsage={usage}
-          inputTokens={
-            meteringTokens.metering_prompt_tokens_n +
-            meteringTokens.metering_cache_read_tokens_n +
-            meteringTokens.metering_cache_creation_tokens_n
-          }
-          outputTokens={meteringTokens.metering_generated_tokens_n}
-        />
-      );
-    } else if (optionValue === "tokens") {
-      return (
-        <TokensDisplay
-          currentThreadUsage={currentThreadUsage}
-          inputTokens={inputTokens}
-          outputTokens={outputTokens}
-        />
-      );
-    }
-    return (
-      <CoinsDisplay
-        total={total}
-        prompt={cost?.metering_coins_prompt}
-        generated={cost?.metering_coins_generated}
-        cacheRead={cost?.metering_coins_cache_read}
-        cacheCreation={cost?.metering_coins_cache_creation}
-      />
-    );
-  };
-
-  if (tabsOptions.length === 1) {
-    return <Box pt="3">{renderContent(tabsOptions[0].value)}</Box>;
-  }
-
-  return (
-    <Tabs.Root defaultValue={tabsOptions[0].value}>
-      <Tabs.List size="1">
-        {tabsOptions.map((option) => (
-          <Tabs.Trigger value={option.value} key={option.value}>
-            {option.label}
-          </Tabs.Trigger>
-        ))}
-      </Tabs.List>
-      <Box pt="3">
-        {tabsOptions.map((option) => (
-          <Tabs.Content value={option.value} key={option.value}>
-            {renderContent(option.value)}
-          </Tabs.Content>
-        ))}
-      </Box>
-    </Tabs.Root>
-  );
-};
-
 const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
   messageTokens,
 }) => {
@@ -281,87 +148,140 @@ const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
   );
 };
 
-const formatCompressionStage = (
-  strength: CompressionStrength | null | undefined,
-): string | null => {
-  switch (strength) {
-    case "low":
-      return "1/3";
-    case "medium":
-      return "2/3";
-    case "high":
-      return "3/3";
-    case "absent":
-    default:
-      return null;
-  }
+const CoinsHoverContent: React.FC<{
+  totalCoins: number;
+  prompt?: number;
+  generated?: number;
+  cacheRead?: number;
+  cacheCreation?: number;
+}> = ({ totalCoins, prompt, generated, cacheRead, cacheCreation }) => {
+  return (
+    <Flex direction="column" gap="2" p="1">
+      <Flex align="center" justify="between" width="100%" gap="4">
+        <Text size="2" weight="bold">Total coins</Text>
+        <Text size="2">
+          <Flex align="center" gap="2">
+            {Math.round(totalCoins)} <Coin width="14px" height="14px" />
+          </Flex>
+        </Text>
+      </Flex>
+      {prompt !== undefined && prompt > 0 && (
+        <CoinDisplay label="Prompt" value={prompt} />
+      )}
+      {generated !== undefined && generated > 0 && (
+        <CoinDisplay label="Completion" value={generated} />
+      )}
+      {cacheRead !== undefined && cacheRead > 0 && (
+        <CoinDisplay label="Cache read" value={cacheRead} />
+      )}
+      {cacheCreation !== undefined && cacheCreation > 0 && (
+        <CoinDisplay label="Cache creation" value={cacheCreation} />
+      )}
+    </Flex>
+  );
+};
+
+const TokensHoverContent: React.FC<{
+  currentSessionTokens: number;
+  maxContextTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+}> = ({ currentSessionTokens, maxContextTokens, inputTokens, outputTokens }) => {
+  const percentage = maxContextTokens > 0
+    ? Math.round((currentSessionTokens / maxContextTokens) * 100)
+    : 0;
+
+  return (
+    <Flex direction="column" gap="2" p="1">
+      <Flex align="center" justify="between" width="100%" gap="4">
+        <Text size="2" weight="bold">Context usage</Text>
+        <Text size="2">{percentage}%</Text>
+      </Flex>
+      <TokenDisplay label="Current" value={currentSessionTokens} />
+      <TokenDisplay label="Maximum" value={maxContextTokens} />
+      {(inputTokens > 0 || outputTokens > 0) && (
+        <>
+          <Box my="1" style={{ borderTop: "1px solid var(--gray-a6)" }} />
+          <Text size="1" weight="bold" color="gray">Total tokens</Text>
+          {inputTokens > 0 && <TokenDisplay label="Input" value={inputTokens} />}
+          {outputTokens > 0 && <TokenDisplay label="Output" value={outputTokens} />}
+        </>
+      )}
+    </Flex>
+  );
 };
 
 const DefaultHoverTriggerContent: React.FC<{
+  currentSessionTokens: number;
+  maxContextTokens: number;
+  totalCoins?: number;
   inputTokens: number;
   outputTokens: number;
-  currentSessionTokens: number;
-  compressionStrength?: CompressionStrength | null;
-  totalCoins?: number;
+  coinsPrompt?: number;
+  coinsGenerated?: number;
+  coinsCacheRead?: number;
+  coinsCacheCreation?: number;
 }> = ({
+  currentSessionTokens,
+  maxContextTokens,
+  totalCoins,
   inputTokens,
   outputTokens,
-  currentSessionTokens,
-  compressionStrength,
-  totalCoins,
+  coinsPrompt,
+  coinsGenerated,
+  coinsCacheRead,
+  coinsCacheCreation,
 }) => {
-  const compressionLabel = formatCompressionStage(compressionStrength);
-  const hasCoinsOrContext =
+  const hasContent =
     (totalCoins !== undefined && totalCoins > 0) || currentSessionTokens !== 0;
-  const hasInputOutput = inputTokens !== 0 || outputTokens !== 0;
+
+  if (!hasContent) return null;
 
   return (
-    <Flex direction="column" align="end" gap="1">
-      {hasCoinsOrContext && (
-        <Flex align="center" gap="2">
-          {totalCoins !== undefined && totalCoins > 0 && (
-            <Flex align="center" gap="1" title="Total coins spent">
+    <Flex align="center" gap="3">
+      {totalCoins !== undefined && totalCoins > 0 && (
+        <HoverCard.Root>
+          <HoverCard.Trigger>
+            <Flex align="center" gap="1" style={{ cursor: "default" }}>
               <Text size="1">{Math.round(totalCoins)}</Text>
               <Coin width="12px" height="12px" />
             </Flex>
-          )}
-          {currentSessionTokens !== 0 && (
-            <Text size="1" color="gray" title="Current context window usage">
-              ctx: {formatNumberToFixed(currentSessionTokens)}
-            </Text>
-          )}
-          {compressionLabel && (
-            <Text
-              size="1"
-              color={
-                compressionStrength === "high"
-                  ? "red"
-                  : compressionStrength === "medium"
-                    ? "yellow"
-                    : "gray"
-              }
-              title="Compression stage"
-            >
-              ⚡{compressionLabel}
-            </Text>
-          )}
-        </Flex>
+          </HoverCard.Trigger>
+          <HoverCard.Content size="1" side="top" align="center">
+            <CoinsHoverContent
+              totalCoins={totalCoins}
+              prompt={coinsPrompt}
+              generated={coinsGenerated}
+              cacheRead={coinsCacheRead}
+              cacheCreation={coinsCacheCreation}
+            />
+          </HoverCard.Content>
+        </HoverCard.Root>
       )}
-      {hasInputOutput && (
-        <Flex align="center" gap="2" title="Total tokens: input ↑ / output ↓">
-          {inputTokens !== 0 && (
-            <Flex align="center">
-              <ArrowUpIcon width="12" height="12" />
-              <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
+      {currentSessionTokens !== 0 && maxContextTokens > 0 && (
+        <HoverCard.Root>
+          <HoverCard.Trigger>
+            <Flex align="center" gap="1" style={{ cursor: "default" }}>
+              <CircularProgress
+                value={currentSessionTokens}
+                max={maxContextTokens}
+                size={18}
+                strokeWidth={2.5}
+              />
+              <Text size="1" color="gray">
+                {formatNumberToFixed(currentSessionTokens)}
+              </Text>
             </Flex>
-          )}
-          {outputTokens !== 0 && (
-            <Flex align="center">
-              <ArrowDownIcon width="12" height="12" />
-              <Text size="1">{formatNumberToFixed(outputTokens)}</Text>
-            </Flex>
-          )}
-        </Flex>
+          </HoverCard.Trigger>
+          <HoverCard.Content size="1" side="top" align="center">
+            <TokensHoverContent
+              currentSessionTokens={currentSessionTokens}
+              maxContextTokens={maxContextTokens}
+              inputTokens={inputTokens}
+              outputTokens={outputTokens}
+            />
+          </HoverCard.Content>
+        </HoverCard.Root>
       )}
     </Flex>
   );
@@ -372,12 +292,11 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
   isMessageEmpty,
 }) => {
   const [open, setOpen] = useState(false);
-  const maybeAttachedImages = useAppSelector(selectAllImages);
+  const maybeAttachedImages = useAppSelector(selectThreadImages);
   const {
     currentThreadUsage,
     isOverflown,
     isWarning,
-    compressionStrength,
     currentSessionTokens,
   } = useUsageCounter();
   const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
@@ -433,9 +352,14 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
     return outputMeteringTokens ?? outputUsageTokens;
   }, [outputMeteringTokens, outputUsageTokens]);
 
+  const maxContextTokens = useAppSelector(selectThreadMaximumTokens) ?? 0;
+
   const shouldUsageBeHidden = useMemo(() => {
-    return !isInline && inputTokens === 0 && outputTokens === 0;
-  }, [outputTokens, inputTokens, isInline]);
+    if (isInline) return false;
+    const hasCoins = totalCoins > 0;
+    const hasContext = currentSessionTokens > 0;
+    return !hasCoins && !hasContext;
+  }, [totalCoins, currentSessionTokens, isInline]);
 
   useEffectOnce(() => {
     const handleScroll = (event: WheelEvent) => {
@@ -455,6 +379,32 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
 
   if (shouldUsageBeHidden) return null;
 
+  // For non-inline (panel) usage, render borderless with individual hovercards
+  if (!isInline) {
+    return (
+      <Flex
+        align="center"
+        className={classNames(styles.usageCounterContainer, styles.usageCounterBorderless, {
+          [styles.isWarning]: isWarning,
+          [styles.isOverflown]: isOverflown,
+        })}
+      >
+        <DefaultHoverTriggerContent
+          currentSessionTokens={currentSessionTokens}
+          maxContextTokens={maxContextTokens}
+          totalCoins={totalCoins}
+          inputTokens={inputTokens}
+          outputTokens={outputTokens}
+          coinsPrompt={cost?.metering_coins_prompt}
+          coinsGenerated={cost?.metering_coins_generated}
+          coinsCacheRead={cost?.metering_coins_cache_read}
+          coinsCacheCreation={cost?.metering_coins_cache_creation}
+        />
+      </Flex>
+    );
+  }
+
+  // For inline usage (chat form), keep the HoverCard with detailed info
   return (
     <HoverCard.Root open={open} onOpenChange={setOpen}>
       <HoverCard.Trigger>
@@ -465,17 +415,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
             [styles.isOverflown]: isOverflown,
           })}
         >
-          {isInline ? (
-            <InlineHoverTriggerContent messageTokens={messageTokens} />
-          ) : (
-            <DefaultHoverTriggerContent
-              inputTokens={inputTokens}
-              outputTokens={outputTokens}
-              currentSessionTokens={currentSessionTokens}
-              compressionStrength={compressionStrength}
-              totalCoins={totalCoins}
-            />
-          )}
+          <InlineHoverTriggerContent messageTokens={messageTokens} />
         </Card>
       </HoverCard.Trigger>
       <ScrollArea scrollbars="both" asChild>
@@ -485,18 +425,11 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           maxWidth="90vw"
           minWidth="300px"
           avoidCollisions
-          align={isInline ? "center" : "end"}
+          align="center"
           side="top"
           hideWhenDetached
         >
-          {isInline ? (
-            <InlineHoverCard messageTokens={messageTokens} />
-          ) : (
-            <DefaultHoverCard
-              inputTokens={inputTokens}
-              outputTokens={outputTokens}
-            />
-          )}
+          <InlineHoverCard messageTokens={messageTokens} />
         </HoverCard.Content>
       </ScrollArea>
     </HoverCard.Root>

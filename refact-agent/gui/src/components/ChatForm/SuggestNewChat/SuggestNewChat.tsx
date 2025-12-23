@@ -3,7 +3,6 @@ import { ArchiveIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import classNames from "classnames";
 
-import { clearPauseReasonsAndHandleToolsStatus } from "../../../features/ToolConfirmation/confirmationSlice";
 import {
   useAppDispatch,
   useAppSelector,
@@ -17,6 +16,8 @@ import {
   newChatAction,
   selectChatId,
   setIsNewChatSuggestionRejected,
+  clearThreadPauseReasons,
+  setThreadConfirmationStatus,
 } from "../../../features/Chat";
 
 import { Link } from "../../Link";
@@ -75,23 +76,17 @@ export const SuggestNewChat = ({
   };
 
   const onCreateNewChat = useCallback(() => {
-    const actions = [
-      newChatAction(),
-      clearPauseReasonsAndHandleToolsStatus({
-        wasInteracted: false,
-        confirmationStatus: true,
-      }),
-      popBackTo({ name: "history" }),
-      push({ name: "chat" }),
-    ];
-
-    actions.forEach((action) => dispatch(action));
+    dispatch(newChatAction());
+    dispatch(clearThreadPauseReasons({ id: chatId }));
+    dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: false, confirmationStatus: true }));
+    dispatch(popBackTo({ name: "history" }));
+    dispatch(push({ name: "chat" }));
     void sendTelemetryEvent({
       scope: `openNewChat`,
       success: true,
       error_message: "",
     });
-  }, [dispatch, sendTelemetryEvent]);
+  }, [dispatch, chatId, sendTelemetryEvent]);
 
   const tipText = useMemo(() => {
     if (isWarning)

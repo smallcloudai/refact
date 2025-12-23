@@ -13,6 +13,8 @@ import {
   noCompletions,
   goodPing,
   goodUser,
+  emptyTrajectories,
+  trajectorySave,
 } from "../../utils/mockServer";
 
 const handlers = [
@@ -23,6 +25,8 @@ const handlers = [
   noCommandPreview,
   noCompletions,
   goodPing,
+  emptyTrajectories,
+  trajectorySave,
 ];
 
 server.use(...handlers);

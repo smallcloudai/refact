@@ -1,19 +1,22 @@
 import { expect, test, describe } from "vitest";
 import { chatReducer } from "./reducer";
-import { chatResponse } from "./actions";
-import { createAction } from "@reduxjs/toolkit";
+import { chatResponse, newChatAction } from "./actions";
 
 describe("Chat Thread Reducer", () => {
   test("streaming should be true on any response", () => {
-    const init = chatReducer(undefined, createAction("noop")());
+    // Create initial empty state and then add a new thread
+    const emptyState = chatReducer(undefined, { type: "@@INIT" });
+    const stateWithThread = chatReducer(emptyState, newChatAction(undefined));
+    const chatId = stateWithThread.current_thread_id;
+
     const msg = chatResponse({
-      id: init.thread.id,
+      id: chatId,
       role: "tool",
       tool_call_id: "test_tool",
       content: "👀",
     });
 
-    const result = chatReducer(init, msg);
-    expect(result.streaming).toEqual(true);
+    const result = chatReducer(stateWithThread, msg);
+    expect(result.threads[chatId]?.streaming).toEqual(true);
   });
 });
