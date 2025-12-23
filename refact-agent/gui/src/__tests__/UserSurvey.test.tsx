@@ -14,6 +14,8 @@ import {
   chatLinks,
   telemetryChat,
   telemetryNetwork,
+  emptyTrajectories,
+  trajectorySave,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 
@@ -66,6 +68,8 @@ describe("Start a new chat", () => {
       chatLinks,
       telemetryChat,
       telemetryNetwork,
+      emptyTrajectories,
+      trajectorySave,
     );
 
     const { user, ...app } = render(<InnerApp />, {

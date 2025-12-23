@@ -8,6 +8,55 @@ import { Provider } from "react-redux";
 import { AppStore, RootState, setUpStore } from "../app/store";
 import { TourProvider } from "../features/Tour";
 import { AbortControllerProvider } from "../contexts/AbortControllers";
+import { v4 as uuidv4 } from "uuid";
+import type { ChatThreadRuntime } from "../features/Chat/Thread/types";
+
+// Helper to create a default thread runtime for tests
+const createTestThreadRuntime = (): ChatThreadRuntime => {
+  return {
+    thread: {
+      id: uuidv4(),
+      messages: [],
+      title: "",
+      model: "",
+      last_user_message_id: "",
+      tool_use: "explore",
+      new_chat_suggested: { wasSuggested: false },
+      boost_reasoning: false,
+      automatic_patch: false,
+      increase_max_tokens: false,
+      include_project_info: true,
+      context_tokens_cap: undefined,
+    },
+    streaming: false,
+    waiting_for_response: false,
+    prevent_send: false,
+    error: null,
+    queued_messages: [],
+    send_immediately: false,
+    attached_images: [],
+    confirmation: {
+      pause: false,
+      pause_reasons: [],
+      status: {
+        wasInteracted: false,
+        confirmationStatus: true,
+      },
+    },
+  };
+};
+
+// Helper to create default chat state with a thread
+export const createDefaultChatState = () => {
+  const runtime = createTestThreadRuntime();
+  return {
+    current_thread_id: runtime.thread.id,
+    open_thread_ids: [runtime.thread.id],
+    threads: { [runtime.thread.id]: runtime },
+    system_prompt: {},
+    tool_use: "explore" as const,
+  };
+};
 
 // This type interface extends the default options for render from RTL, as well
 // as allows the user to specify other things such as initialState, store.
@@ -28,6 +77,8 @@ const customRender = (
     store = setUpStore({
       // @ts-expect-error finished
       tour: { type: "finished", step: 0 },
+      // Provide default chat state with a thread for tests
+      chat: createDefaultChatState(),
       ...preloadedState,
     }),
     ...renderOptions

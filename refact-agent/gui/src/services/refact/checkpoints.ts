@@ -36,8 +36,9 @@ export const checkpointsApi = createApi({
         const port = state.config.lspPort as unknown as number;
         const url = `http://127.0.0.1:${port}${PREVIEW_CHECKPOINTS}`;
 
-        const chat_id = state.chat.thread.id;
-        const mode = state.chat.thread.mode;
+        const runtime = state.chat.threads[state.chat.current_thread_id];
+        const chat_id = runtime?.thread.id ?? "";
+        const mode = runtime?.thread.mode;
 
         const result = await baseQuery({
           url,
@@ -78,8 +79,9 @@ export const checkpointsApi = createApi({
         const port = state.config.lspPort as unknown as number;
         const url = `http://127.0.0.1:${port}${RESTORE_CHECKPOINTS}`;
 
-        const chat_id = state.chat.thread.id;
-        const mode = state.chat.thread.mode;
+        const runtime = state.chat.threads[state.chat.current_thread_id];
+        const chat_id = runtime?.thread.id ?? "";
+        const mode = runtime?.thread.mode;
 
         const result = await baseQuery({
           url,

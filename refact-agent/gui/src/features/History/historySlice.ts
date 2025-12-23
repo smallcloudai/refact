@@ -6,20 +6,19 @@ import {
 import {
   backUpMessages,
   chatAskedQuestion,
-  chatGenerateTitleThunk,
   ChatThread,
   doneStreaming,
   isLspChatMode,
   maybeAppendToolCallResultFromIdeToMessages,
-  removeChatFromCache,
   restoreChat,
   setChatMode,
   SuggestedChat,
 } from "../Chat/Thread";
 import {
-  isAssistantMessage,
-  isChatGetTitleActionPayload,
-  isUserMessage,
+  trajectoriesApi,
+  chatThreadToTrajectoryData,
+  TrajectoryData,
+  trajectoryDataToChatThread,
 } from "../../services/refact";
 import { AppDispatch, RootState } from "../../app/store";
 import { ideToolCallResponse } from "../../hooks/useEventBusForIDE";
@@ -42,17 +41,20 @@ export type HistoryState = Record<string, ChatHistoryItem>;
 const initialState: HistoryState = {};
 
 function getFirstUserContentFromChat(messages: ChatThread["messages"]): string {
-  const message = messages.find(isUserMessage);
+  const message = messages.find(
+    (msg): msg is ChatThread["messages"][number] & { role: "user" } =>
+      msg.role === "user",
+  );
   if (!message) return "New Chat";
   if (typeof message.content === "string") {
-    return message.content.replace(/^\s+/, "");
+    return message.content.replace(/^\s+/, "").slice(0, 100);
   }
 
-  const firstUserInput = message.content.find((message) => {
-    if ("m_type" in message && message.m_type === "text") {
+  const firstUserInput = message.content.find((item) => {
+    if ("m_type" in item && item.m_type === "text") {
       return true;
     }
-    if ("type" in message && message.type === "text") {
+    if ("type" in item && item.type === "text") {
       return true;
     }
     return false;
@@ -65,7 +67,37 @@ function getFirstUserContentFromChat(messages: ChatThread["messages"]): string {
         ? firstUserInput.text
         : "New Chat";
 
-  return text.replace(/^\s+/, "");
+  return text.replace(/^\s+/, "").slice(0, 100);
+}
+
+function chatThreadToHistoryItem(thread: ChatThread): ChatHistoryItem {
+  const now = new Date().toISOString();
+  const updatedMode =
+    thread.mode && !isLspChatMode(thread.mode) ? "AGENT" : thread.mode;
+
+  return {
+    ...thread,
+    // Use thread title if available, otherwise truncated first user message
+    title: thread.title || getFirstUserContentFromChat(thread.messages),
+    createdAt: thread.createdAt ?? now,
+    updatedAt: now,
+    integration: thread.integration,
+    currentMaximumContextTokens: thread.currentMaximumContextTokens,
+    isTitleGenerated: thread.isTitleGenerated,
+    automatic_patch: thread.automatic_patch,
+    mode: updatedMode,
+  };
+}
+
+function trajectoryToHistoryItem(data: TrajectoryData): ChatHistoryItem {
+  const thread = trajectoryDataToChatThread(data);
+  return {
+    ...thread,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+    title: data.title,
+    isTitleGenerated: data.isTitleGenerated,
+  };
 }
 
 export const historySlice = createSlice({
@@ -74,83 +106,52 @@ export const historySlice = createSlice({
   reducers: {
     saveChat: (state, action: PayloadAction<ChatThread>) => {
       if (action.payload.messages.length === 0) return state;
-      const now = new Date().toISOString();
+      const chat = chatThreadToHistoryItem(action.payload);
+      state[chat.id] = chat;
 
-      const updatedMode =
-        action.payload.mode && !isLspChatMode(action.payload.mode)
-          ? "AGENT"
-          : action.payload.mode;
-
-      const chat: ChatHistoryItem = {
-        ...action.payload,
-        title: action.payload.title
-          ? action.payload.title
-          : getFirstUserContentFromChat(action.payload.messages),
-        createdAt: action.payload.createdAt ?? now,
-        updatedAt: now,
-        // TODO: check if this integration may cause any issues
-        integration: action.payload.integration,
-        currentMaximumContextTokens: action.payload.currentMaximumContextTokens,
-        isTitleGenerated: action.payload.isTitleGenerated,
-        automatic_patch: action.payload.automatic_patch,
-        mode: updatedMode,
-      };
-
-      const messageMap = {
-        ...state,
-      };
-      messageMap[chat.id] = chat;
-
-      const messages = Object.values(messageMap);
-      if (messages.length <= 100) {
-        return messageMap;
+      const messages = Object.values(state);
+      if (messages.length > 100) {
+        const sorted = messages.sort((a, b) =>
+          b.updatedAt.localeCompare(a.updatedAt),
+        );
+        return sorted.slice(0, 100).reduce(
+          (acc, c) => ({ ...acc, [c.id]: c }),
+          {},
+        );
       }
-
-      const sortedByLastUpdated = messages
-        .slice(0)
-        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-
-      const newHistory = sortedByLastUpdated.slice(0, 100);
-      const nextState = newHistory.reduce(
-        (acc, chat) => ({ ...acc, [chat.id]: chat }),
-        {},
-      );
-      return nextState;
     },
 
-    setTitleGenerationCompletionForChat: (
-      state,
-      action: PayloadAction<string>,
-    ) => {
-      const chatId = action.payload;
-      state[chatId].isTitleGenerated = true;
+    hydrateHistory: (state, action: PayloadAction<TrajectoryData[]>) => {
+      for (const data of action.payload) {
+        state[data.id] = trajectoryToHistoryItem(data);
+      }
     },
 
     markChatAsUnread: (state, action: PayloadAction<string>) => {
-      const chatId = action.payload;
-      state[chatId].read = false;
+      if (action.payload in state) {
+        state[action.payload].read = false;
+      }
     },
 
     markChatAsRead: (state, action: PayloadAction<string>) => {
-      const chatId = action.payload;
-      state[chatId].read = true;
+      if (action.payload in state) {
+        state[action.payload].read = true;
+      }
     },
 
     deleteChatById: (state, action: PayloadAction<string>) => {
-      return Object.entries(state).reduce<Record<string, ChatHistoryItem>>(
-        (acc, [key, value]) => {
-          if (key === action.payload) return acc;
-          return { ...acc, [key]: value };
-        },
-        {},
-      );
+      delete state[action.payload];
     },
+
     updateChatTitleById: (
       state,
       action: PayloadAction<{ chatId: string; newTitle: string }>,
     ) => {
-      state[action.payload.chatId].title = action.payload.newTitle;
+      if (action.payload.chatId in state) {
+        state[action.payload.chatId].title = action.payload.newTitle;
+      }
     },
+
     clearHistory: () => {
       return {};
     },
@@ -187,17 +188,25 @@ export const historySlice = createSlice({
 
 export const {
   saveChat,
+  hydrateHistory,
   deleteChatById,
   markChatAsUnread,
   markChatAsRead,
-  setTitleGenerationCompletionForChat,
   updateChatTitleById,
   clearHistory,
   upsertToolCallIntoHistory,
 } = historySlice.actions;
 export const { getChatById, getHistory } = historySlice.selectors;
 
-// We could use this or reduce-reducers packages
+async function persistToBackend(
+  dispatch: AppDispatch,
+  thread: ChatThread,
+  existingCreatedAt?: string,
+) {
+  const data = chatThreadToTrajectoryData(thread, existingCreatedAt);
+  dispatch(trajectoriesApi.endpoints.saveTrajectory.initiate(data));
+}
+
 export const historyMiddleware = createListenerMiddleware();
 const startHistoryListening = historyMiddleware.startListening.withTypes<
   RootState,
@@ -208,75 +217,17 @@ startHistoryListening({
   actionCreator: doneStreaming,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
-    const isTitleGenerationEnabled = state.chat.title_generation_enabled;
 
-    const thread =
-      action.payload.id in state.chat.cache
-        ? state.chat.cache[action.payload.id]
-        : state.chat.thread;
+    const runtime = state.chat.threads[action.payload.id];
+    if (!runtime) return;
+    const thread = runtime.thread;
 
-    const lastMessage = thread.messages.slice(-1)[0];
-    const isTitleGenerated = thread.isTitleGenerated;
-    // Checking for reliable chat pause
-    if (
-      thread.messages.length &&
-      isAssistantMessage(lastMessage) &&
-      !lastMessage.tool_calls
-    ) {
-      // Getting user message
-      const firstUserMessage = thread.messages.find(isUserMessage);
-      if (firstUserMessage) {
-        // Checking if chat title is already generated, if not - generating it
-        if (!isTitleGenerated && isTitleGenerationEnabled) {
-          listenerApi
-            .dispatch(
-              chatGenerateTitleThunk({
-                messages: [firstUserMessage],
-                chatId: state.chat.thread.id,
-              }),
-            )
-            .unwrap()
-            .then((response) => {
-              if (isChatGetTitleActionPayload(response)) {
-                if (typeof response.title === "string") {
-                  listenerApi.dispatch(
-                    saveChat({
-                      ...thread,
-                      title: response.title,
-                    }),
-                  );
-                  listenerApi.dispatch(
-                    setTitleGenerationCompletionForChat(thread.id),
-                  );
-                }
-              }
-            })
-            .catch(() => {
-              // TODO: handle error in case if not generated, now returning user message as a title
-              const title = getFirstUserContentFromChat([firstUserMessage]);
-              listenerApi.dispatch(
-                saveChat({
-                  ...thread,
-                  title: title,
-                }),
-              );
-            });
-        }
-      }
-    } else {
-      // Probably chat was paused with uncalled tools
-      listenerApi.dispatch(
-        saveChat({
-          ...thread,
-        }),
-      );
-    }
-    if (state.chat.thread.id === action.payload.id) {
-      listenerApi.dispatch(saveChat(state.chat.thread));
-    } else if (action.payload.id in state.chat.cache) {
-      listenerApi.dispatch(saveChat(state.chat.cache[action.payload.id]));
-      listenerApi.dispatch(removeChatFromCache({ id: action.payload.id }));
-    }
+    const existingChat = state.history[thread.id];
+    const existingCreatedAt = existingChat?.createdAt;
+
+    // Title generation is now handled by the backend
+    listenerApi.dispatch(saveChat(thread));
+    persistToBackend(listenerApi.dispatch, thread, existingCreatedAt);
   },
 });
 
@@ -284,14 +235,18 @@ startHistoryListening({
   actionCreator: backUpMessages,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
-    const thread = state.chat.thread;
-    if (thread.id !== action.payload.id) return;
+    const runtime = state.chat.threads[action.payload.id];
+    if (!runtime) return;
+    const thread = runtime.thread;
+
+    const existingChat = state.history[thread.id];
     const toSave = {
       ...thread,
       messages: action.payload.messages,
       project_name: thread.project_name ?? state.current_project.name,
     };
     listenerApi.dispatch(saveChat(toSave));
+    persistToBackend(listenerApi.dispatch, toSave, existingChat?.createdAt);
   },
 });
 
@@ -306,8 +261,8 @@ startHistoryListening({
   actionCreator: restoreChat,
   effect: (action, listenerApi) => {
     const chat = listenerApi.getState().chat;
-    if (chat.thread.id == action.payload.id && chat.streaming) return;
-    if (action.payload.id in chat.cache) return;
+    const runtime = chat.threads[action.payload.id];
+    if (runtime?.streaming) return;
     listenerApi.dispatch(markChatAsRead(action.payload.id));
   },
 });
@@ -316,12 +271,23 @@ startHistoryListening({
   actionCreator: setChatMode,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
-    const thread = state.chat.thread;
+    const runtime = state.chat.threads[state.chat.current_thread_id];
+    if (!runtime) return;
+    const thread = runtime.thread;
     if (!(thread.id in state.history)) return;
 
+    const existingChat = state.history[thread.id];
     const toSave = { ...thread, mode: action.payload };
     listenerApi.dispatch(saveChat(toSave));
+    persistToBackend(listenerApi.dispatch, toSave, existingChat?.createdAt);
   },
 });
 
-// TODO: add a listener for creating a new chat ?
+startHistoryListening({
+  actionCreator: deleteChatById,
+  effect: (action, listenerApi) => {
+    listenerApi.dispatch(
+      trajectoriesApi.endpoints.deleteTrajectory.initiate(action.payload),
+    );
+  },
+});

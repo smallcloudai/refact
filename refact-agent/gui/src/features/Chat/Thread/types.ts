@@ -1,7 +1,18 @@
-import { Usage } from "../../../services/refact";
+import { ToolConfirmationPauseReason, Usage } from "../../../services/refact";
 import { SystemPrompts } from "../../../services/refact/prompts";
 import { ChatMessages, UserMessage } from "../../../services/refact/types";
 import { parseOrElse } from "../../../utils/parseOrElse";
+
+export type ImageFile = {
+  name: string;
+  content: string | ArrayBuffer | null;
+  type: string;
+};
+
+export type ToolConfirmationStatus = {
+  wasInteracted: boolean;
+  confirmationStatus: boolean;
+};
 
 export type QueuedUserMessage = {
   id: string;
@@ -16,6 +27,7 @@ export type IntegrationMeta = {
   project?: string;
   shouldIntermediatePageShowUp?: boolean;
 };
+
 export type ChatThread = {
   id: string;
   messages: ChatMessages;
@@ -47,22 +59,32 @@ export type SuggestedChat = {
 
 export type ToolUse = "quick" | "explore" | "agent";
 
-export type Chat = {
-  streaming: boolean;
+export type ChatThreadRuntime = {
   thread: ChatThread;
-  error: null | string;
-  prevent_send: boolean;
-  checkpoints_enabled?: boolean;
+  streaming: boolean;
   waiting_for_response: boolean;
-  max_new_tokens?: number;
-  cache: Record<string, ChatThread>;
+  prevent_send: boolean;
+  error: string | null;
+  queued_messages: QueuedUserMessage[];
+  send_immediately: boolean;
+  attached_images: ImageFile[];
+  confirmation: {
+    pause: boolean;
+    pause_reasons: ToolConfirmationPauseReason[];
+    status: ToolConfirmationStatus;
+  };
+};
+
+export type Chat = {
+  current_thread_id: string;
+  open_thread_ids: string[];
+  threads: Record<string, ChatThreadRuntime>;
   system_prompt: SystemPrompts;
   tool_use: ToolUse;
-  send_immediately: boolean;
+  checkpoints_enabled?: boolean;
   follow_ups_enabled?: boolean;
-  title_generation_enabled?: boolean;
   use_compression?: boolean;
-  queued_messages: QueuedUserMessage[];
+  max_new_tokens?: number;
 };
 
 export type PayloadWithId = { id: string };

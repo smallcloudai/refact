@@ -33,10 +33,7 @@ import { telemetryApi } from "../../services/refact/telemetry";
 import { PlaceHolderText } from "./PlaceHolderText";
 import { UsageCounter } from "../UsageCounter";
 import { QueuedMessage } from "./QueuedMessage";
-import {
-  getConfirmationPauseStatus,
-  getPauseReasonsWithPauseStatus,
-} from "../../features/ToolConfirmation/confirmationSlice";
+import { selectThreadConfirmation, selectThreadPause } from "../../features/Chat";
 import { useUsageCounter } from "../UsageCounter/useUsageCounter.ts";
 import { LogoAnimation } from "../LogoAnimation/LogoAnimation.tsx";
 
@@ -50,18 +47,18 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   onRetry,
 }) => {
   const dispatch = useAppDispatch();
-  const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
+  const pauseReasonsWithPause = useAppSelector(selectThreadConfirmation);
   const messages = useAppSelector(selectMessages);
   const queuedMessages = useAppSelector(selectQueuedMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
   const { shouldShow } = useUsageCounter();
-  const isConfig = thread.mode === "CONFIGURE";
+  const isConfig = thread?.mode === "CONFIGURE";
   const isWaiting = useAppSelector(selectIsWaiting);
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
   const integrationMeta = useAppSelector(selectIntegration);
-  const isWaitingForConfirmation = useAppSelector(getConfirmationPauseStatus);
+  const isWaitingForConfirmation = useAppSelector(selectThreadPause);
 
   const onRetryWrapper = (index: number, question: UserMessage["content"]) => {
     onRetry(index, question);
@@ -74,18 +71,18 @@ export const ChatContent: React.FC<ChatContentProps> = ({
     dispatch(
       popBackTo({
         name: "integrations page",
-        projectPath: thread.integration?.project,
-        integrationName: thread.integration?.name,
-        integrationPath: thread.integration?.path,
+        projectPath: thread?.integration?.project,
+        integrationName: thread?.integration?.name,
+        integrationPath: thread?.integration?.path,
         wasOpenedThroughChat: true,
       }),
     );
   }, [
     onStopStreaming,
     dispatch,
-    thread.integration?.project,
-    thread.integration?.name,
-    thread.integration?.path,
+    thread?.integration?.project,
+    thread?.integration?.name,
+    thread?.integration?.path,
   ]);
 
   const handleManualStopStreamingClick = useCallback(() => {

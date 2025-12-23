@@ -4,17 +4,17 @@ import {
   type ChatThread,
   type PayloadWithId,
   type ToolUse,
+  type ImageFile,
   IntegrationMeta,
   LspChatMode,
   PayloadWithChatAndMessageId,
   PayloadWithChatAndBoolean,
   PayloadWithChatAndNumber,
 } from "./types";
+import type { ToolConfirmationPauseReason } from "../../../services/refact";
 import {
-  isAssistantDelta,
   isAssistantMessage,
   isCDInstructionMessage,
-  isChatResponseChoice,
   isToolCallMessage,
   isToolMessage,
   isUserMessage,
@@ -26,15 +26,16 @@ import {
 import type { AppDispatch, RootState } from "../../../app/store";
 import { type SystemPrompts } from "../../../services/refact/prompts";
 import { formatMessagesForLsp, consumeStream } from "./utils";
-import { generateChatTitle, sendChat } from "../../../services/refact/chat";
+import { sendChat } from "../../../services/refact/chat";
 // import { ToolCommand, toolsApi } from "../../../services/refact/tools";
 import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 import { ChatHistoryItem } from "../../History/historySlice";
 import { ideToolCallResponse } from "../../../hooks/useEventBusForIDE";
 import {
-  capsApi,
   DetailMessageWithErrorType,
   isDetailMessage,
+  trajectoriesApi,
+  trajectoryDataToChatThread,
 } from "../../../services/refact";
 
 export const newChatAction = createAction<Partial<ChatThread> | undefined>(
@@ -51,9 +52,7 @@ export const chatResponse = createAction<PayloadWithId & ChatResponse>(
   "chatThread/response",
 );
 
-export const chatTitleGenerationResponse = createAction<
-  PayloadWithId & ChatResponse
->("chatTitleGeneration/response");
+
 
 export const chatAskedQuestion = createAction<PayloadWithId>(
   "chatThread/askQuestion",
@@ -91,7 +90,7 @@ export const doneStreaming = createAction<PayloadWithId>(
 
 export const setChatModel = createAction<string>("chatThread/setChatModel");
 export const getSelectedChatModel = (state: RootState) =>
-  state.chat.thread.model;
+  state.chat.threads[state.chat.current_thread_id]?.thread.model ?? "";
 
 export const setSystemPrompt = createAction<SystemPrompts>(
   "chatThread/setSystemPrompt",
@@ -105,6 +104,48 @@ export const restoreChat = createAction<ChatHistoryItem>(
   "chatThread/restoreChat",
 );
 
+// Update an already-open thread with fresh data from backend (used by subscription)
+export const updateOpenThread = createAction<{
+  id: string;
+  thread: Partial<ChatThread>;
+}>("chatThread/updateOpenThread");
+
+export const switchToThread = createAction<PayloadWithId>(
+  "chatThread/switchToThread",
+);
+
+export const closeThread = createAction<PayloadWithId>(
+  "chatThread/closeThread",
+);
+
+export const setThreadPauseReasons = createAction<{
+  id: string;
+  pauseReasons: ToolConfirmationPauseReason[];
+}>("chatThread/setPauseReasons");
+
+export const clearThreadPauseReasons = createAction<PayloadWithId>(
+  "chatThread/clearPauseReasons",
+);
+
+export const setThreadConfirmationStatus = createAction<{
+  id: string;
+  wasInteracted: boolean;
+  confirmationStatus: boolean;
+}>("chatThread/setConfirmationStatus");
+
+export const addThreadImage = createAction<{ id: string; image: ImageFile }>(
+  "chatThread/addImage",
+);
+
+export const removeThreadImageByIndex = createAction<{
+  id: string;
+  index: number;
+}>("chatThread/removeImageByIndex");
+
+export const resetThreadImages = createAction<PayloadWithId>(
+  "chatThread/resetImages",
+);
+
 export const clearChatError = createAction<PayloadWithId>(
   "chatThread/clearError",
 );
@@ -115,9 +156,6 @@ export const setPreventSend = createAction<PayloadWithId>(
 );
 export const setAreFollowUpsEnabled = createAction<boolean>(
   "chat/setAreFollowUpsEnabled",
-);
-export const setIsTitleGenerationEnabled = createAction<boolean>(
-  "chat/setIsTitleGenerationEnabled",
 );
 
 export const setUseCompression = createAction<boolean>(
@@ -205,91 +243,6 @@ const createAppAsyncThunk = createAsyncThunk.withTypes<{
   dispatch: AppDispatch;
 }>();
 
-export const chatGenerateTitleThunk = createAppAsyncThunk<
-  unknown,
-  {
-    messages: ChatMessages;
-    chatId: string;
-  }
->("chatThread/generateTitle", async ({ messages, chatId }, thunkAPI) => {
-  const state = thunkAPI.getState();
-
-  const messagesToSend = messages.filter(
-    (msg) =>
-      !isToolMessage(msg) && !isAssistantMessage(msg) && msg.content !== "",
-  );
-  // .map((msg) => {
-  //   if (isAssistantMessage(msg)) {
-  //     return {
-  //       role: msg.role,
-  //       content: msg.content,
-  //     };
-  //   }
-  //   return msg;
-  // });
-
-  const caps = await thunkAPI
-    .dispatch(capsApi.endpoints.getCaps.initiate(undefined))
-    .unwrap();
-  const model = caps.chat_default_model;
-  const messagesForLsp = formatMessagesForLsp([
-    ...messagesToSend,
-    {
-      role: "user",
-      content:
-        "Summarize the chat above in 2-3 words. Prefer filenames, classes, entities, and avoid generic terms. Example: 'Explain MyClass::f()'. Write nothing else, only the 2-3 words.",
-      checkpoints: [],
-    },
-  ]);
-
-  const chatResponseChunks: ChatResponse[] = [];
-
-  return generateChatTitle({
-    messages: messagesForLsp,
-    model,
-    stream: true,
-    abortSignal: thunkAPI.signal,
-    chatId,
-    apiKey: state.config.apiKey,
-    port: state.config.lspPort,
-  })
-    .then((response) => {
-      if (!response.ok) {
-        return Promise.reject(new Error(response.statusText));
-      }
-      const reader = response.body?.getReader();
-      if (!reader) return;
-      const onAbort = () => thunkAPI.dispatch(setPreventSend({ id: chatId }));
-      const onChunk = (json: Record<string, unknown>) => {
-        chatResponseChunks.push(json as ChatResponse);
-      };
-      return consumeStream(reader, thunkAPI.signal, onAbort, onChunk);
-    })
-    .catch((err: Error) => {
-      thunkAPI.dispatch(doneStreaming({ id: chatId }));
-      thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
-      return thunkAPI.rejectWithValue(err.message);
-    })
-    .finally(() => {
-      const title = chatResponseChunks.reduce<string>((acc, chunk) => {
-        if (isChatResponseChoice(chunk)) {
-          if (isAssistantDelta(chunk.choices[0].delta)) {
-            const deltaContent = chunk.choices[0].delta.content;
-            if (deltaContent) {
-              return acc + deltaContent;
-            }
-          }
-        }
-        return acc;
-      }, "");
-
-      thunkAPI.dispatch(
-        saveTitle({ id: chatId, title, isTitleGenerated: true }),
-      );
-      thunkAPI.dispatch(doneStreaming({ id: chatId }));
-    });
-});
-
 function checkForToolLoop(message: ChatMessages): boolean {
   const assistantOrToolMessages = takeFromEndWhile(message, (message) => {
     return (
@@ -338,22 +291,16 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     messages: ChatMessages;
     chatId: string;
     checkpointsEnabled?: boolean;
-    mode?: LspChatMode; // used once for actions
-    // TODO: make a separate function for this... and it'll need to be saved.
+    mode?: LspChatMode;
   }
 >(
   "chatThread/sendChat",
   ({ messages, chatId, mode, checkpointsEnabled }, thunkAPI) => {
     const state = thunkAPI.getState();
 
-    const thread =
-      chatId in state.chat.cache
-        ? state.chat.cache[chatId]
-        : state.chat.thread.id === chatId
-          ? state.chat.thread
-          : null;
+    const runtime = state.chat.threads[chatId];
+    const thread = runtime?.thread ?? null;
 
-    // stops the stream
     const onlyDeterministicMessages = checkForToolLoop(messages);
 
     const messagesForLsp = formatMessagesForLsp(messages);
@@ -361,23 +308,21 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     const maybeLastUserMessageId = thread?.last_user_message_id;
     const boostReasoning = thread?.boost_reasoning ?? false;
     const increaseMaxTokens = thread?.increase_max_tokens ?? false;
-    // Only send include_project_info on the first message of a chat
-    // Check if there's only one user message (the current one being sent)
     const userMessageCount = messages.filter(isUserMessage).length;
     const includeProjectInfo =
       userMessageCount <= 1 ? thread?.include_project_info ?? true : undefined;
 
-    // Context tokens cap - send on every request, default to max if not set
     const contextTokensCap =
       thread?.context_tokens_cap ?? thread?.currentMaximumContextTokens;
 
-    // Use compression - get from state
     const useCompression = state.chat.use_compression;
+
+    const model = thread?.model ?? "";
 
     return sendChat({
       messages: messagesForLsp,
       last_user_message_id: maybeLastUserMessageId,
-      model: state.chat.thread.model,
+      model,
       stream: true,
       abortSignal: thunkAPI.signal,
       increase_max_tokens: increaseMaxTokens,
@@ -414,7 +359,6 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
         return consumeStream(reader, thunkAPI.signal, onAbort, onChunk);
       })
       .catch((err: unknown) => {
-        // console.log("Catch called");
         const isError = err instanceof Error;
         thunkAPI.dispatch(doneStreaming({ id: chatId }));
         thunkAPI.dispatch(fixBrokenToolMessages({ id: chatId }));
@@ -443,16 +387,15 @@ export const sendCurrentChatToLspAfterToolCallUpdate = createAppAsyncThunk<
   "chatThread/sendCurrentChatToLspAfterToolCallUpdate",
   async ({ chatId, toolCallId }, thunkApi) => {
     const state = thunkApi.getState();
-    if (state.chat.thread.id !== chatId) return;
-    if (
-      state.chat.streaming ||
-      state.chat.prevent_send ||
-      state.chat.waiting_for_response
-    ) {
+    const runtime = state.chat.threads[chatId];
+    if (!runtime) return;
+
+    if (runtime.streaming || runtime.prevent_send || runtime.waiting_for_response) {
       return;
     }
+
     const lastMessages = takeFromEndWhile(
-      state.chat.thread.messages,
+      runtime.thread.messages,
       (message) => !isUserMessage(message) && !isAssistantMessage(message),
     );
 
@@ -466,11 +409,43 @@ export const sendCurrentChatToLspAfterToolCallUpdate = createAppAsyncThunk<
 
     return thunkApi.dispatch(
       chatAskQuestionThunk({
-        messages: state.chat.thread.messages,
+        messages: runtime.thread.messages,
         chatId,
-        mode: state.chat.thread.mode,
+        mode: runtime.thread.mode,
         checkpointsEnabled: state.chat.checkpoints_enabled,
       }),
     );
+  },
+);
+
+// Fetch fresh thread data from backend before restoring (re-opening a closed tab)
+export const restoreChatFromBackend = createAsyncThunk<
+  void,
+  { id: string; fallback: ChatHistoryItem },
+  { dispatch: AppDispatch; state: RootState }
+>(
+  "chatThread/restoreChatFromBackend",
+  async ({ id, fallback }, thunkApi) => {
+    try {
+      const result = await thunkApi.dispatch(
+        trajectoriesApi.endpoints.getTrajectory.initiate(id, {
+          forceRefetch: true,
+        }),
+      ).unwrap();
+
+      const thread = trajectoryDataToChatThread(result);
+      const historyItem: ChatHistoryItem = {
+        ...thread,
+        createdAt: result.created_at,
+        updatedAt: result.updated_at,
+        title: result.title,
+        isTitleGenerated: result.isTitleGenerated,
+      };
+
+      thunkApi.dispatch(restoreChat(historyItem));
+    } catch {
+      // Backend not available, use fallback from history
+      thunkApi.dispatch(restoreChat(fallback));
+    }
   },
 );

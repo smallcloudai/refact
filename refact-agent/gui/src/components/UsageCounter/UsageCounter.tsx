@@ -7,10 +7,10 @@ import { calculateUsageInputTokens } from "../../utils/calculateUsageInputTokens
 import { ScrollArea } from "../ScrollArea";
 import { useUsageCounter } from "./useUsageCounter";
 
-import { selectAllImages } from "../../features/AttachedImages";
 import {
   selectThreadCurrentMessageTokens,
   selectThreadMaximumTokens,
+  selectThreadImages,
 } from "../../features/Chat";
 import { formatNumberToFixed } from "../../utils/formatNumberToFixed";
 import {
@@ -372,7 +372,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
   isMessageEmpty,
 }) => {
   const [open, setOpen] = useState(false);
-  const maybeAttachedImages = useAppSelector(selectAllImages);
+  const maybeAttachedImages = useAppSelector(selectThreadImages);
   const {
     currentThreadUsage,
     isOverflown,

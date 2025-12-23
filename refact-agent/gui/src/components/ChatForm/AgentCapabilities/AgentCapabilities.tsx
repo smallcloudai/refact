@@ -14,7 +14,6 @@ import {
   AgentRollbackSwitch,
   ApplyPatchSwitch,
   FollowUpsSwitch,
-  TitleGenerationSwitch,
   UseCompressionSwitch,
   ProjectInfoSwitch,
 } from "../ChatControls";
@@ -23,7 +22,6 @@ import {
   selectAreFollowUpsEnabled,
   selectAutomaticPatch,
   selectCheckpointsEnabled,
-  selectIsTitleGenerationEnabled,
   selectUseCompression,
   selectIncludeProjectInfo,
   selectMessages,
@@ -35,9 +33,6 @@ export const AgentCapabilities = () => {
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
   const isAgentRollbackEnabled = useAppSelector(selectCheckpointsEnabled);
   const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
-  const isTitleGenerationEnabled = useAppSelector(
-    selectIsTitleGenerationEnabled,
-  );
   const useCompression = useAppSelector(selectUseCompression);
   const includeProjectInfo = useAppSelector(selectIncludeProjectInfo);
   const messages = useAppSelector(selectMessages);
@@ -61,11 +56,6 @@ export const AgentCapabilities = () => {
         switcher: <FollowUpsSwitch />,
       },
       {
-        name: "Chat Titles",
-        enabled: isTitleGenerationEnabled,
-        switcher: <TitleGenerationSwitch />,
-      },
-      {
         name: "Compression",
         enabled: useCompression,
         switcher: <UseCompressionSwitch />,
@@ -81,7 +71,6 @@ export const AgentCapabilities = () => {
     isPatchAutomatic,
     isAgentRollbackEnabled,
     areFollowUpsEnabled,
-    isTitleGenerationEnabled,
     useCompression,
     includeProjectInfo,
     isNewChat,

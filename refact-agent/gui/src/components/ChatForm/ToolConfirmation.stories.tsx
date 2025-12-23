@@ -16,16 +16,7 @@ import {
 const MockedStore: React.FC<{
   pauseReasons: ToolConfirmationPauseReason[];
 }> = ({ pauseReasons }) => {
-  const store = setUpStore({
-    confirmation: {
-      pauseReasons,
-      pause: true,
-      status: {
-        wasInteracted: false,
-        confirmationStatus: false,
-      },
-    },
-  });
+  const store = setUpStore();
 
   return (
     <Provider store={store}>

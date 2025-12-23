@@ -19,7 +19,7 @@ export const HistoryItem: React.FC<{
 }> = ({ historyItem, onClick, onDelete, onOpenInTab, disabled }) => {
   const dateCreated = new Date(historyItem.createdAt);
   const dateTimeString = dateCreated.toLocaleString();
-  const cache = useAppSelector((app) => app.chat.cache);
+  const threads = useAppSelector((app) => app.chat.threads);
 
   const totalCost = useMemo(() => {
     const totals = getTotalCostMeteringForMessages(historyItem.messages);
@@ -34,7 +34,7 @@ export const HistoryItem: React.FC<{
     );
   }, [historyItem.messages]);
 
-  const isStreaming = historyItem.id in cache;
+  const isStreaming = threads[historyItem.id]?.streaming ?? false;
   return (
     <Box style={{ position: "relative", width: "100%" }}>
       <Card

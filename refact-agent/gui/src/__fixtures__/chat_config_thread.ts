@@ -1,10 +1,15 @@
 import type { Chat } from "../features/Chat/Thread";
 
+const THREAD_ID = "941fb8f4-409c-4430-a3b2-6450fafdb9f4";
+
 export const CHAT_CONFIG_THREAD: Chat = {
-  streaming: false,
-  thread: {
-    mode: "CONFIGURE",
-    id: "941fb8f4-409c-4430-a3b2-6450fafdb9f4",
+  current_thread_id: THREAD_ID,
+  open_thread_ids: [THREAD_ID],
+  threads: {
+    [THREAD_ID]: {
+      thread: {
+        mode: "CONFIGURE",
+        id: THREAD_ID,
     messages: [
       {
         role: "user",
@@ -482,16 +487,24 @@ export const CHAT_CONFIG_THREAD: Chat = {
     new_chat_suggested: {
       wasSuggested: false,
     },
-    createdAt: "2024-12-02T14:42:18.902Z",
-    updatedAt: "2024-12-02T14:42:18.902Z",
+        createdAt: "2024-12-02T14:42:18.902Z",
+        updatedAt: "2024-12-02T14:42:18.902Z",
+      },
+      streaming: false,
+      waiting_for_response: false,
+      prevent_send: true,
+      error: null,
+      queued_messages: [],
+      send_immediately: false,
+      attached_images: [],
+      confirmation: {
+        pause: false,
+        pause_reasons: [],
+        status: { wasInteracted: false, confirmationStatus: true },
+      },
+    },
   },
-  error: null,
-  prevent_send: true,
-  waiting_for_response: false,
   max_new_tokens: 4096,
-  cache: {},
   system_prompt: {},
   tool_use: "agent",
-  send_immediately: false,
-  queued_messages: [],
 };

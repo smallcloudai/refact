@@ -73,35 +73,6 @@ type SendChatArgs = {
   use_compression?: boolean;
 } & StreamArgs;
 
-type GetChatTitleArgs = {
-  messages: LspChatMessage[];
-  model: string;
-  lspUrl?: string;
-  takeNote?: boolean;
-  onlyDeterministicMessages?: boolean;
-  chatId?: string;
-  port?: number;
-  apiKey?: string | null;
-  boost_reasoning?: boolean;
-} & StreamArgs;
-
-export type GetChatTitleResponse = {
-  choices: Choice[];
-  created: number;
-  deterministic_messages: DeterministicMessage[];
-  id: string;
-  metering_balance: number;
-  model: string;
-  object: string;
-  system_fingerprint: string;
-  usage: Usage;
-};
-
-export type GetChatTitleActionPayload = {
-  chatId: string;
-  title: string;
-};
-
 export type Choice = {
   finish_reason: string;
   index: number;
@@ -220,41 +191,4 @@ export async function sendChat({
   });
 }
 
-export async function generateChatTitle({
-  messages,
-  stream,
-  model,
-  onlyDeterministicMessages: only_deterministic_messages,
-  chatId: chat_id,
-  port = 8001,
-  apiKey,
-}: GetChatTitleArgs): Promise<Response> {
-  const body = JSON.stringify({
-    messages,
-    model,
-    stream,
-    max_tokens: 300,
-    only_deterministic_messages: only_deterministic_messages,
-    chat_id,
-    // NOTE: we don't want to use reasoning here, for example Anthropic requires at least max_tokens=1024 for thinking
-    // parameters: boost_reasoning ? { boost_reasoning: true } : undefined,
-  });
 
-  const headers = {
-    "Content-Type": "application/json",
-    ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-  };
-
-  const url = `http://127.0.0.1:${port}${CHAT_URL}`;
-
-  return fetch(url, {
-    method: "POST",
-    headers,
-    body,
-    redirect: "follow",
-    cache: "no-cache",
-    // TODO: causes an error during tests :/
-    // referrer: "no-referrer",
-    credentials: "same-origin",
-  });
-}

@@ -47,6 +47,8 @@ import {
   chatLinks,
   telemetryChat,
   telemetryNetwork,
+  emptyTrajectories,
+  trajectorySave,
 } from "../../utils/mockServer";
 
 const handlers = [
@@ -60,6 +62,8 @@ const handlers = [
   chatLinks,
   telemetryChat,
   telemetryNetwork,
+  emptyTrajectories,
+  trajectorySave,
 ];
 
 // const handlers = [

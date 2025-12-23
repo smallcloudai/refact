@@ -13,6 +13,8 @@ import {
   telemetryChat,
   telemetryNetwork,
   goodCapsWithKnowledgeFeature,
+  emptyTrajectories,
+  trajectorySave,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 import { stubResizeObserver } from "../utils/test-utils";
@@ -34,6 +36,8 @@ describe("Start a new chat", () => {
       chatLinks,
       telemetryChat,
       telemetryNetwork,
+      emptyTrajectories,
+      trajectorySave,
     );
   });
 

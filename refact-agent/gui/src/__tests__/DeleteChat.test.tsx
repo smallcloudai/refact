@@ -8,6 +8,9 @@ import {
   telemetryChat,
   telemetryNetwork,
   goodCaps,
+  emptyTrajectories,
+  trajectorySave,
+  trajectoryDelete,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 import { HistoryState } from "../features/History/historySlice";
@@ -20,6 +23,9 @@ describe("Delete a Chat form history", () => {
     telemetryChat,
     telemetryNetwork,
     goodCaps,
+    emptyTrajectories,
+    trajectorySave,
+    trajectoryDelete,
   );
   it("can delete a chat", async () => {
     const now = new Date().toISOString();

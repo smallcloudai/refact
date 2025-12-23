@@ -235,3 +235,31 @@ export const ToolConfirmation = http.post(
     return HttpResponse.json(response);
   },
 );
+
+export const emptyTrajectories: HttpHandler = http.get(
+  "http://127.0.0.1:8001/v1/trajectories",
+  () => {
+    return HttpResponse.json([]);
+  },
+);
+
+export const trajectoryGet: HttpHandler = http.get(
+  "http://127.0.0.1:8001/v1/trajectories/:id",
+  () => {
+    return HttpResponse.json({ status: "not_found" }, { status: 404 });
+  },
+);
+
+export const trajectorySave: HttpHandler = http.put(
+  "http://127.0.0.1:8001/v1/trajectories/:id",
+  () => {
+    return HttpResponse.json({ status: "ok" });
+  },
+);
+
+export const trajectoryDelete: HttpHandler = http.delete(
+  "http://127.0.0.1:8001/v1/trajectories/:id",
+  () => {
+    return HttpResponse.json({ status: "ok" });
+  },
+);

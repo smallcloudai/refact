@@ -12,10 +12,12 @@ export function useCompressChat() {
   const thread = useAppSelector(selectThread);
 
   const [submit, request] = knowledgeApi.useCompressMessagesMutation({
-    fixedCacheKey: thread.id,
+    fixedCacheKey: thread?.id ?? "",
   });
 
   const compressChat = useCallback(async () => {
+    if (!thread) return;
+
     dispatch(setIsWaitingForResponse(true));
     const result = await submit({
       messages: thread.messages,
@@ -40,7 +42,7 @@ export function useCompressChat() {
       dispatch(action);
       dispatch(setSendImmediately(true));
     }
-  }, [dispatch, submit, thread.messages, thread.project_name, thread.title]);
+  }, [dispatch, submit, thread]);
 
   return {
     compressChat,

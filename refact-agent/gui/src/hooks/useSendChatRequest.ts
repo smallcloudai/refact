@@ -18,6 +18,8 @@ import {
   selectThread,
   selectThreadMode,
   selectThreadToolUse,
+  selectThreadConfirmationStatus,
+  selectThreadImages,
 } from "../features/Chat/Thread/selectors";
 import { useCheckForConfirmationMutation } from "./useGetToolGroupsQuery";
 import {
@@ -35,17 +37,12 @@ import {
   setSendImmediately,
   enqueueUserMessage,
   dequeueUserMessage,
+  setThreadPauseReasons,
+  clearThreadPauseReasons,
+  setThreadConfirmationStatus,
 } from "../features/Chat/Thread/actions";
 
-import { selectAllImages } from "../features/AttachedImages";
 import { useAbortControllers } from "./useAbortControllers";
-import {
-  clearPauseReasonsAndHandleToolsStatus,
-  getToolsConfirmationStatus,
-  getToolsInteractionStatus,
-  resetConfirmationInteractedState,
-  setPauseReasons,
-} from "../features/ToolConfirmation/confirmationSlice";
 import {
   chatModeToLspMode,
   doneStreaming,
@@ -114,11 +111,12 @@ export const useSendChatRequest = () => {
   const currentMessages = useAppSelector(selectMessages);
   const systemPrompt = useAppSelector(getSelectedSystemPrompt);
   const toolUse = useAppSelector(selectThreadToolUse);
-  const attachedImages = useAppSelector(selectAllImages);
+  const attachedImages = useAppSelector(selectThreadImages);
   const threadMode = useAppSelector(selectThreadMode);
   const threadIntegration = useAppSelector(selectIntegration);
-  const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
-  const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
+  const confirmationStatus = useAppSelector(selectThreadConfirmationStatus);
+  const wasInteracted = confirmationStatus.wasInteracted;
+  const areToolsConfirmed = confirmationStatus.confirmationStatus;
 
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
   const checkpointsEnabled = useAppSelector(selectCheckpointsEnabled);
@@ -159,7 +157,7 @@ export const useSendChatRequest = () => {
             messages: messages,
           }).unwrap();
           if (confirmationResponse.pause) {
-            dispatch(setPauseReasons(confirmationResponse.pause_reasons));
+            dispatch(setThreadPauseReasons({ id: chatId, pauseReasons: confirmationResponse.pause_reasons }));
             return;
           }
         }
@@ -295,38 +293,28 @@ export const useSendChatRequest = () => {
   const retry = useCallback(
     (messages: ChatMessages) => {
       abort();
-      dispatch(
-        clearPauseReasonsAndHandleToolsStatus({
-          wasInteracted: false,
-          confirmationStatus: areToolsConfirmed,
-        }),
-      );
+      dispatch(clearThreadPauseReasons({ id: chatId }));
+      dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: false, confirmationStatus: areToolsConfirmed }));
       void sendMessages(messages);
     },
-    [abort, sendMessages, dispatch, areToolsConfirmed],
+    [abort, sendMessages, dispatch, chatId, areToolsConfirmed],
   );
 
   const confirmToolUsage = useCallback(() => {
-    dispatch(
-      clearPauseReasonsAndHandleToolsStatus({
-        wasInteracted: true,
-        confirmationStatus: true,
-      }),
-    );
-
+    dispatch(clearThreadPauseReasons({ id: chatId }));
+    dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: true, confirmationStatus: true }));
     dispatch(setIsWaitingForResponse(false));
-  }, [dispatch]);
+  }, [dispatch, chatId]);
 
   const rejectToolUsage = useCallback(
     (toolCallIds: string[]) => {
       toolCallIds.forEach((toolCallId) => {
-        dispatch(
-          upsertToolCallIntoHistory({ toolCallId, chatId, accepted: false }),
-        );
+        dispatch(upsertToolCallIntoHistory({ toolCallId, chatId, accepted: false }));
         dispatch(upsertToolCall({ toolCallId, chatId, accepted: false }));
       });
 
-      dispatch(resetConfirmationInteractedState());
+      dispatch(clearThreadPauseReasons({ id: chatId }));
+      dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: false, confirmationStatus: true }));
       dispatch(setIsWaitingForResponse(false));
       dispatch(doneStreaming({ id: chatId }));
       dispatch(setPreventSend({ id: chatId }));
@@ -358,23 +346,23 @@ export const useSendChatRequest = () => {
   };
 };
 
-// NOTE: only use this once
 export function useAutoSend() {
   const dispatch = useAppDispatch();
+  const chatId = useAppSelector(selectChatId);
   const streaming = useAppSelector(selectIsStreaming);
   const currentMessages = useAppSelector(selectMessages);
   const errored = useAppSelector(selectChatError);
   const preventSend = useAppSelector(selectPreventSend);
   const isWaiting = useAppSelector(selectIsWaiting);
   const sendImmediately = useAppSelector(selectSendImmediately);
-  const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
-  const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
+  const confirmationStatus = useAppSelector(selectThreadConfirmationStatus);
+  const wasInteracted = confirmationStatus.wasInteracted;
+  const areToolsConfirmed = confirmationStatus.confirmationStatus;
   const hasUnsentTools = useAppSelector(selectHasUncalledTools);
   const queuedMessages = useAppSelector(selectQueuedMessages);
   const { sendMessages, messagesWithSystemPrompt } = useSendChatRequest();
-  // TODO: make a selector for this, or show tool formation
   const thread = useAppSelector(selectThread);
-  const isIntegration = thread.integration ?? false;
+  const isIntegration = thread?.integration ?? false;
 
   useEffect(() => {
     if (sendImmediately) {
@@ -432,7 +420,7 @@ export function useAutoSend() {
     dispatch(dequeueUserMessage({ queuedId: nextQueued.id }));
 
     // Send the queued message
-    void sendMessages([...currentMessages, nextQueued.message], thread.mode);
+    void sendMessages([...currentMessages, nextQueued.message], thread?.mode);
   }, [
     canFlushBase,
     isFullyIdle,
@@ -440,7 +428,7 @@ export function useAutoSend() {
     dispatch,
     sendMessages,
     currentMessages,
-    thread.mode,
+    thread?.mode,
   ]);
 
   // Check if there are priority messages waiting
@@ -452,26 +440,21 @@ export function useAutoSend() {
   useEffect(() => {
     if (stop) return;
     if (stopForToolConfirmation) return;
-    // Don't run tool follow-up if there are priority messages waiting
-    // Let the queue flush handle them first
     if (hasPriorityMessages) return;
 
-    dispatch(
-      clearPauseReasonsAndHandleToolsStatus({
-        wasInteracted: false,
-        confirmationStatus: areToolsConfirmed,
-      }),
-    );
+    dispatch(clearThreadPauseReasons({ id: chatId }));
+    dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: false, confirmationStatus: areToolsConfirmed }));
 
-    void sendMessages(currentMessages, thread.mode);
+    void sendMessages(currentMessages, thread?.mode);
   }, [
     areToolsConfirmed,
+    chatId,
     currentMessages,
     dispatch,
     hasPriorityMessages,
     sendMessages,
     stop,
     stopForToolConfirmation,
-    thread.mode,
+    thread?.mode,
   ]);
 }
