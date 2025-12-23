@@ -107,6 +107,11 @@ export const historySlice = createSlice({
     saveChat: (state, action: PayloadAction<ChatThread>) => {
       if (action.payload.messages.length === 0) return state;
       const chat = chatThreadToHistoryItem(action.payload);
+      const existing = state[chat.id];
+      if (existing?.isTitleGenerated && !chat.isTitleGenerated) {
+        chat.title = existing.title;
+        chat.isTitleGenerated = true;
+      }
       state[chat.id] = chat;
 
       const messages = Object.values(state);

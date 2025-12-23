@@ -417,25 +417,26 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   // Update an already-open thread with fresh data from backend (used by subscription)
-  // Only updates if the thread is not currently streaming, waiting, or has an error
   builder.addCase(updateOpenThread, (state, action) => {
     const existingRt = getRuntime(state, action.payload.id);
-    // Don't update if:
-    // - Thread doesn't exist
-    // - Thread is actively streaming
-    // - Thread is waiting for response
-    // - Thread has an error (avoid overwriting with stale data)
-    // - Thread is the current active thread (user is viewing it)
-    if (
-      existingRt &&
-      !existingRt.streaming &&
-      !existingRt.waiting_for_response &&
-      !existingRt.error &&
-      action.payload.id !== state.current_thread_id
-    ) {
+    if (!existingRt) return;
+
+    const incomingTitle = action.payload.thread.title;
+    const incomingTitleGenerated = action.payload.thread.isTitleGenerated;
+
+    // Always allow title updates if backend generated it and local didn't
+    if (incomingTitle && incomingTitleGenerated && !existingRt.thread.isTitleGenerated) {
+      existingRt.thread.title = incomingTitle;
+      existingRt.thread.isTitleGenerated = true;
+    }
+
+    // For other fields, only update non-busy, non-current threads
+    const isCurrentThread = action.payload.id === state.current_thread_id;
+    if (!existingRt.streaming && !existingRt.waiting_for_response && !existingRt.error && !isCurrentThread) {
+      const { title, isTitleGenerated, ...otherFields } = action.payload.thread;
       existingRt.thread = {
         ...existingRt.thread,
-        ...action.payload.thread,
+        ...otherFields,
       };
     }
   });
