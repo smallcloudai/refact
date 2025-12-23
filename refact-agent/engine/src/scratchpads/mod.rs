@@ -9,6 +9,9 @@ pub mod code_completion_replace;
 pub mod multimodality;
 mod comments_parser;
 mod completon_rag;
+pub mod system_context;
+#[cfg(test)]
+mod chat_utils_limit_history_tests;
 
 use crate::ast::ast_indexer_thread::AstIndexService;
 use crate::call_validation::CodeCompletionPost;

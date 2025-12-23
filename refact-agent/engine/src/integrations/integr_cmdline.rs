@@ -18,7 +18,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::integrations::process_io_utils::{execute_command, AnsiStrippable};
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
+use crate::postprocessing::pp_command_output::{OutputFilter, output_mini_postprocessing};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_opt_num_to_str, deserialize_str_to_opt_num};
 use crate::custom_error::YamlError;
@@ -39,7 +39,7 @@ pub struct CmdlineToolConfig {
     #[serde(default)]
     pub timeout: String,
     #[serde(default)]
-    pub output_filter: CmdlineOutputFilter,
+    pub output_filter: OutputFilter,
 
     // background
     #[serde(default, serialize_with = "serialize_opt_num_to_str", deserialize_with = "deserialize_str_to_opt_num")]

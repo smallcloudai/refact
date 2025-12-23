@@ -44,7 +44,7 @@ pub struct PathsHolderNode {
 }
 
 pub struct TreeNode {
-    children: HashMap<String, TreeNode>,
+    pub children: HashMap<String, TreeNode>,
     // NOTE: we can store here more info like depth, sub files count, etc.
 }
 

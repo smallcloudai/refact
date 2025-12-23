@@ -9,6 +9,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::custom_error::trace_and_default;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
+use crate::postprocessing::pp_command_output::OutputFilter;
 use crate::tools::tool_ast_definition::there_are_definitions_with_similar_names_though;
 
 pub struct ToolAstReference {
@@ -102,6 +103,7 @@ impl Tool for ToolAstReference {
                                 symbols: vec![usedin.path()],
                                 gradient_type: 4,
                                 usefulness: 100.0,
+                                skip_pp: false,
                             });
                         }
                     }
@@ -124,6 +126,7 @@ impl Tool for ToolAstReference {
                 content: ChatContent::SimpleText(all_messages.join("\n\n")),
                 tool_calls: None,
                 tool_call_id: tool_call_id.clone(),
+                output_filter: Some(OutputFilter::no_limits()), // Already compressed internally
                 ..Default::default()
             }));
             Ok((corrections, result_messages))

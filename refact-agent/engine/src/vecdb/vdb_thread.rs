@@ -14,6 +14,7 @@ use crate::ast::file_splitter::AstBasedFileSplitter;
 use crate::fetch_embedding::get_embedding_with_retries;
 use crate::files_in_workspace::{is_path_to_enqueue_valid, Document};
 use crate::global_context::GlobalContext;
+use crate::vecdb::vdb_markdown_splitter::MarkdownFileSplitter;
 use crate::vecdb::vdb_sqlite::VecDBSqlite;
 use crate::vecdb::vdb_structs::{SimpleTextHashVector, SplitResult, VecDbStatus, VecdbConstants, VecdbRecord};
 
@@ -325,11 +326,24 @@ async fn vectorize_thread(
             continue;
         }
 
-        let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size);
-        let mut splits = file_splitter.vectorization_split(&doc, gcx.clone(), constants.embedding_model.base.n_ctx).await.unwrap_or_else(|err| {
-            info!("{}", err);
-            vec![]
-        });
+        let is_markdown = doc.doc_path.extension()
+            .map(|e| e.to_string_lossy().to_lowercase())
+            .map(|e| e == "md" || e == "mdx")
+            .unwrap_or(false);
+
+        let mut splits = if is_markdown {
+            let md_splitter = MarkdownFileSplitter::new(constants.embedding_model.base.n_ctx);
+            md_splitter.split(&doc, gcx.clone()).await.unwrap_or_else(|err| {
+                info!("{}", err);
+                vec![]
+            })
+        } else {
+            let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size);
+            file_splitter.vectorization_split(&doc, None, gcx.clone(), constants.embedding_model.base.n_ctx).await.unwrap_or_else(|err| {
+                info!("{}", err);
+                vec![]
+            })
+        };
 
         // Adding the filename so it can also be searched
         if let Some(filename) = doc.doc_path.file_name().map(|f| f.to_string_lossy().to_string()) {

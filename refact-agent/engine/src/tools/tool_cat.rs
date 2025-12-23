@@ -147,8 +147,16 @@ impl Tool for ToolCat {
             corrections = true;
         }
 
-        let mut results = context_enums;
-        let content = if multimodal.is_empty() {
+        let mut results: Vec<ContextEnum> = context_enums.into_iter().map(|ctx| {
+            if let ContextEnum::ContextFile(mut cf) = ctx {
+                cf.skip_pp = true;
+                ContextEnum::ContextFile(cf)
+            } else {
+                ctx
+            }
+        }).collect();
+        
+        let chat_content = if multimodal.is_empty() {
             ChatContent::SimpleText(content)
         } else {
             ChatContent::Multimodal([
@@ -159,7 +167,7 @@ impl Tool for ToolCat {
 
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content,
+            content: chat_content,
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
@@ -341,6 +349,7 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
                     symbols: vec![sym.path()],
                     gradient_type: 5,
                     usefulness: 100.0,
+                    skip_pp: true,
                 };
                 context_enums.push(ContextEnum::ContextFile(cf));
             }
@@ -409,6 +418,7 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
                         symbols: vec![],
                         gradient_type: 5,
                         usefulness: 100.0,
+                        skip_pp: true,
                     };
                     context_enums.push(ContextEnum::ContextFile(cf));
                 },

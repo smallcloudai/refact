@@ -4,12 +4,13 @@ on:
   push:
     branches: [main, dev]
     paths:
-      - "refact-agent/gui/**"
-      - ".github/workflows/agent_gui_*"
+      - 'refact-agent/gui/**'
+      - '.github/workflows/agent_gui_*'
   pull_request:
     paths:
-      - "refact-agent/gui/**"
-      - ".github/workflows/agent_gui_*"
+      - 'refact-agent/gui/**'
+      - '.github/workflows/agent_gui_*'
+  workflow_dispatch:
 
 defaults:
   run:
@@ -30,7 +31,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: "npm"
+          cache: 'npm'
           cache-dependency-path: refact-agent/gui/package-lock.json
 
       # Disable Husky install during npm ci

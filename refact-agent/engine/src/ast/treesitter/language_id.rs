@@ -135,6 +135,7 @@ impl From<Language> for LanguageId {
             lang if lang == tree_sitter_cpp::LANGUAGE.into() => Self::Cpp,
             lang if lang == tree_sitter_python::LANGUAGE.into() => Self::Python,
             lang if lang == tree_sitter_java::LANGUAGE.into() => Self::Java,
+            lang if lang == tree_sitter_kotlin_ng::LANGUAGE.into() => Self::Kotlin,
             lang if lang == tree_sitter_javascript::LANGUAGE.into() => Self::JavaScript,
             lang if lang == tree_sitter_rust::LANGUAGE.into() => Self::Rust,
             lang if lang == tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into() => Self::TypeScript,

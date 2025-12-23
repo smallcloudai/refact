@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock as ARwLock;
 
+use crate::call_validation::ChatMode;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::integrations::running_integrations::load_integrations;
 
@@ -38,19 +39,17 @@ fn tool_available(
 async fn tool_available_from_gcx(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> impl Fn(&Box<dyn Tool + Send>) -> bool {
-    let (ast_on, vecdb_on, allow_experimental, active_group_id) = {
+    let (ast_on, vecdb_on, allow_experimental) = {
         let gcx_locked = gcx.read().await;
         let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
-        (gcx_locked.ast_service.is_some(), vecdb_on, 
-         gcx_locked.cmdline.experimental, gcx_locked.active_group_id.clone())
+        (gcx_locked.ast_service.is_some(), vecdb_on, gcx_locked.cmdline.experimental)
     };
 
-    let (is_there_a_thinking_model, allow_knowledge) = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-        Ok(caps) => {
-            (caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(), active_group_id.is_some())
-        },
-        Err(_) => (false, false),
+    let is_there_a_thinking_model = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(),
+        Err(_) => false,
     };
+    let allow_knowledge = true;
 
     move |tool: &Box<dyn Tool + Send>| {
         tool_available(
@@ -82,26 +81,37 @@ async fn get_builtin_tools(
 
     let codebase_search_tools: Vec<Box<dyn Tool + Send>> = vec![
         Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{config_path: config_path.clone()}),
-        Box::new(crate::tools::tool_ast_reference::ToolAstReference{config_path: config_path.clone()}),
+        // works badly, better not to use it 
+        // Box::new(crate::tools::tool_ast_reference::ToolAstReference{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_tree::ToolTree{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_cat::ToolCat{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_regex_search::ToolRegexSearch{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_search::ToolSearch{config_path: config_path.clone()}),
-        // Box::new(crate::tools::tool_locate_search::ToolLocateSearch{config_path: config_path.clone()}),
     ];
 
     let codebase_change_tools: Vec<Box<dyn Tool + Send>> = vec![
         Box::new(crate::tools::file_edit::tool_create_textdoc::ToolCreateTextDoc{config_path: config_path.clone()}),
         Box::new(crate::tools::file_edit::tool_update_textdoc::ToolUpdateTextDoc{config_path: config_path.clone()}),
-        Box::new(crate::tools::file_edit::tool_update_textdoc_regex::ToolUpdateTextDocRegex{config_path: config_path.clone()}),
+        Box::new(crate::tools::file_edit::tool_update_textdoc_by_lines::ToolUpdateTextDocByLines{config_path: config_path.clone()}),
+        // Box::new(crate::tools::file_edit::tool_update_textdoc_regex::ToolUpdateTextDocRegex{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_rm::ToolRm{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_mv::ToolMv{config_path: config_path.clone()}),
     ];
 
-    let web_tools: Vec<Box<dyn Tool + Send>> = vec![];
+    let web_tools: Vec<Box<dyn Tool + Send>> = vec![
+        Box::new(crate::tools::tool_web::ToolWeb{config_path: config_path.clone()}),
+    ];
 
     let deep_analysis_tools: Vec<Box<dyn Tool + Send>> = vec![
         Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_deep_research::ToolDeepResearch{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_subagent::ToolSubagent{config_path: config_path.clone()}),
+    ];
+
+    let knowledge_tools: Vec<Box<dyn Tool + Send>> = vec![
+        Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{config_path: config_path.clone()}),
     ];
 
     let mut tool_groups = vec![
@@ -128,6 +138,12 @@ async fn get_builtin_tools(
             description: "Strategic planning tools".to_string(),
             category: ToolGroupCategory::Builtin,
             tools: deep_analysis_tools,
+        },
+        ToolGroup {
+            name: "Knowledge".to_string(),
+            description: "Knowledge tools".to_string(),
+            category: ToolGroupCategory::Builtin,
+            tools: knowledge_tools,
         },
     ];
 
@@ -205,3 +221,36 @@ pub async fn get_available_tools(
 ) -> Vec<Box<dyn Tool + Send>> {
     get_available_tool_groups(gcx).await.into_iter().flat_map(|g| g.tools).collect()
 }
+
+pub async fn get_available_tools_by_chat_mode(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    chat_mode: ChatMode,
+) -> Vec<Box<dyn Tool + Send>> {
+    if chat_mode == ChatMode::NO_TOOLS {
+        return vec![];
+    }
+
+    let tools = get_available_tool_groups(gcx).await.into_iter()
+        .flat_map(|g| g.tools)
+        .filter(|tool| tool.config().unwrap_or_default().enabled);
+
+
+    match chat_mode {
+        ChatMode::NO_TOOLS => unreachable!("Condition handled at the beginning of the function."),
+        ChatMode::EXPLORE => {
+            tools.filter(|tool| !tool.tool_description().agentic).collect()
+        },
+        ChatMode::AGENT => {
+            tools.collect()
+        }
+        ChatMode::CONFIGURE => {
+            let blacklist = ["tree", "knowledge", "search"];
+            tools.filter(|tool| !blacklist.contains(&tool.tool_description().name.as_str())).collect()
+        },
+        ChatMode::PROJECT_SUMMARY => {
+            let whitelist = ["cat", "tree"];
+            tools.filter(|tool| whitelist.contains(&tool.tool_description().name.as_str())).collect()
+        },
+    }
+}
+

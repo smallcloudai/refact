@@ -14,7 +14,7 @@
   <a href="https://github.com/smallcloudai/refact/stargazers"><img src="https://img.shields.io/github/stars/smallcloudai/refact?style=for-the-badge&color=blue" alt="Stargazers"></a>
   <a href="https://discord.gg/Kts7CYg99R"><img src="https://img.shields.io/badge/Discord-Join%20Us-purple?logo=discord&logoColor=white&style=for-the-badge" alt="Join our Discord community"></a>
   <a href="https://docs.refact.ai"><img src="https://img.shields.io/badge/documentation-blue?logo=googledocs&logoColor=FFE165&style=for-the-badge" alt="Check out the documentation"></a>
-  
+
 </div>
 
 
@@ -22,24 +22,24 @@
 Refact.ai is the #1 open-source AI Agent in SWE-bench verified that handles engineering tasks end-to-end. It deeply understands your codebases and integrates with your tools, databases, and browsers to automate complex, multi-step tasks.
 
 
-## 🚀 Seamless Integration with Your Workflow  
+## 🚀 Seamless Integration with Your Workflow
 
-Refact Agent works effortlessly with the tools and databases you already use:  
+Refact Agent works effortlessly with the tools and databases you already use:
 
 
-- **📁 Version Control:** GitHub, GitLab  
-- **🗄️ Databases:** PostgreSQL, MySQL  
-- **🛠️ Debugging:** Pdb  
-- **🐳 Containerization:** Docker  
+- **📁 Version Control:** GitHub, GitLab
+- **🗄️ Databases:** PostgreSQL, MySQL
+- **🛠️ Debugging:** Pdb
+- **🐳 Containerization:** Docker
 
-### ⚡ Why Choose Refact Agent?  
+### ⚡ Why Choose Refact Agent?
 
 - ✅ **Deploy On-Premise:** For maximum security, choose our self-hosted AI Agent version and run it on your own infrastructure.
-- 🧠 **Access State-of-the-Art Models:** Use Claude 4, GPT-4o, or GPT-4o mini with AI Agent or for chat queries.
-- 🔑 **Bring Your Own Key (BYOK):** Connect your API key and use any LLM: Gemini, Grok, OpenAI, Deepseek, and others.
+- 🧠 **Access State-of-the-Art Models:** Use GPT-5, Claude 4.5, Gemini 3.0, DeepSeek, and more with AI Agent or for chat queries.
+- 🔑 **Bring Your Own Key (BYOK):** Connect your API key and use any LLM: OpenAI, Anthropic, Google, DeepSeek, Qwen, and others.
 - 💬 **Integrated IDE Chat:** Integrate with GitHub, PostgreSQL, Docker, and more. Refact.ai Agent accesses your resources and handles related operations autonomously, mimicking your workflow.
-- ⚡ **Free, Unlimited, Context-Aware Auto-Completion:** Code faster with smart AI suggestions.  
-- 🛠️ **Supports 25+ Programming Languages:** Python, JavaScript, Java, Rust, TypeScript, PHP, C++, C#, Go, and many more!  
+- ⚡ **Free, Unlimited, Context-Aware Auto-Completion:** Code faster with smart AI suggestions powered by Qwen2.5-Coder-1.5B with RAG.
+- 🛠️ **Supports 25+ Programming Languages:** Python, JavaScript, Java, Rust, TypeScript, PHP, C++, C#, Go, and many more!
 
 ### 🎉  Hear from our Community
 
@@ -57,10 +57,10 @@ Our Ambassadors shared remarkable stories of how they transform weeks of coding 
 
 
 
-📜 [View Full List of Supported Models](https://docs.refact.ai/supported-models/) 
+📜 [View Full List of Supported Models](https://docs.refact.ai/supported-models/)
 
-> 📢  **Using AI for work? Let’s bring it to your company!** 
-> 
+> 📢  **Using AI for work? Let’s bring it to your company!**
+>
 > [Fill out this form](https://refact.ai/contact/?utm_source=github&utm_medium=readme&utm_campaign=enterprise) — Our AI Agent will be tailored to your company’s data, learning from feedback, and helping organize knowledge for **better collaboration** with your team.
 
 
@@ -77,40 +77,40 @@ Our Ambassadors shared remarkable stories of how they transform weeks of coding 
 
 ## 🚀 Core Features and Functionality
 
- ✅ **Unlimited accurate auto-completion** with context awareness – Powered by Qwen2.5-Coder-1.5B, utilizing Retrieval-Augmented Generation (RAG).  
+✅ **Unlimited accurate auto-completion** with context awareness – Powered by Qwen2.5-Coder-1.5B, utilizing Retrieval-Augmented Generation (RAG).
 
 ![auto-completion](https://lh7-rt.googleusercontent.com/docsz/AD_4nXfClhl11Ul0YQjDTZJvrfhsj3bqK_VIz6bFfbTRc62dsMOz4LK4u72i9-gLTQDIgm0yChmFe57hvUxSoI2fQ5DSntna7_Ch0qbGx5zcB-othfwKnoYkbt3M3YgGFlrqFszuDEBhUw?key=zllGjEBckkx13bRZ6JIqX6qr)
 
- ✅ **Integrated in-IDE Chat** – AI deeply understands your code and provides relevant, intelligent answers.  
+✅ **Integrated in-IDE Chat** – AI deeply understands your code and provides relevant, intelligent answers.
 
- ✅ **Integrated with Tools** – Works with GitHub, GitLab, PostgreSQL, MySQL, Pdb, Docker, and shell commands.  
+✅ **Integrated with Tools** – Works with GitHub, GitLab, PostgreSQL, MySQL, Pdb, Docker, and shell commands.
 
 ![integrations](https://lh7-rt.googleusercontent.com/docsz/AD_4nXc4DWYXF73AgPWAaFFGLTqEprWwA0im8R_A1QMo4QW4pTnSi1MCoP9L8udMZb5FPyN-CdgefaxJFGpX2ndn5nkjGBF2b_hZBNHogM7IM6SPvUIvUd9iE1lYIq7q-TB2qKzSGLk00A?key=zllGjEBckkx13bRZ6JIqX6qr)
 
- ✅ **State-of-the-Art Models** – Use Claude 4, GPT-4o, or GPT-4o mini with AI Agent or for chat queries.
+✅ **State-of-the-Art Models** – Use GPT-5, Claude 4.5, Gemini 3.0, DeepSeek Reasoner, and more with AI Agent or for chat queries.
 
- ✅ **Bring Your Own Key (BYOK)** – Use your own API keys for external LLMs.  
+✅ **Bring Your Own Key (BYOK)** – Use your own API keys for external LLMs.
 
 ![BYOK](https://lh7-rt.googleusercontent.com/docsz/AD_4nXe1UDsuaER6WMxAnKEwz15T3OPslkpSo2vNGMGaNoEiZOJvAptY8yEvND_rI23q_5Sof1DceexyrW5x6oUwcpVr5KQvWUByrN_TnLGVY2HG_0sg8uWnRb14jKAes2MBDPM37EQO?key=zllGjEBckkx13bRZ6JIqX6qr)
 
 
 ## 🤖 Which Tasks Can Refact Help You With?
 
-- 🏗 **Generate code** from natural language prompts (even with typos).  
+- 🏗 **Generate code** from natural language prompts (even with typos).
 
-- 🔄 **Refactor code** for better quality and readability.  
+- 🔄 **Refactor code** for better quality and readability.
 
-- 📖 **Explain code** to quickly understand unfamiliar code.  
+- 📖 **Explain code** to quickly understand unfamiliar code.
 
-- 🐞 **Debug code** to detect and fix errors faster.  
+- 🐞 **Debug code** to detect and fix errors faster.
 
-- 🧪 **Generate unit tests** for reliable code.  
+- 🧪 **Generate unit tests** for reliable code.
 
-- 📌 **Code Review** with AI-assisted suggestions.  
+- 📌 **Code Review** with AI-assisted suggestions.
 
-- 📜 **Create Documentation** to keep knowledge up to date. 
- 
-- 🏷 **Generate Docstrings** for structured documentation.  
+- 📜 **Create Documentation** to keep knowledge up to date.
+
+- 🏷 **Generate Docstrings** for structured documentation.
 
 
 
@@ -136,14 +136,14 @@ See `CONTRIBUTING.md` for installation without a Docker container.
 
 ### 🔌 Getting Started with Plugins
 
-1. **Download Refact** for VS Code or JetBrains.  
-2. **Set up a custom inference URL:**  
+1. **Download Refact** for VS Code or JetBrains.
+2. **Set up a custom inference URL:**
    ```
    http://127.0.0.1:8008
    ```
-3. **Configure the plugin settings:**  
-   - **JetBrains:** Settings > Tools > Refact.ai > Advanced > Inference URL  
-   - **VSCode:** Extensions > Refact.ai Assistant > Settings > Address URL  
+3. **Configure the plugin settings:**
+   - **JetBrains:** Settings > Tools > Refact.ai > Advanced > Inference URL
+   - **VSCode:** Extensions > Refact.ai Assistant > Settings > Address URL
 
 
 
@@ -154,15 +154,16 @@ For detailed guidance and best practices, check out our [documentation.](https:/
 
 ## 🥇 Contribution
 
-Want to contribute to our project? We're always open to new ideas and features!  
-- **Check out GitHub Issues** – See what we're working on or suggest your own ideas.  
-- **Read our Contributing Guide** – Check out `Contributing.md` to get started.  
+Want to contribute to our project? We're always open to new ideas and features!
+- **Check out GitHub Issues** – See what we're working on or suggest your own ideas.
+- **Read our Contributing Guide** – Check out `Contributing.md` to get started.
 
 Your contributions help shape the future of Refact Agent! 🚀
 
 
 ### ⭐ Star History
-![image (4)](https://github.com/user-attachments/assets/48440c6e-b0cd-4421-880e-44924bd21693)
+
+[![Star History Chart](https://api.star-history.com/svg?repos=smallcloudai/refact&type=Date)](https://www.star-history.com/#smallcloudai/refact&Date)
 
 ### 🎉 Join the Community
 

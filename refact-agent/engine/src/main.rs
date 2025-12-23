@@ -13,6 +13,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::background_tasks::start_background_tasks;
 use crate::lsp::spawn_lsp_task;
+use crate::telemetry::{basic_transmit, snippets_transmit};
 use crate::yaml_configs::create_configs::yaml_configs_try_create_all;
 use crate::yaml_configs::customization_loader::load_customization;
 use sqlite_vec::sqlite3_vec_init;
@@ -24,6 +25,7 @@ mod version;
 mod custom_error;
 mod nicer_logs;
 mod caps;
+mod telemetry;
 mod global_context;
 mod indexing_utils;
 mod background_tasks;
@@ -38,6 +40,7 @@ mod fuzzy_search;
 mod files_correction;
 mod vecdb;
 mod ast;
+mod subchat;
 mod at_commands;
 mod tools;
 mod postprocessing;
@@ -47,22 +50,23 @@ mod scratchpad_abstract;
 mod scratchpads;
 
 mod fetch_embedding;
+mod forward_to_hf_endpoint;
 mod forward_to_openai_endpoint;
 mod restream;
 
 mod call_validation;
+mod dashboard;
 mod lsp;
 mod http;
 
 mod integrations;
 mod privacy;
 mod git;
-mod cloud;
 mod agentic;
-// TODO: do we need this?
+mod memories;
 mod files_correction_cache;
+mod knowledge_graph;
 pub mod constants;
-mod basic_utils;
 
 #[tokio::main]
 async fn main() {
@@ -170,7 +174,7 @@ async fn main() {
     // not really needed, but it's nice to have an error message sooner if there's one
     let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
 
-    let mut background_tasks = start_background_tasks(gcx.clone()).await;
+    let mut background_tasks = start_background_tasks(gcx.clone(), &config_dir).await;
     // vector db will spontaneously start if the downloaded caps and command line parameters are right
 
     let should_start_http = cmdline.http_port != 0;
@@ -196,5 +200,7 @@ async fn main() {
     background_tasks.abort().await;
     git::checkpoints::abort_init_shadow_repos(gcx.clone()).await;
     integrations::sessions::stop_sessions(gcx.clone()).await;
+    info!("saving telemetry without sending, so should be quick");
+    basic_transmit::basic_telemetry_compress(gcx.clone()).await;
     info!("bb\n");
 }

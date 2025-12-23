@@ -156,12 +156,26 @@ impl Tool for ToolMv {
             if dst_metadata.is_dir() {
                 fs::remove_dir_all(&dst_true_path).await
                     .map_err(|e| format!("Failed to remove existing directory '{}': {}", dst_str, e))?;
+                // Invalidate cache entries for all files under the removed directory
+                {
+                    let mut gcx_write = gcx.write().await;
+                    let paths_to_remove: Vec<_> = gcx_write.documents_state.memory_document_map
+                        .keys()
+                        .filter(|p| p.starts_with(&dst_true_path))
+                        .cloned()
+                        .collect();
+                    for p in paths_to_remove {
+                        gcx_write.documents_state.memory_document_map.remove(&p);
+                    }
+                }
             } else {
                 if !dst_metadata.is_dir() {
                     dst_file_content = fs::read_to_string(&dst_true_path).await.unwrap_or_else(|_| "".to_string());
                 }
                 fs::remove_file(&dst_true_path).await
                     .map_err(|e| format!("Failed to remove existing file '{}': {}", dst_str, e))?;
+                // Invalidate cache entry for the removed file
+                gcx.write().await.documents_state.memory_document_map.remove(&dst_true_path);
             }
         }
 
@@ -179,6 +193,12 @@ impl Tool for ToolMv {
 
         match fs::rename(&src_true_path, &dst_true_path).await {
             Ok(_) => {
+                // Invalidate cache entries for both source and destination
+                {
+                    let mut gcx_write = gcx.write().await;
+                    gcx_write.documents_state.memory_document_map.remove(&src_true_path);
+                    gcx_write.documents_state.memory_document_map.remove(&dst_true_path);
+                }
                 let corrections = src_str != src_corrected_path || dst_str != dst_corrected_path;
                 let mut messages = vec![];
                 if !src_is_dir && !src_file_content.is_empty() {
@@ -235,6 +255,12 @@ impl Tool for ToolMv {
                             .map_err(|e| format!("Failed to copy '{}' to '{}': {}", src_str, dst_str, e))?;
                         fs::remove_file(&src_true_path).await
                             .map_err(|e| format!("Failed to remove source file '{}' after copy: {}", src_str, e))?;
+                        // Invalidate cache entries for both source and destination
+                        {
+                            let mut gcx_write = gcx.write().await;
+                            gcx_write.documents_state.memory_document_map.remove(&src_true_path);
+                            gcx_write.documents_state.memory_document_map.remove(&dst_true_path);
+                        }
 
                         let mut messages = vec![];
 

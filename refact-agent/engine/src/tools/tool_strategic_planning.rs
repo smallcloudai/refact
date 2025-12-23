@@ -2,17 +2,24 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
-use serde_json::Value;
+use serde_json::{Value, json};
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
-use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
+use axum::http::StatusCode;
+use crate::subchat::subchat_single;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType, MatchConfirmDeny, MatchConfirmDenyResult};
+use crate::integrations::integr_abstract::IntegrationConfirmation;
+use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
+use crate::caps::resolve_chat_model;
+use crate::custom_error::ScratchError;
 use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, preprocess_path_for_normalization};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
+use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
-use crate::tokens::count_text_tokens;
+use crate::tokens::count_text_tokens_with_fallback;
+use crate::memories::{memories_add_enriched, EnrichmentParams};
 
 pub struct ToolStrategicPlanning {
     pub config_path: String,
@@ -21,18 +28,77 @@ pub struct ToolStrategicPlanning {
 
 static TOKENS_EXTRA_BUDGET_PERCENT: f32 = 0.06;
 
+static SOLVER_PROMPT: &str = r#"Your task is to identify and solve the problem by the given conversation and context files.
+The solution must be robust and complete and adressing all corner cases.
+Also make a couple of alternative ways to solve the problem, if the initial solution doesn't work."#;
+
+
 static GUARDRAILS_PROMPT: &str = r#"💿 Now confirm the plan with the user"#;
+
+static ENTERTAINMENT_MESSAGES: &[&str] = &[
+    "🧠 Strategic planning in progress...",
+    "📋 Analyzing the problem and context...",
+    "🔍 Reviewing relevant files...",
+    "💡 Formulating solution approaches...",
+    "📝 Drafting the strategic plan...",
+    "⏳ Still working... Almost there!",
+    "🔄 Refining the solution...",
+];
+
+async fn send_entertainment_message(
+    subchat_tx: &Arc<AMutex<tokio::sync::mpsc::UnboundedSender<serde_json::Value>>>,
+    tool_call_id: &str,
+    message_idx: usize,
+) {
+    let message_text = ENTERTAINMENT_MESSAGES[message_idx % ENTERTAINMENT_MESSAGES.len()];
+    let entertainment_msg = json!({
+        "tool_call_id": tool_call_id,
+        "subchat_id": message_text,
+        "add_message": {
+            "role": "assistant",
+            "content": message_text
+        }
+    });
+    let _ = subchat_tx.lock().await.send(entertainment_msg);
+}
+
+fn spawn_entertainment_task(
+    subchat_tx: Arc<AMutex<tokio::sync::mpsc::UnboundedSender<serde_json::Value>>>,
+    tool_call_id: String,
+    cancel_token: tokio_util::sync::CancellationToken,
+) {
+    tokio::spawn(async move {
+        let mut message_idx = 0usize;
+        loop {
+            tokio::select! {
+                _ = cancel_token.cancelled() => {
+                    break;
+                }
+                _ = tokio::time::sleep(tokio::time::Duration::from_secs(10)) => {
+                    send_entertainment_message(&subchat_tx, &tool_call_id, message_idx).await;
+                    message_idx += 1;
+                }
+            }
+        }
+    });
+}
 
 async fn _make_prompt(
     ccx: Arc<AMutex<AtCommandsContext>>,
     subchat_params: &SubchatParameters,
+    problem_statement: &String, 
     important_paths: &Vec<PathBuf>,
     previous_messages: &Vec<ChatMessage>,
 ) -> Result<String, String> {
     let gcx = ccx.lock().await.global_context.clone();
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
+    let model_rec = resolve_chat_model(caps, &subchat_params.subchat_model)?;
+    let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)).map_err(|x| x.message)?;
     let tokens_extra_budget = (subchat_params.subchat_n_ctx as f32 * TOKENS_EXTRA_BUDGET_PERCENT) as usize;
     let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag - tokens_extra_budget) as i64;
-    let final_message = "";
+    let final_message = problem_statement.to_string();
+    tokens_budget -= count_text_tokens_with_fallback(tokenizer.clone(), &final_message) as i64;
     let mut context = "".to_string();
     let mut context_files = vec![];
     for p in important_paths.iter() {
@@ -48,6 +114,7 @@ async fn _make_prompt(
                     symbols: vec![],
                     gradient_type: 4,
                     usefulness: 100.0,
+                    skip_pp: false,
                 }
             },
             Err(_) => {
@@ -69,13 +136,14 @@ async fn _make_prompt(
                 format!("🤖:\n{}\n\n", &message.content.content_text_only())
             }
             "tool" => {
-                format!("🔨:\n{}\n\n", &message.content.content_text_only())
+                format!("📎:\n{}\n\n", &message.content.content_text_only())
             }
             _ => {
+                tracing::info!("skip adding message to the context: {}", crate::nicer_logs::first_n_chars(&message.content.content_text_only(), 40));
                 continue;
             }
         };
-        let left_tokens = tokens_budget - count_text_tokens(&message_row) as i64;
+        let left_tokens = tokens_budget - count_text_tokens_with_fallback(tokenizer.clone(), &message_row) as i64;
         if left_tokens < 0 {
             // we do not end here, maybe there are smaller useful messages at the beginning
             continue;
@@ -91,16 +159,17 @@ async fn _make_prompt(
         for context_file in postprocess_context_files(
             gcx.clone(),
             &mut context_files,
+            tokenizer.clone(),
             subchat_params.subchat_tokens_for_rag + tokens_budget.max(0) as usize,
             false,
             &pp_settings,
         ).await {
             files_context.push_str(
-            &format!("📎 {}:{}-{}\n```\n{}```\n\n",
-                     context_file.file_name,
-                     context_file.line1,
-                     context_file.line2,
-                     context_file.file_content)
+                &format!("📎 {}:{}-{}\n```\n{}```\n\n",
+                         context_file.file_name,
+                         context_file.line1,
+                         context_file.line2,
+                         context_file.file_content)
             );
         }
         Ok(format!("{final_message}\n\n# Conversation\n{context}\n\n# Files context\n{files_context}"))
@@ -109,11 +178,67 @@ async fn _make_prompt(
     }
 }
 
+async fn _execute_subchat_iteration(
+    ccx_subchat: Arc<AMutex<AtCommandsContext>>,
+    subchat_params: &SubchatParameters,
+    history: Vec<ChatMessage>,
+    iter_max_new_tokens: usize,
+    usage_collector: &mut ChatUsage,
+    tool_call_id: &String,
+    log_suffix: &str,
+    log_prefix: &str,
+) -> Result<(Vec<ChatMessage>, ChatMessage), String> {
+    let choices = subchat_single(
+        ccx_subchat.clone(),
+        subchat_params.subchat_model.as_str(),
+        history,
+        Some(vec![]),
+        None,
+        false,
+        subchat_params.subchat_temperature,
+        Some(iter_max_new_tokens),
+        1,
+        subchat_params.subchat_reasoning_effort.clone(),
+        false,
+        Some(usage_collector),
+        Some(tool_call_id.clone()),
+        Some(format!("{log_prefix}-strategic-planning-{log_suffix}")),
+    ).await?;
+
+    let session = choices.into_iter().next().unwrap();
+    let reply = session.last().unwrap().clone();
+    crate::tools::tools_execute::update_usage_from_message(usage_collector, &reply);
+
+    Ok((session, reply))
+}
+
 
 #[async_trait]
 impl Tool for ToolStrategicPlanning {
     fn as_any(&self) -> &dyn std::any::Any { self }
-
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "strategic_planning".to_string(),
+            display_name: "Strategic Planning".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
+            agentic: true,
+            experimental: false,
+            description: "Strategically plan a solution for a complex problem or create a comprehensive approach.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "important_paths".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Comma-separated list of all filenames which are required to be considered for resolving the problem. More files - better, include them even if you are not sure.".to_string(),
+                }
+            ],
+            parameters_required: vec!["important_paths".to_string()],
+        }
+    }
+    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -140,14 +265,16 @@ impl Tool for ToolStrategicPlanning {
             Some(v) => return Err(format!("argument `paths` is not a string: {:?}", v)),
             None => return Err("Missing argument `paths`".to_string())
         };
+        let mut usage_collector = ChatUsage { ..Default::default() };
+        let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
         let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "strategic_planning").await?;
         let external_messages = {
             let ccx_lock = ccx.lock().await;
             ccx_lock.messages.clone()
         };
-        let ccx_subchat = {
+        let (ccx_subchat, subchat_tx) = {
             let ccx_lock = ccx.lock().await;
-            let t = AtCommandsContext::new(
+            let mut t = AtCommandsContext::new(
                 ccx_lock.global_context.clone(),
                 subchat_params.subchat_n_ctx,
                 0,
@@ -155,37 +282,67 @@ impl Tool for ToolStrategicPlanning {
                 ccx_lock.messages.clone(),
                 ccx_lock.chat_id.clone(),
                 ccx_lock.should_execute_remotely,
+                ccx_lock.current_model.clone(),
             ).await;
-            Arc::new(AMutex::new(t))
+            t.subchat_tx = ccx_lock.subchat_tx.clone();
+            t.subchat_rx = ccx_lock.subchat_rx.clone();
+            let tx = ccx_lock.subchat_tx.clone();
+            (Arc::new(AMutex::new(t)), tx)
         };
+
+        send_entertainment_message(&subchat_tx, tool_call_id, 0).await;
+        let cancel_token = tokio_util::sync::CancellationToken::new();
+        spawn_entertainment_task(subchat_tx, tool_call_id.clone(), cancel_token.clone());
+
         let prompt = _make_prompt(
             ccx.clone(),
             &subchat_params,
+            &SOLVER_PROMPT.to_string(),
             &important_paths,
             &external_messages
         ).await?;
         let history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
         tracing::info!("FIRST ITERATION: Get the initial solution");
-
-        let messages = crate::cloud::subchat::subchat(
+        let result = _execute_subchat_iteration(
             ccx_subchat.clone(),
-            "id:strategic_planning:1.0",
+            &subchat_params,
+            history.clone(),
+            subchat_params.subchat_max_new_tokens / 3,
+            &mut usage_collector,
             tool_call_id,
-            history,
-            subchat_params.subchat_temperature,
-            Some(subchat_params.subchat_max_new_tokens),
-            subchat_params.subchat_reasoning_effort.clone(),
-        ).await?;
-        let initial_solution = messages.last().unwrap().clone();
+            "get-initial-solution",
+            &log_prefix,
+        ).await;
 
+        cancel_token.cancel();
+
+        let (_, initial_solution) = result?;
         let final_message = format!("# Solution\n{}", initial_solution.content.content_text_only());
         tracing::info!("strategic planning response (combined):\n{}", final_message);
+
+        let filenames: Vec<String> = important_paths.iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect();
+        let enrichment_params = EnrichmentParams {
+            base_tags: vec!["planning".to_string(), "strategic".to_string()],
+            base_filenames: filenames,
+            base_kind: "decision".to_string(),
+            base_title: Some("Strategic Plan".to_string()),
+        };
+        if let Err(e) = memories_add_enriched(ccx.clone(), &final_message, enrichment_params).await {
+            tracing::warn!("Failed to create enriched memory from strategic planning: {}", e);
+        } else {
+            tracing::info!("Created enriched memory from strategic planning");
+        }
+
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
             content: ChatContent::SimpleText(final_message),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            usage: Some(usage_collector),
+            output_filter: Some(crate::postprocessing::pp_command_output::OutputFilter::no_limits()),
             ..Default::default()
         }));  
         results.push(ContextEnum::ChatMessage(ChatMessage {
@@ -197,29 +354,46 @@ impl Tool for ToolStrategicPlanning {
         Ok((false, results))
     }
 
-    fn tool_description(&self) -> ToolDesc {
-        ToolDesc {
-            name: "strategic_planning".to_string(),
-            display_name: "Strategic Planning".to_string(),
-            source: ToolSource {
-                source_type: ToolSourceType::Builtin,
-                config_path: self.config_path.clone(),
-            },
-            agentic: true,
-            experimental: false,
-            description: "Strategically plan a solution for a complex problem or create a comprehensive approach.".to_string(),
-            parameters: vec![
-                ToolParam {
-                    name: "important_paths".to_string(),
-                    param_type: "string".to_string(),
-                    description: "Comma-separated list of all filenames which are required to be considered for resolving the problem. More files - better, include them even if you are not sure.".to_string(),
-                }
-            ],
-            parameters_required: vec!["important_paths".to_string()],
-        }
-    }
-
     fn tool_depends_on(&self) -> Vec<String> {
         vec![]
+    }
+
+    async fn command_to_match_against_confirm_deny(
+        &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
+        args: &HashMap<String, Value>,
+    ) -> Result<String, String> {
+        let paths = match args.get("important_paths") {
+            Some(Value::String(s)) => s.clone(),
+            _ => return Ok("".to_string()),
+        };
+        let truncated_paths = if paths.len() > 100 {
+            format!("{}...", &paths[..100])
+        } else {
+            paths
+        };
+        Ok(format!("strategic_planning \"{}\"", truncated_paths))
+    }
+
+    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
+        Some(IntegrationConfirmation {
+            ask_user: vec!["*".to_string()],
+            deny: vec![],
+        })
+    }
+
+    async fn match_against_confirm_deny(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        args: &HashMap<String, Value>,
+    ) -> Result<MatchConfirmDeny, String> {
+        let command_to_match = self.command_to_match_against_confirm_deny(ccx.clone(), &args).await.map_err(|e| {
+            format!("Error getting tool command to match: {}", e)
+        })?;
+        Ok(MatchConfirmDeny {
+            result: MatchConfirmDenyResult::CONFIRMATION,
+            command: command_to_match,
+            rule: "default".to_string(),
+        })
     }
 }

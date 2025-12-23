@@ -19,6 +19,7 @@ use crate::files_in_workspace::Document;
 mod rust;
 mod python;
 mod java;
+mod kotlin;
 mod cpp;
 mod ts;
 mod js;
@@ -190,12 +191,14 @@ fn check_duplicates_with_ref(symbols: &Vec<Box<dyn AstSymbolInstance>>) {
 pub(crate) fn base_parser_test(parser: &mut Box<dyn AstLanguageParser>,
                                path: &PathBuf,
                                code: &str, symbols_str: &str) {
-    let symbols = parser.parse(code, &path);
+    // Normalize line endings to LF to ensure consistent byte offsets across platforms
+    let normalized_code = code.replace("\r\n", "\n");
+    let symbols = parser.parse(&normalized_code, &path);
     // use std::fs;
     // let symbols_str_ = serde_json::to_string_pretty(&symbols).unwrap();
     // fs::write("output.json", symbols_str_).expect("Unable to write file");
     check_duplicates(&symbols);
-    print(&symbols, code);
+    print(&symbols, &normalized_code);
 
     let ref_symbols: Vec<Box<dyn AstSymbolInstance>> = serde_json::from_str(&symbols_str).unwrap();
     check_duplicates_with_ref(&ref_symbols);
@@ -212,11 +215,13 @@ pub(crate) fn base_skeletonizer_test(lang: &LanguageId,
                                      parser: &mut Box<dyn AstLanguageParser>,
                                      file: &PathBuf,
                                      code: &str, skeleton_ref_str: &str) {
-    let symbols = parser.parse(code, &file);
+    // Normalize line endings to LF to ensure consistent byte offsets across platforms
+    let normalized_code = code.replace("\r\n", "\n");
+    let symbols = parser.parse(&normalized_code, &file);
     let symbols_struct = symbols.iter().map(|s| s.read().symbol_info_struct()).collect();
     let doc = Document {
         doc_path: file.clone(),
-        doc_text: Some(Rope::from_str(code)),
+        doc_text: Some(Rope::from_str(&normalized_code)),
     };
     let guid_to_children: HashMap<Uuid, Vec<Uuid>> = symbols.iter().map(|s| (s.read().guid().clone(), s.read().childs_guid().clone())).collect();
     let ast_markup: FileASTMarkup = crate::ast::lowlevel_file_markup(&doc, &symbols_struct).unwrap();
@@ -225,7 +230,7 @@ pub(crate) fn base_skeletonizer_test(lang: &LanguageId,
     let class_symbols: Vec<_> = ast_markup.symbols_sorted_by_path_len.iter().filter(|x| x.symbol_type == SymbolType::StructDeclaration).collect();
     let mut skeletons: HashSet<Skeleton> = Default::default();
     for symbol in class_symbols {
-        let skeleton_line = formatter.make_skeleton(&symbol, &code.to_string(), &guid_to_children, &guid_to_info);
+        let skeleton_line = formatter.make_skeleton(&symbol, &normalized_code, &guid_to_children, &guid_to_info);
         skeletons.insert(Skeleton { line: skeleton_line });
     }
     // use std::fs;
@@ -248,11 +253,13 @@ pub(crate) fn base_declaration_formatter_test(lang: &LanguageId,
                                               parser: &mut Box<dyn AstLanguageParser>,
                                               file: &PathBuf,
                                               code: &str, decls_ref_str: &str) {
-    let symbols = parser.parse(code, &file);
+    // Normalize line endings to LF to ensure consistent byte offsets across platforms
+    let normalized_code = code.replace("\r\n", "\n");
+    let symbols = parser.parse(&normalized_code, &file);
     let symbols_struct = symbols.iter().map(|s| s.read().symbol_info_struct()).collect();
     let doc = Document {
         doc_path: file.clone(),
-        doc_text: Some(Rope::from_str(code)),
+        doc_text: Some(Rope::from_str(&normalized_code)),
     };
     let guid_to_children: HashMap<Uuid, Vec<Uuid>> = symbols.iter().map(|s| (s.read().guid().clone(), s.read().childs_guid().clone())).collect();
     let ast_markup: FileASTMarkup = crate::ast::lowlevel_file_markup(&doc, &symbols_struct).unwrap();
@@ -264,7 +271,7 @@ pub(crate) fn base_declaration_formatter_test(lang: &LanguageId,
         if !vec![SymbolType::StructDeclaration, SymbolType::FunctionDeclaration].contains(&symbol.symbol_type) {
             continue;
         }
-        let (line, (top_row, bottom_row)) = formatter.get_declaration_with_comments(&symbol, &code.to_string(), &guid_to_children, &guid_to_info);
+        let (line, (top_row, bottom_row)) = formatter.get_declaration_with_comments(&symbol, &normalized_code, &guid_to_children, &guid_to_info);
         if !line.is_empty() {
             decls.insert(Decl {
                 top_row,

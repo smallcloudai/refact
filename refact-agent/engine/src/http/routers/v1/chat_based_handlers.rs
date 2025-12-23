@@ -8,7 +8,6 @@ use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
 use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
 use crate::agentic::compress_trajectory::compress_trajectory;
-use crate::basic_utils::generate_random_hash;
 use crate::call_validation::ChatMessage;
 
 #[derive(Deserialize)]
@@ -29,7 +28,7 @@ pub async fn handle_v1_commit_message_from_diff(
         )
     })?;
 
-    let commit_message = generate_commit_message_by_diff(global_context.clone(), &generate_random_hash(16), &post.diff, &post.text)
+    let commit_message = generate_commit_message_by_diff(global_context.clone(), &post.diff, &post.text)
         .await
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
 
@@ -59,10 +58,11 @@ pub async fn handle_v1_trajectory_compress(
         )
     })?;
 
-    let trajectory = compress_trajectory(global_context.clone(), &generate_random_hash(16), &post.messages)
+    let trajectory = compress_trajectory(global_context.clone(), &post.messages)
         .await.map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
 
     let response = serde_json::json!({
+        "goal": "compress it",
         "trajectory": trajectory,
     });
 
@@ -79,23 +79,18 @@ pub async fn handle_v1_trajectory_save(
     body_bytes: hyper::body::Bytes,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<CompressTrajectoryPost>(&body_bytes).map_err(|e| {
-        ScratchError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            format!("JSON problem: {}", e),
-        )
+        ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e))
     })?;
-    let trajectory = compress_trajectory(gcx.clone(), &generate_random_hash(16), &post.messages)
+
+    let trajectory = compress_trajectory(gcx.clone(), &post.messages)
         .await.map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
-    crate::cloud::memories_req::memories_add(
-        gcx.clone(),
-        "trajectory",
-        &trajectory.as_str(),
-    ).await.map_err(|e| {
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
-    })?;
+
+    let file_path = crate::memories::save_trajectory(gcx, &trajectory)
+        .await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
     let response = serde_json::json!({
         "trajectory": trajectory,
+        "file_path": file_path.to_string_lossy(),
     });
 
     Ok(Response::builder()

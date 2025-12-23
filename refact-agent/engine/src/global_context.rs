@@ -1,4 +1,6 @@
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::hash::Hasher;
 use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -21,6 +23,7 @@ use crate::files_in_workspace::DocumentsState;
 use crate::integrations::docker::docker_ssh_tunnel_utils::SshTunnel;
 use crate::integrations::sessions::IntegrationSession;
 use crate::privacy::PrivacySettings;
+use crate::telemetry::telemetry_structs;
 use crate::background_tasks::BackgroundTasksHolder;
 
 
@@ -106,6 +109,19 @@ pub struct CommandLine {
     pub active_group_id: Option<String>,
 }
 
+impl CommandLine {
+    fn create_hash(msg: String) -> String {
+        let mut hasher = DefaultHasher::new();
+        hasher.write(msg.as_bytes());
+        format!("{:x}", hasher.finish())
+    }
+
+    pub fn get_prefix(&self) -> String {
+        // This helps several self-hosting or cloud accounts to not mix
+        Self::create_hash(format!("{}:{}", self.address_url.clone(), self.api_key.clone()))[..6].to_string()
+    }
+}
+
 pub struct AtCommandsPreviewCache {
     pub cache: HashMap<String, String>,
 }
@@ -145,6 +161,7 @@ pub struct GlobalContext {
     pub tokenizer_map: HashMap<String, Option<Arc<Tokenizer>>>,
     pub tokenizer_download_lock: Arc<AMutex<bool>>,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
+    pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<crate::vecdb::vdb_highlev::VecDb>>>,
     pub vec_db_error: String,
     pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
@@ -161,7 +178,6 @@ pub struct GlobalContext {
     pub init_shadow_repos_lock: Arc<AMutex<bool>>,
     pub git_operations_abort_flag: Arc<AtomicBool>,
     pub app_searchable_id: String,
-    pub threads_subscription_restart_flag: Arc<AtomicBool>
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -194,96 +210,7 @@ pub async fn migrate_to_config_folder(
     Ok(())
 }
 
-#[cfg(target_os = "macos")]
-pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
-    use std::process::Command;
-    use rand::Rng;
-    
-    // Try multiple methods to get a unique machine identifier on macOS
-    let machine_id = {
-        // First attempt: Use system_profiler to get hardware UUID (most reliable)
-        let hardware_uuid = Command::new("system_profiler")
-            .args(&["SPHardwareDataType"])
-            .output()
-            .ok()
-            .and_then(|output| {
-                let output_str = String::from_utf8_lossy(&output.stdout);
-                // Extract Hardware UUID from system_profiler output
-                output_str.lines()
-                    .find(|line| line.contains("Hardware UUID"))
-                    .and_then(|line| {
-                        line.split(':')
-                            .nth(1)
-                            .map(|s| s.trim().to_string())
-                    })
-            });
-            
-        if let Some(uuid) = hardware_uuid {
-            if !uuid.trim().is_empty() {
-                return uuid;
-            }
-        }
-        
-        // Second attempt: Try to get the serial number
-        let serial_number = Command::new("system_profiler")
-            .args(&["SPHardwareDataType"])
-            .output()
-            .ok()
-            .and_then(|output| {
-                let output_str = String::from_utf8_lossy(&output.stdout);
-                output_str.lines()
-                    .find(|line| line.contains("Serial Number"))
-                    .and_then(|line| {
-                        line.split(':')
-                            .nth(1)
-                            .map(|s| s.trim().to_string())
-                    })
-            });
-            
-        if let Some(serial) = serial_number {
-            if !serial.trim().is_empty() {
-                return serial;
-            }
-        }
-        
-        // Third attempt: Try to get the MAC address using ifconfig
-        let mac_address = Command::new("ifconfig")
-            .args(&["en0"])
-            .output()
-            .ok()
-            .and_then(|output| {
-                let output_str = String::from_utf8_lossy(&output.stdout);
-                output_str.lines()
-                    .find(|line| line.contains("ether"))
-                    .and_then(|line| {
-                        line.split_whitespace()
-                            .nth(1)
-                            .map(|s| s.trim().replace(":", ""))
-                    })
-            });
-            
-        if let Some(mac) = mac_address {
-            if !mac.trim().is_empty() && mac != "000000000000" {
-                return mac;
-            }
-        }
-        
-        // Final fallback: Generate a random ID and store it persistently
-        // This is just a temporary solution in case all other methods fail
-        let mut rng = rand::thread_rng();
-        format!("macos-{:016x}", rng.gen::<u64>())
-    };
-
-    let folders = workspace_folders
-        .iter()
-        .map(|p| p.file_name().unwrap_or_default().to_string_lossy().to_string())
-        .collect::<Vec<_>>()
-        .join(";");
-
-    format!("{}-{}", machine_id, folders)
-}
-
-#[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+#[cfg(not(target_os = "windows"))]
 pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
     let mac = pnet_datalink::interfaces()
         .into_iter()
@@ -482,6 +409,7 @@ pub async fn create_global_context(
         tokenizer_map: HashMap::new(),
         tokenizer_download_lock: Arc::new(AMutex::<bool>::new(false)),
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
+        telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
         vec_db: Arc::new(AMutex::new(None)),
         vec_db_error: String::new(),
         ast_service: None,
@@ -498,7 +426,6 @@ pub async fn create_global_context(
         init_shadow_repos_lock: Arc::new(AMutex::new(false)),
         git_operations_abort_flag: Arc::new(AtomicBool::new(false)),
         app_searchable_id: get_app_searchable_id(&workspace_dirs),
-        threads_subscription_restart_flag: Arc::new(AtomicBool::new(false)),
     };
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;

@@ -487,11 +487,17 @@ type FThreadOutput {
   ft_app_searchable: String!
   ft_app_specific: JSON
   ft_archived_ts: Float!
+<<<<<<< HEAD
+  ft_created_ts: Float!
+  ft_error: JSON
+  ft_fexp_name: String!
+=======
   ft_confirmation_request: JSON
   ft_confirmation_response: JSON
   ft_created_ts: Float!
   ft_error: JSON
   ft_fexp_id: String!
+>>>>>>> not_horrible
   ft_id: String!
   ft_locked_by: String!
   ft_need_assistant: Int!
@@ -511,8 +517,11 @@ input FThreadPatch {
   ft_app_searchable: String = null
   ft_app_specific: String = null
   ft_archived_ts: Float = null
+<<<<<<< HEAD
+=======
   ft_confirmation_request: String = null
   ft_confirmation_response: String = null
+>>>>>>> not_horrible
   ft_error: String = null
   ft_subchat_dest_ft_id: String = null
   ft_title: String = null
@@ -562,6 +571,26 @@ type FWorkspaceOutput {
   ws_id: String!
   ws_owner_fuser_id: String!
   ws_root_group_id: String!
+}
+
+input FWorkspaceInvitationInput {
+  ws_id: String!
+  wsi_email: String!
+  wsi_invited_by_fuser_id: String!
+  wsi_role: String!
+}
+
+type FWorkspaceInvitationOutput {
+  ws_id: String!
+  wsi_created_ts: Float!
+  wsi_email: String!
+  wsi_invited_by_fuser_id: String!
+  wsi_role: String!
+  wsi_token: String!
+}
+
+input FWorkspaceInvitationPatch {
+  wsi_role: String = null
 }
 
 type FlexusGroup {

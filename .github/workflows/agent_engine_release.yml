@@ -50,7 +50,7 @@ jobs:
           #          - os: ubuntu-22.04
           #            target: arm-unknown-linux-gnueabihf
           #            code-target: linux-armhf
-          - os: macos-13
+          - os: macos-15-intel
             target: x86_64-apple-darwin
             code-target: darwin-x64
             whl-tag: macosx_13_0_x86_64

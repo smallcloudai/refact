@@ -701,7 +701,6 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
     let new_app_searchable_id = get_app_searchable_id(&folders);
     if old_app_searchable_id != new_app_searchable_id {
         gcx.write().await.app_searchable_id = get_app_searchable_id(&folders);
-        crate::cloud::threads_sub::trigger_threads_subscription_restart(gcx.clone()).await;
     }
     watcher_init(gcx.clone()).await;
     let files_enqueued = enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;

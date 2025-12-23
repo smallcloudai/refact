@@ -36,6 +36,32 @@ check out the [Text UI](#cli) below, you can talk about your project in the comm
 * Ask it anything! It will use the tools available to make changes to your project
 
 
+## Supported Models
+
+Refact Agent supports state-of-the-art models from multiple providers:
+
+### Model Families
+
+- **OpenAI**: GPT-5, GPT-4.1, O-series (o3-mini, o4-mini) - Advanced reasoning and agent capabilities
+- **Anthropic**: Claude 4.5 (Haiku, Sonnet, Opus) - Extended thinking and multimodal support
+- **Google**: Gemini 2.5 & 3.0 Pro - Large context windows up to 1M tokens
+- **DeepSeek**: Chat and Reasoner - High-performance inference
+- **Qwen**: Qwen3-235B - Large-scale reasoning
+
+### Key Capabilities
+
+- ✅ Streaming responses
+- ✅ Prompt caching (OpenAI, Anthropic)
+- ✅ Tool/function calling
+- ✅ Multimodal inputs (images)
+- ✅ Agent mode (autonomous task execution)
+- ✅ Extended reasoning/thinking modes
+- ✅ Web search integration (GPT-5, o4-mini-deep-research)
+- ✅ Autonomous multi-step research (o4-mini-deep-research)
+
+📜 **[View Complete Model List & Pricing](https://docs.refact.ai/supported-models/)**
+
+
 ## Installation
 
 Installable by the end user:
@@ -67,12 +93,15 @@ Installable by the end user:
 - [x] search_semantic() with scope (semantic search)
 - [x] search_pattern() with scope (pattern matching)
 - [x] @file @tree @web @definition @references @search mentions in chat
-- [x] locate() uses test-time compute to find good project cross-section
-- [x] Latest gpt-4o gpt-4o-mini
-- [x] Claude-3-5-sonnet
-- [x] Llama-3.1 (passthrough)
-- [ ] Llama-3.2 (passthrough)
-- [ ] Llama-3.2 (scratchpad)
+- [x] subagent() delegates focused tasks to independent sub-agents
+- [x] OpenAI GPT-4.1, GPT-5, o3-mini, o4-mini models with reasoning support
+- [x] Anthropic Claude 4.5 family (Haiku, Sonnet, Opus) with extended thinking
+- [x] Google Gemini 2.5 & 3.0 Pro models
+- [x] DeepSeek Chat and Reasoner models
+- [x] Qwen3-235B reasoning model
+- [x] Prompt caching support (OpenAI, Anthropic)
+- [x] Web search integration (GPT-5 models)
+- [x] Code interpreter (o4-mini-deep-research)
 - [x] [Bring-your-own-key](https://docs.refact.ai/byok/)
 - [ ] Memory (--experimental)
 - [ ] Docker integration (--experimental)
