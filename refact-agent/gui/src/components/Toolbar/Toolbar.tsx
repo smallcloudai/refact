@@ -162,6 +162,15 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
 
   const onCreateNewChat = useCallback(() => {
     setRenamingTabId(null);
+
+    // Auto-close empty chat tab when creating a new chat
+    if (currentChatId) {
+      const currentThread = allThreads[currentChatId];
+      if (currentThread && currentThread.thread.messages.length === 0) {
+        dispatch(closeThread({ id: currentChatId }));
+      }
+    }
+
     dispatch(newChatAction());
     dispatch(clearThreadPauseReasons({ id: currentChatId }));
     dispatch(setThreadConfirmationStatus({ id: currentChatId, wasInteracted: false, confirmationStatus: true }));
@@ -171,10 +180,23 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
       success: true,
       error_message: "",
     });
-  }, [dispatch, currentChatId, sendTelemetryEvent, handleNavigation]);
+  }, [dispatch, currentChatId, allThreads, sendTelemetryEvent, handleNavigation]);
 
   const goToTab = useCallback(
     (tab: Tab) => {
+      // Auto-close empty chat tab when navigating away
+      if (isChatTab(activeTab)) {
+        const currentThread = allThreads[activeTab.id];
+        const isNavigatingToSameTab = isChatTab(tab) && tab.id === activeTab.id;
+        if (
+          !isNavigatingToSameTab &&
+          currentThread &&
+          currentThread.thread.messages.length === 0
+        ) {
+          dispatch(closeThread({ id: activeTab.id }));
+        }
+      }
+
       if (tab.type === "dashboard") {
         dispatch(popBackTo({ name: "history" }));
       } else {
@@ -188,7 +210,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         error_message: "",
       });
     },
-    [dispatch, sendTelemetryEvent],
+    [dispatch, sendTelemetryEvent, activeTab, allThreads],
   );
 
   useEffect(() => {
