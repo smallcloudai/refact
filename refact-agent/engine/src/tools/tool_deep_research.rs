@@ -189,7 +189,7 @@ impl Tool for ToolDeepResearch {
             &log_prefix,
         ).await?;
 
-        let final_message = format!("# Deep Research Report\n\n{}", research_result.content.content_text_only());
+        let research_content = format!("# Deep Research Report\n\n{}", research_result.content.content_text_only());
         tracing::info!("Deep research completed");
 
         let title = if research_query.len() > 80 {
@@ -203,11 +203,17 @@ impl Tool for ToolDeepResearch {
             base_kind: "research".to_string(),
             base_title: Some(title),
         };
-        if let Err(e) = memories_add_enriched(ccx.clone(), &final_message, enrichment_params).await {
-            tracing::warn!("Failed to create enriched memory from deep research: {}", e);
-        } else {
-            tracing::info!("Created enriched memory from deep research");
-        }
+        let memory_note = match memories_add_enriched(ccx.clone(), &research_content, enrichment_params).await {
+            Ok(path) => {
+                tracing::info!("Created enriched memory from deep research: {:?}", path);
+                format!("\n\n---\n📝 **This report has been saved to the knowledge base:** `{}`", path.display())
+            },
+            Err(e) => {
+                tracing::warn!("Failed to create enriched memory from deep research: {}", e);
+                String::new()
+            }
+        };
+        let final_message = format!("{}{}", research_content, memory_note);
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
