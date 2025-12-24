@@ -18,12 +18,15 @@ const ABANDONED_THRESHOLD_HOURS: i64 = 2;
 const CHECK_INTERVAL_SECS: u64 = 300;
 const TRAJECTORIES_FOLDER: &str = ".refact/trajectories";
 
-const EXTRACTION_PROMPT: &str = r#"Analyze this conversation and extract separate, useful memory items that would help in future similar tasks.
+const EXTRACTION_PROMPT: &str = r#"Analyze this conversation and provide:
 
-For EACH distinct insight, output a JSON object on its own line with this format:
+1. FIRST LINE: A JSON with overview and title:
+{"overview": "<2-3 sentence summary of what was accomplished>", "title": "<2-4 word descriptive title>"}
+
+2. FOLLOWING LINES: Extract separate, useful memory items (3-10 max):
 {"type": "<type>", "content": "<concise insight>"}
 
-Types:
+Types for memory items:
 - pattern: Reusable code patterns or approaches discovered
 - preference: User preferences about coding style, communication, tools
 - lesson: What went wrong and how it was fixed
@@ -31,16 +34,17 @@ Types:
 - insight: General useful observations about the codebase or project
 
 Rules:
-- Each insight should be self-contained and actionable
+- Overview should capture the main goal and outcome
+- Title should be descriptive and specific (e.g., "Fix Auth Middleware" not "Bug Fix")
+- Each memory item should be self-contained and actionable
 - Keep content concise (1-3 sentences max)
 - Only extract genuinely useful, reusable knowledge
 - Skip trivial details or conversation noise
-- Output 3-10 items maximum
 
 Example output:
+{"overview": "Implemented a custom VecDB splitter for trajectory files to enable semantic search over past conversations. Added two new tools for searching and retrieving trajectory context.", "title": "Trajectory Search Tools"}
 {"type": "pattern", "content": "When implementing async file operations in this project, use tokio::fs instead of std::fs to avoid blocking."}
 {"type": "preference", "content": "User prefers concise code without excessive comments."}
-{"type": "lesson", "content": "The build failed because serde_json was missing from Cargo.toml dependencies."}
 "#;
 
 pub async fn trajectory_memos_background_task(gcx: Arc<ARwLock<GlobalContext>>) {
@@ -114,23 +118,40 @@ async fn process_single_trajectory(
         .and_then(|v| v.as_array())
         .ok_or("No messages")?;
 
-    if messages.len() < 4 {
+    if messages.len() < 10 {
         return Ok(false);
     }
 
     let trajectory_id = trajectory.get("id").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
-    let title = trajectory.get("title").and_then(|v| v.as_str()).unwrap_or("Untitled").to_string();
+    let current_title = trajectory.get("title").and_then(|v| v.as_str()).unwrap_or("Untitled").to_string();
+
+    let is_title_generated = trajectory.get("extra")
+        .and_then(|e| e.get("isTitleGenerated"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
     let chat_messages = build_chat_messages(messages);
-    if chat_messages.len() < 3 {
-        return Ok(false);
+
+    let extraction = extract_memos_and_meta(gcx.clone(), chat_messages, &current_title, is_title_generated).await?;
+
+    let traj_obj = trajectory.as_object_mut().ok_or("Invalid trajectory")?;
+
+    if let Some(ref meta) = extraction.meta {
+        traj_obj.insert("overview".to_string(), Value::String(meta.overview.clone()));
+        if is_title_generated && !meta.title.is_empty() {
+            traj_obj.insert("title".to_string(), Value::String(meta.title.clone()));
+            info!("trajectory_memos: updated title '{}' -> '{}' for {}", current_title, meta.title, trajectory_id);
+        }
     }
 
-    let memos = extract_memos(gcx.clone(), chat_messages).await?;
+    let memo_title = extraction.meta.as_ref()
+        .filter(|_| is_title_generated)
+        .map(|m| m.title.clone())
+        .unwrap_or(current_title);
 
-    for memo in memos {
+    for memo in extraction.memos {
         let frontmatter = create_frontmatter(
-            Some(&format!("[{}] {}", memo.memo_type, title)),
+            Some(&format!("[{}] {}", memo.memo_type, memo_title)),
             &[memo.memo_type.clone(), "trajectory".to_string()],
             &[],
             &[],
@@ -148,9 +169,7 @@ async fn process_single_trajectory(
         }
     }
 
-    trajectory.as_object_mut()
-        .ok_or("Invalid trajectory")?
-        .insert("memo_extracted".to_string(), Value::Bool(true));
+    traj_obj.insert("memo_extracted".to_string(), Value::Bool(true));
 
     let tmp_path = path.with_extension("json.tmp");
     let json = serde_json::to_string_pretty(&trajectory).map_err(|e| e.to_string())?;
@@ -197,10 +216,22 @@ struct ExtractedMemo {
     content: String,
 }
 
-async fn extract_memos(
+struct TrajectoryMeta {
+    overview: String,
+    title: String,
+}
+
+struct ExtractionResult {
+    meta: Option<TrajectoryMeta>,
+    memos: Vec<ExtractedMemo>,
+}
+
+async fn extract_memos_and_meta(
     gcx: Arc<ARwLock<GlobalContext>>,
     mut messages: Vec<ChatMessage>,
-) -> Result<Vec<ExtractedMemo>, String> {
+    current_title: &str,
+    is_title_generated: bool,
+) -> Result<ExtractionResult, String> {
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await
         .map_err(|e| e.message)?;
 
@@ -214,9 +245,15 @@ async fn extract_memos(
         .map(|m| m.base.n_ctx)
         .unwrap_or(4096);
 
+    let title_hint = if is_title_generated {
+        format!("\n\nNote: The current title \"{}\" was auto-generated. Please provide a better descriptive title.", current_title)
+    } else {
+        String::new()
+    };
+
     messages.push(ChatMessage {
         role: "user".to_string(),
-        content: ChatContent::SimpleText(EXTRACTION_PROMPT.to_string()),
+        content: ChatContent::SimpleText(format!("{}{}", EXTRACTION_PROMPT, title_hint)),
         ..Default::default()
     });
 
@@ -232,7 +269,7 @@ async fn extract_memos(
     ).await));
 
     let response = subchat_single(
-        ccx, &model_id, messages, None, None, false, Some(0.0), None, 1, None, true, None, None, None,
+        ccx, &model_id, messages, None, None, false, Some(0.0), None, 1, None, false, None, None, None,
     ).await.map_err(|e| e.to_string())?;
 
     let response_text = response.into_iter()
@@ -244,20 +281,43 @@ async fn extract_memos(
         })
         .unwrap_or_default();
 
-    let memos: Vec<ExtractedMemo> = response_text.lines()
-        .filter_map(|line| {
-            let line = line.trim();
-            if !line.starts_with('{') {
-                return None;
-            }
-            let parsed: Value = serde_json::from_str(line).ok()?;
-            Some(ExtractedMemo {
-                memo_type: parsed.get("type").and_then(|v| v.as_str())?.to_string(),
-                content: parsed.get("content").and_then(|v| v.as_str())?.to_string(),
-            })
-        })
-        .take(10)
-        .collect();
+    let mut meta: Option<TrajectoryMeta> = None;
+    let mut memos: Vec<ExtractedMemo> = Vec::new();
 
-    Ok(memos)
+    for line in response_text.lines() {
+        let line = line.trim();
+        if !line.starts_with('{') {
+            continue;
+        }
+
+        let parsed: Value = match serde_json::from_str(line) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+
+        if let (Some(overview), Some(title)) = (
+            parsed.get("overview").and_then(|v| v.as_str()),
+            parsed.get("title").and_then(|v| v.as_str()),
+        ) {
+            meta = Some(TrajectoryMeta {
+                overview: overview.to_string(),
+                title: title.to_string(),
+            });
+            continue;
+        }
+
+        if let (Some(memo_type), Some(content)) = (
+            parsed.get("type").and_then(|v| v.as_str()),
+            parsed.get("content").and_then(|v| v.as_str()),
+        ) {
+            if memos.len() < 10 {
+                memos.push(ExtractedMemo {
+                    memo_type: memo_type.to_string(),
+                    content: content.to_string(),
+                });
+            }
+        }
+    }
+
+    Ok(ExtractionResult { meta, memos })
 }

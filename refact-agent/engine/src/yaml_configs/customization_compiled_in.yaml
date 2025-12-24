@@ -102,16 +102,16 @@ PROMPT_EXPLORATION_TOOLS: |
 
   %KNOWLEDGE_INSTRUCTIONS%
 
-  %PROJECT_TREE%
-
 
 AGENT_EXPLORATION_INSTRUCTIONS: |
   2. **Delegate exploration to subagent()**:
-  - "Find all usages of symbol X" → subagent with search_symbol_usages, cat
-  - "Understand how module Y works" → subagent with cat, tree, search_pattern
+  - "Find all usages of symbol X" → subagent with search_symbol_usages, cat, knowledge
+  - "Understand how module Y works" → subagent with cat, tree, search_pattern, knowledge
   - "Find files matching pattern Z" → subagent with search_pattern, tree
-  - "Trace data flow from A to B" → subagent with search_symbol_definition, cat
-  - "Find the usage of a lib in the web" → subagent with web
+  - "Trace data flow from A to B" → subagent with search_symbol_definition, cat, knowledge
+  - "Find the usage of a lib in the web" → subagent with web, knowledge
+  - "Find similar past work" → subagent with search_trajectories, trajectory_context
+  - "Check project knowledge" → subagent with knowledge
 
   **Tools available for subagents**:
   - `tree()` - project structure; add `use_ast=true` for symbols
@@ -120,6 +120,9 @@ AGENT_EXPLORATION_INSTRUCTIONS: |
   - `search_pattern()` - regex search across file names and contents
   - `search_semantic()` - conceptual/similarity matches
   - `web()`, `web_search()` - external documentation
+  - `knowledge()` - search project knowledge base
+  - `search_trajectories()` - find relevant past conversations
+  - `trajectory_context()` - retrieve messages from a trajectory
 
   **For complex analysis**: delegate to `strategic_planning()` with relevant file paths
 
