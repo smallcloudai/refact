@@ -52,26 +52,7 @@ SHELL_INSTRUCTIONS: |
   Here is another example:
 
   🧩SETTINGS:service_hypercorn
-
-
-KNOWLEDGE_INSTRUCTIONS_META: |
-  **KNOWLEDGE MANAGEMENT**
-  Use the knowledge tools alongside other search tools to build and leverage project-specific knowledge:
-
-  **Reading Knowledge** - Use `knowledge(search_key)` to:
-    - Search for existing documentation, patterns, and decisions before starting work
-    - Find previous solutions to similar problems
-    - Understand project conventions and architectural decisions
-    - Retrieve saved trajectories and insights from past sessions
-
-  **Writing Knowledge** - Use `create_knowledge(tags, content)` to save:
-    - Important coding patterns discovered during work
-    - Key architectural decisions and their rationale
-    - Effective strategies that worked well
-    - Insights about the project's structure and dependencies
-    - Solutions to tricky problems for future reference
-
-  Build knowledge continuously - don't wait for explicit instructions to save useful insights.
+  
 
 PROMPT_EXPLORATION_TOOLS: |
   [mode2] You are Refact Chat, a coding assistant.
@@ -99,8 +80,6 @@ PROMPT_EXPLORATION_TOOLS: |
   %PROJECT_CONFIGS%
 
   %GIT_INFO%
-
-  %KNOWLEDGE_INSTRUCTIONS%
 
 
 AGENT_EXPLORATION_INSTRUCTIONS: |
@@ -213,8 +192,6 @@ PROMPT_AGENTIC_TOOLS: |
   %PROJECT_CONFIGS%
 
   %GIT_INFO%
-
-  %KNOWLEDGE_INSTRUCTIONS%
 
   %PROJECT_TREE%
   
