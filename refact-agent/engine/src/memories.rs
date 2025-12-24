@@ -30,6 +30,7 @@ pub struct MemoRecord {
     pub title: Option<String>,
     pub created: Option<String>,
     pub kind: Option<String>,
+    pub score: Option<f32>,  // VecDB similarity score (lower distance = higher relevance)
 }
 
 fn generate_slug(content: &str) -> String {
@@ -129,65 +130,183 @@ pub async fn memories_add(
 pub async fn memories_search(
     gcx: Arc<ARwLock<GlobalContext>>,
     query: &str,
-    top_n: usize,
+    top_n_memories: usize,
+    top_n_trajectories: usize,
 ) -> Result<Vec<MemoRecord>, String> {
     let knowledge_dir = get_knowledge_dir(gcx.clone()).await?;
 
-    let has_vecdb = gcx.read().await.vec_db.lock().await.is_some();
-    if has_vecdb {
-        let vecdb_lock = gcx.read().await.vec_db.clone();
-        let vecdb_guard = vecdb_lock.lock().await;
-        let vecdb = vecdb_guard.as_ref().unwrap();
-        let search_result = vecdb.vecdb_search(query.to_string(), top_n * 3, None).await
-            .map_err(|e| format!("VecDB search failed: {}", e))?;
+    let vecdb_arc = {
+        let gcx_read = gcx.read().await;
+        gcx_read.vec_db.clone()
+    };
 
-        let mut records = Vec::new();
-        for rec in search_result.results {
-            let path_str = rec.file_path.to_string_lossy().to_string();
-            if !path_str.contains(KNOWLEDGE_FOLDER_NAME) {
-                continue;
-            }
+    let vecdb_guard = vecdb_arc.lock().await;
+    if vecdb_guard.is_none() {
+        drop(vecdb_guard);
+        return memories_search_fallback(gcx, query, top_n_memories, &knowledge_dir).await;
+    }
 
-            let text = match get_file_text_from_memory_or_disk(gcx.clone(), &rec.file_path).await {
-                Ok(t) => t,
-                Err(_) => continue,
-            };
+    let vecdb = vecdb_guard.as_ref().unwrap();
+    let search_result = vecdb.vecdb_search(query.to_string(), (top_n_memories + top_n_trajectories) * 5, None).await
+        .map_err(|e| format!("VecDB search failed: {}", e))?;
+    drop(vecdb_guard);
 
-            let (frontmatter, _content_start) = KnowledgeFrontmatter::parse(&text);
+    use std::collections::HashMap;
 
-            if frontmatter.is_archived() {
-                continue;
-            }
+    struct KnowledgeMatch { best_score: f32 }
+    struct TrajectoryMatch {
+        best_score: f32,
+        matched_ranges: Vec<(u64, u64)>,
+    }
 
-            let lines: Vec<&str> = text.lines().collect();
-            let start = (rec.start_line as usize).min(lines.len().saturating_sub(1));
-            let end = (rec.end_line as usize).min(lines.len().saturating_sub(1));
-            let snippet = lines[start..=end].join("\n");
+    let mut knowledge_matches: HashMap<PathBuf, KnowledgeMatch> = HashMap::new();
+    let mut trajectory_matches: HashMap<PathBuf, TrajectoryMatch> = HashMap::new();
 
-            let id = frontmatter.id.clone().unwrap_or_else(|| path_str.clone());
+    for rec in search_result.results.iter() {
+        let path_str = rec.file_path.to_string_lossy().to_string();
+        let score = 1.0 - (rec.distance / 2.0).min(1.0);
 
-            records.push(MemoRecord {
-                memid: format!("{}:{}-{}", id, rec.start_line, rec.end_line),
-                tags: frontmatter.tags,
-                content: snippet,
-                file_path: Some(rec.file_path.clone()),
-                line_range: Some((rec.start_line, rec.end_line)),
-                title: frontmatter.title,
-                created: frontmatter.created,
-                kind: frontmatter.kind,
-            });
-
-            if records.len() >= top_n {
-                break;
-            }
-        }
-
-        if !records.is_empty() {
-            return Ok(records);
+        if path_str.contains(KNOWLEDGE_FOLDER_NAME) {
+            knowledge_matches
+                .entry(rec.file_path.clone())
+                .and_modify(|m| { if score > m.best_score { m.best_score = score; } })
+                .or_insert(KnowledgeMatch { best_score: score });
+        } else if path_str.contains(".refact/trajectories/") && path_str.ends_with(".json") {
+            trajectory_matches
+                .entry(rec.file_path.clone())
+                .and_modify(|m| {
+                    if score > m.best_score { m.best_score = score; }
+                    m.matched_ranges.push((rec.start_line, rec.end_line));
+                })
+                .or_insert(TrajectoryMatch {
+                    best_score: score,
+                    matched_ranges: vec![(rec.start_line, rec.end_line)],
+                });
         }
     }
 
-    memories_search_fallback(gcx, query, top_n, &knowledge_dir).await
+    let mut records = Vec::new();
+
+    // Process knowledge files (whole content)
+    let mut sorted_knowledge: Vec<_> = knowledge_matches.into_iter().collect();
+    sorted_knowledge.sort_by(|a, b| b.1.best_score.partial_cmp(&a.1.best_score).unwrap_or(std::cmp::Ordering::Equal));
+
+    for (file_path, file_match) in sorted_knowledge.into_iter().take(top_n_memories) {
+        let text = match get_file_text_from_memory_or_disk(gcx.clone(), &file_path).await {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+
+        let (frontmatter, content_start) = KnowledgeFrontmatter::parse(&text);
+        if frontmatter.is_archived() {
+            continue;
+        }
+
+        let content = text[content_start..].trim().to_string();
+        let line_count = content.lines().count();
+        let id = frontmatter.id.clone().unwrap_or_else(|| file_path.to_string_lossy().to_string());
+
+        records.push(MemoRecord {
+            memid: id,
+            tags: frontmatter.tags,
+            content,
+            file_path: Some(file_path),
+            line_range: Some((1, line_count as u64)),
+            title: frontmatter.title,
+            created: frontmatter.created,
+            kind: frontmatter.kind,
+            score: Some(file_match.best_score),
+        });
+    }
+
+    // Process trajectories (matched parts only)
+    let mut sorted_trajectories: Vec<_> = trajectory_matches.into_iter().collect();
+    sorted_trajectories.sort_by(|a, b| b.1.best_score.partial_cmp(&a.1.best_score).unwrap_or(std::cmp::Ordering::Equal));
+
+    for (file_path, traj_match) in sorted_trajectories.into_iter().take(top_n_trajectories) {
+        let text = match get_file_text_from_memory_or_disk(gcx.clone(), &file_path).await {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+
+        let traj_json: serde_json::Value = match serde_json::from_str(&text) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+
+        let traj_id = file_path.file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let traj_title = traj_json.get("title")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Untitled")
+            .to_string();
+
+        let messages = match traj_json.get("messages").and_then(|v| v.as_array()) {
+            Some(m) => m,
+            None => continue,
+        };
+
+        // Extract matched message content
+        let mut matched_content = Vec::new();
+        for (start, end) in &traj_match.matched_ranges {
+            let start_idx = *start as usize;
+            let end_idx = (*end as usize).min(messages.len().saturating_sub(1));
+
+            for idx in start_idx..=end_idx {
+                if let Some(msg) = messages.get(idx) {
+                    let role = msg.get("role").and_then(|v| v.as_str()).unwrap_or("unknown");
+                    let content = msg.get("content")
+                        .map(|v| {
+                            if let Some(s) = v.as_str() {
+                                s.chars().take(500).collect::<String>()
+                            } else {
+                                v.to_string().chars().take(500).collect()
+                            }
+                        })
+                        .unwrap_or_default();
+
+                    if !content.is_empty() && role != "system" && role != "context_file" {
+                        matched_content.push(format!("[msg {}] {}: {}", idx, role, content));
+                    }
+                }
+            }
+        }
+
+        if matched_content.is_empty() {
+            continue;
+        }
+
+        let content = format!(
+            "Trajectory: {} ({})\n\n{}",
+            traj_title,
+            traj_id,
+            matched_content.join("\n\n")
+        );
+
+        records.push(MemoRecord {
+            memid: traj_id.clone(),
+            tags: vec!["trajectory".to_string()],
+            content,
+            file_path: Some(file_path),
+            line_range: None,
+            title: Some(traj_title),
+            created: None,
+            kind: Some("trajectory".to_string()),
+            score: Some(traj_match.best_score),
+        });
+    }
+
+    tracing::info!("memories_search: found {} knowledge + {} trajectories",
+        records.iter().filter(|r| r.kind.as_deref() != Some("trajectory")).count(),
+        records.iter().filter(|r| r.kind.as_deref() == Some("trajectory")).count()
+    );
+
+    if !records.is_empty() {
+        return Ok(records);
+    }
+
+    memories_search_fallback(gcx, query, top_n_memories, &knowledge_dir).await
 }
 
 async fn memories_search_fallback(
@@ -236,6 +355,9 @@ async fn memories_search_fallback(
         let id = frontmatter.id.clone().unwrap_or_else(|| path.to_string_lossy().to_string());
         let content_preview: String = text[content_start..].chars().take(500).collect();
 
+        // Normalize keyword score to 0-1 range (assuming max ~10 word matches)
+        let normalized_score = (score as f32 / 10.0).min(1.0);
+
         scored_results.push((score, MemoRecord {
             memid: id,
             tags: frontmatter.tags,
@@ -245,6 +367,7 @@ async fn memories_search_fallback(
             title: frontmatter.title,
             created: frontmatter.created,
             kind: frontmatter.kind,
+            score: Some(normalized_score),
         }));
     }
 

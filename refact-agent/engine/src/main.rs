@@ -66,6 +66,7 @@ mod agentic;
 mod memories;
 mod files_correction_cache;
 mod knowledge_graph;
+mod trajectory_memos;
 pub mod constants;
 
 #[tokio::main]

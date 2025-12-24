@@ -317,8 +317,8 @@ impl Tool for ToolStrategicPlanning {
         cancel_token.cancel();
 
         let (_, initial_solution) = result?;
-        let final_message = format!("# Solution\n{}", initial_solution.content.content_text_only());
-        tracing::info!("strategic planning response (combined):\n{}", final_message);
+        let solution_content = format!("# Solution\n{}", initial_solution.content.content_text_only());
+        tracing::info!("strategic planning response (combined):\n{}", solution_content);
 
         let filenames: Vec<String> = important_paths.iter()
             .map(|p| p.to_string_lossy().to_string())
@@ -329,11 +329,17 @@ impl Tool for ToolStrategicPlanning {
             base_kind: "decision".to_string(),
             base_title: Some("Strategic Plan".to_string()),
         };
-        if let Err(e) = memories_add_enriched(ccx.clone(), &final_message, enrichment_params).await {
-            tracing::warn!("Failed to create enriched memory from strategic planning: {}", e);
-        } else {
-            tracing::info!("Created enriched memory from strategic planning");
-        }
+        let memory_note = match memories_add_enriched(ccx.clone(), &solution_content, enrichment_params).await {
+            Ok(path) => {
+                tracing::info!("Created enriched memory from strategic planning: {:?}", path);
+                format!("\n\n---\n📝 **This plan has been saved to the knowledge base:** `{}`", path.display())
+            },
+            Err(e) => {
+                tracing::warn!("Failed to create enriched memory from strategic planning: {}", e);
+                String::new()
+            }
+        };
+        let final_message = format!("{}{}", solution_content, memory_note);
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {

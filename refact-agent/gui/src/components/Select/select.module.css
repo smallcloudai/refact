@@ -38,12 +38,13 @@
   position: relative;
 }
 
-/* Fix checkmark indicator positioning */
+/* Fix checkmark indicator positioning - vertically centered */
 :global(.rt-SelectItem .rt-SelectItemIndicator),
 :global(.rt-SelectItem [data-state]) {
   position: absolute;
   left: 8px;
-  top: 8px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 :global(.rt-SelectViewport) {

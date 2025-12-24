@@ -79,7 +79,7 @@ pub async fn handle_v1_code_completion(
     if !code_completion_post.stream {
         crate::restream::scratchpad_interaction_not_stream(ccx.clone(), &mut scratchpad, "completion".to_string(), &model_rec.base, &mut code_completion_post.parameters, false, None).await
     } else {
-        crate::restream::scratchpad_interaction_stream(ccx.clone(), scratchpad, "completion-stream".to_string(), model_rec.base.clone(), code_completion_post.parameters.clone(), false, None).await
+        crate::restream::scratchpad_interaction_stream(ccx.clone(), scratchpad, "completion-stream".to_string(), model_rec.base.clone(), code_completion_post.parameters.clone(), false, None, None).await
     }
 }
 

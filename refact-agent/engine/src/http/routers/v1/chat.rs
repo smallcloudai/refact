@@ -6,7 +6,7 @@ use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 
-use crate::call_validation::{ChatContent, ChatMessage, ChatPost};
+use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ChatMode};
 use crate::caps::resolve_chat_model;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -16,6 +16,8 @@ use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
 use crate::tools::tools_description::ToolDesc;
 use crate::tools::tools_list::get_available_tools_by_chat_mode;
+
+use super::knowledge_enrichment::enrich_messages_with_knowledge;
 
 pub const CHAT_TOP_N: usize = 12;
 
@@ -198,10 +200,11 @@ async fn _chat(
         }
     }
 
-    // SYSTEM PROMPT WAS HERE
-
-
-    // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
+    let mut pre_stream_messages: Option<Vec<serde_json::Value>> = None;
+    let last_is_user = messages.last().map(|m| m.role == "user").unwrap_or(false);
+    if chat_post.meta.chat_mode == ChatMode::AGENT && last_is_user {
+        pre_stream_messages = enrich_messages_with_knowledge(gcx.clone(), &mut messages).await;
+    }
     let mut scratchpad = crate::scratchpads::create_chat_scratchpad(
         gcx.clone(),
         &mut chat_post,
@@ -213,19 +216,6 @@ async fn _chat(
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
-    // if !chat_post.chat_id.is_empty() {
-    //     let cache_dir = {
-    //         let gcx_locked = gcx.read().await;
-    //         gcx_locked.cache_dir.clone()
-    //     };
-    //     let notes_dir_path = cache_dir.join("chats");
-    //     let _ = std::fs::create_dir_all(&notes_dir_path);
-    //     let notes_path = notes_dir_path.join(format!("chat{}_{}.json",
-    //         chrono::Local::now().format("%Y%m%d"),
-    //         chat_post.chat_id,
-    //     ));
-    //     let _ = std::fs::write(&notes_path, serde_json::to_string_pretty(&chat_post.messages).unwrap());
-    // }
     let mut ccx = AtCommandsContext::new(
         gcx.clone(),
         effective_n_ctx,
@@ -258,7 +248,8 @@ async fn _chat(
             model_rec.base.clone(),
             chat_post.parameters.clone(),
             chat_post.only_deterministic_messages,
-            meta
+            meta,
+            pre_stream_messages,
         ).await
     }
 }

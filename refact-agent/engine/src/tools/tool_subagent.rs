@@ -8,6 +8,7 @@ use crate::subchat::subchat;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters};
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::memories::{memories_add_enriched, EnrichmentParams};
 
 pub struct ToolSubagent {
     pub config_path: String,
@@ -208,13 +209,36 @@ impl Tool for ToolSubagent {
             &log_prefix,
         ).await?;
 
-        let final_message = format!(
+        let report_content = format!(
             "# Subagent Report\n\n**Task:** {}\n\n**Expected Result:** {}\n\n## Result\n{}",
             task,
             expected_result,
             subagent_result.content.content_text_only()
         );
         tracing::info!("Subagent completed task");
+
+        let title = if task.len() > 80 {
+            format!("{}...", &task[..80])
+        } else {
+            task.clone()
+        };
+        let enrichment_params = EnrichmentParams {
+            base_tags: vec!["subagent".to_string(), "delegation".to_string()],
+            base_filenames: vec![],
+            base_kind: "subagent".to_string(),
+            base_title: Some(title),
+        };
+        let memory_note = match memories_add_enriched(ccx.clone(), &report_content, enrichment_params).await {
+            Ok(path) => {
+                tracing::info!("Created enriched memory from subagent: {:?}", path);
+                format!("\n\n---\n📝 **This report has been saved to the knowledge base:** `{}`", path.display())
+            },
+            Err(e) => {
+                tracing::warn!("Failed to create enriched memory from subagent: {}", e);
+                String::new()
+            }
+        };
+        let final_message = format!("{}{}", report_content, memory_note);
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
