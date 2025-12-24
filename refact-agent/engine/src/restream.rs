@@ -231,7 +231,8 @@ pub async fn scratchpad_interaction_stream(
     mut model_rec: BaseModelRecord,
     parameters: SamplingParameters,
     only_deterministic_messages: bool,
-    meta: Option<ChatMeta>
+    meta: Option<ChatMeta>,
+    pre_stream_messages: Option<Vec<serde_json::Value>>,
 ) -> Result<Response<Body>, ScratchError> {
     let t1: std::time::SystemTime = std::time::SystemTime::now();
     let evstream = stream! {
@@ -299,6 +300,15 @@ pub async fn scratchpad_interaction_stream(
             }
         }
         info!("scratchpad_interaction_stream prompt {:?}", t0.elapsed());
+
+        if let Some(ref messages) = pre_stream_messages {
+            for msg in messages {
+                let mut msg_with_compression = msg.clone();
+                msg_with_compression["compression_strength"] = crate::forward_to_openai_endpoint::try_get_compression_from_prompt(&prompt);
+                let value_str = format!("data: {}\n\n", serde_json::to_string(&msg_with_compression).unwrap());
+                yield Result::<_, String>::Ok(value_str);
+            }
+        }
 
         let _ = slowdown_arc.acquire().await;
         loop {

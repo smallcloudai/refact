@@ -75,6 +75,7 @@ mod v1_integrations;
 pub mod vecdb;
 mod workspace;
 mod knowledge_graph;
+mod knowledge_enrichment;
 pub mod trajectories;
 
 pub fn make_v1_router() -> Router {

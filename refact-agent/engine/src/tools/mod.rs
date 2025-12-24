@@ -16,7 +16,6 @@ mod tool_deep_research;
 mod tool_subagent;
 mod tool_search;
 mod tool_knowledge;
-mod tool_search_trajectories;
 mod tool_trajectory_context;
 
 mod tool_create_knowledge;

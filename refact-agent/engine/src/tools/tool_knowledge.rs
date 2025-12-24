@@ -30,7 +30,7 @@ impl Tool for ToolGetKnowledge {
             },
             agentic: true,
             experimental: false,
-            description: "Searches project knowledge base for relevant information. Uses semantic search and knowledge graph expansion.".to_string(),
+            description: "Searches project knowledge base for relevant information. Uses semantic search and knowledge graph expansion. Also searches past chat trajectories for relevant patterns and solutions.".to_string(),
             parameters: vec![
                 ToolParam {
                     name: "search_key".to_string(),
@@ -58,7 +58,7 @@ impl Tool for ToolGetKnowledge {
             None => return Err("argument `search_key` is missing".to_string()),
         };
 
-        let memories = memories_search(gcx.clone(), &search_key, 5).await?;
+        let memories = memories_search(gcx.clone(), &search_key, 5, 0).await?;
 
         let mut seen_memids = HashSet::new();
         let mut unique_memories: Vec<_> = memories.into_iter()
@@ -90,6 +90,7 @@ impl Tool for ToolGetKnowledge {
                             title: doc.frontmatter.title.clone(),
                             created: doc.frontmatter.created.clone(),
                             kind: doc.frontmatter.kind.clone(),
+                            score: None,  // KG expansion doesn't have scores
                         });
                     }
                 }
