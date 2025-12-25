@@ -40,14 +40,11 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
-        tool_call_id: "toolu_01XVhkyaDunsy4fPrDqy3toa",
-        content:
-          "🗃️e19af1e7b3\nYou have a specialization today: web development.\n\nYou only need to receive instructions from the user once, and then you can autonomously fill in the details of\nthe task, make the necessary changes, verify results and make adjustments and fixes.\n\nHere's your approximate web development plan:\n1. Investigate project to understand the task given by the user, start with calling tree() and looking into relevant files. If you see reference designs and sketches, read them using cat().\n2. Run the server. You don't have direct access to the command line. Look if there's a tool for that purpose. If there is not, you cannot run a web server.\n3. Make relevant screenshots of existing website using chrome(), open both desktop and mobile tabs if the task requires it.\n4. Form a complete interpretation of the task, and write a plan.\n5. Make changes in files using 📍-notation, after that call patch(). Really, first you need to write the updates using 📍-notation, only after that you can apply it using patch().\n6. Check if screenshots got better, or any errors appeared.\n7. Goto 5, unless you see the task is complete.\n\nAs a web developer agent, you need to pay attention to detail. The task is complete if all the elements\nare at the right place. You really need to cat() designs and sketches if they are present in the task.\n\nIf you don't see a way to run a real server for the website, then just use chrome() to look\nat .html pages using file:// addresses.\n\nHere is a compressed example of successful trajectory from another project:\n\nDON'T DO STUPID THINGS:\n* DON'T SKIP MAKING SCREENSHOTS\n* DON'T CALL patch() UNTIL YOU FINIHSHED WRITING CODE IN 📍-NOTATION\n* DON'T ASK USER ANYTHING, YOU HAVE AUTONOMOUS WORK TO DO\n* MAKE SURE IF HAVE A TOOL CALL IN THE END OF EACH RESPONSE, UNLESS YOU COMPLETED AND TESTED THE TASK\n\n\n🗃️d84f5c4a7c\nAdditional instructions for django web development.\n\nYou only need to receive instructions from the user once, and then you can autonomously fill in the details of\nthe task, make the necessary changes, verify results and make adjustments and fixes.\n\nHere's your approximate web development plan:\n1. Investigate project to understand the task given by the user, start with calling tree() and locate(), looking into relevant files using cat(). If you see reference designs and sketches, read them using cat()\n2. Start django server\n3. Navigate to the place on the website that user wants to change, make a screenshot to make sure you understand what exactly needs to change\n4. Form a complete interpretation of the task, and write a plan.\n5. Make changes in files using 📍-notation, after that call patch(). Really, first you need to write the updates using 📍-notation, only after that you can apply it.\n6. Check if screenshots got better, or any errors appeared.\n7. Goto 5, unless you see the task is complete.\n\nAs a web developer agent, you need to pay attention to detail. The task is complete if all the elements\nare at the right place.\n\nDON'T DO STUPID THINGS:\n* DON'T SKIP MAKING SCREENSHOTS\n* DON'T CALL patch() UNTIL YOU FINIHSHED WRITING CODE IN 📍-NOTATION\n* DON'T ASK USER ANYTHING, YOU HAVE AUTONOMOUS WORK TO DO\n* MAKE SURE YOU HAVE A TOOL CALL IN THE END OF EACH RESPONSE, UNLESS YOU COMPLETED AND TESTED THE TASK\n\n🗃️ae3f1228bd\n[\n[\"goal\", \"Rename all occurrences of 'frog' to 'bird' in the project\"],\n[\"tree(use_ast=true)\", \"Found emergency_frog_situation/ with index.html, holiday.py, work_day.py, game.js, jump_to_conclusions.py, bird.py, set_as_avatar.py\"],\n[\"search(query='frog', scope='workspace')\", \"Found frog references in work_day.py (imports, function), jump_to_conclusions.py (imports, class usage), bird.py already has Bird class\"],\n[\"thinking\", \"bird.py already has Bird class and set_as_avatar.py uses it, so we need to update work_day.py and jump_to_conclusions.py to use the existing Bird class\"],\n[\"coding\", \"📍REWRITE_WHOLE_FILE 001 'work_day.py' changed import frog->bird, bring_your_own_frog->bring_your_own_bird, frog.Frog->bird.Bird\"],\n[\"patch(tickets='001', path='tests/emergency_frog_situation/work_day.py')\", \"3 chunks applied: import change, function rename, type annotation update\"],\n[\"coding\", \"📍REWRITE_WHOLE_FILE 002 'jump_to_conclusions.py' changed import frog->bird, draw_hello_frog->draw_hello_bird, all frog.Frog->bird.Bird\"],\n[\"patch(tickets='002', path='tests/emergency_frog_situation/jump_to_conclusions.py')\", \"5 chunks applied: import, function rename, constructor call, type annotation, function call\"],\n[\"outcome\", \"SUCCESS\"]\n]\n\n🗃️2b684b6e70\nYou have a specialization today: web development.\n\nYou only need to receive instructions from the user once, and then you can autonomously fill in the details of\nthe task, make the necessary changes, verify results and make adjustments and fixes.\n\nHere's your approximate web development plan:\n1. Investigate project to understand the task given by the user, start with calling tree() and looking into relevant files. If you see reference designs and sketches, read them using cat().\n2. Run the server. You don't have direct access to the command line. Look if there's a tool for that purpose. If there is not, you cannot run a web server.\n3. Make relevant screenshots of existing website using chrome(), open both desktop and mobile tabs if the task requires it.\n4. Form a complete interpretation of the task, and write a plan.\n5. Make changes in files using 📍-notation, after that call patch(). Really, first you need to write the updates using 📍-notation, only after that you can apply it using patch().\n6. Check if screenshots got better, or any errors appeared.\n7. Goto 5, unless you see the task is complete.\n\nAs a web developer agent, you need to pay attention to detail. The task is complete if all the elements\nare at the right place. You really need to cat() designs and sketches if they are present in the task.\n\nIf you don't see a way to run a real server for the website, then just use chrome() to look\nat .html pages using file:// addresses.\n\nHere is a compressed example of successful trajectory from another project:\n\nDON'T DO STUPID THINGS:\n* DON'T SKIP MAKING SCREENSHOTS\n* DON'T CALL patch() UNTIL YOU FINIHSHED WRITING CODE IN 📍-NOTATION\n* DON'T ASK USER ANYTHING, YOU HAVE AUTONOMOUS WORK TO DO\n* MAKE SURE IF HAVE A TOOL CALL IN THE END OF EACH RESPONSE, UNLESS YOU COMPLETED AND TESTED THE TASK\n\n",
-        tool_failed: false,
-      },
-    },
+    role: "tool",
+    tool_call_id: "toolu_01XVhkyaDunsy4fPrDqy3toa",
+    content: "🗃️e19af1e7b3\nYou have a specialization today: web development.\n\nYou only need to receive instructions from the user once, and then you can autonomously fill in the details of\nthe task, make the necessary changes, verify results and make adjustments and fixes.\n\nHere's your approximate web development plan:\n1. Investigate project to understand the task given by the user, start with calling tree() and looking into relevant files. If you see reference designs and sketches, read them using cat().\n2. Run the server. You don't have direct access to the command line. Look if there's a tool for that purpose. If there is not, you cannot run a web server.\n3. Make relevant screenshots of existing website using chrome(), open both desktop and mobile tabs if the task requires it.\n4. Form a complete interpretation of the task, and write a plan.\n5. Make changes in files using 📍-notation, after that call patch(). Really, first you need to write the updates using 📍-notation, only after that you can apply it using patch().\n6. Check if screenshots got better, or any errors appeared.\n7. Goto 5, unless you see the task is complete.\n\nAs a web developer agent, you need to pay attention to detail. The task is complete if all the elements\nare at the right place. You really need to cat() designs and sketches if they are present in the task.\n\nIf you don't see a way to run a real server for the website, then just use chrome() to look\nat .html pages using file:// addresses.\n\nHere is a compressed example of successful trajectory from another project:\n\nDON'T DO STUPID THINGS:\n* DON'T SKIP MAKING SCREENSHOTS\n* DON'T CALL patch() UNTIL YOU FINIHSHED WRITING CODE IN 📍-NOTATION\n* DON'T ASK USER ANYTHING, YOU HAVE AUTONOMOUS WORK TO DO\n* MAKE SURE IF HAVE A TOOL CALL IN THE END OF EACH RESPONSE, UNLESS YOU COMPLETED AND TESTED THE TASK\n\n\n🗃️d84f5c4a7c\nAdditional instructions for django web development.\n\nYou only need to receive instructions from the user once, and then you can autonomously fill in the details of\nthe task, make the necessary changes, verify results and make adjustments and fixes.\n\nHere's your approximate web development plan:\n1. Investigate project to understand the task given by the user, start with calling tree() and locate(), looking into relevant files using cat(). If you see reference designs and sketches, read them using cat()\n2. Start django server\n3. Navigate to the place on the website that user wants to change, make a screenshot to make sure you understand what exactly needs to change\n4. Form a complete interpretation of the task, and write a plan.\n5. Make changes in files using 📍-notation, after that call patch(). Really, first you need to write the updates using 📍-notation, only after that you can apply it.\n6. Check if screenshots got better, or any errors appeared.\n7. Goto 5, unless you see the task is complete.\n\nAs a web developer agent, you need to pay attention to detail. The task is complete if all the elements\nare at the right place.\n\nDON'T DO STUPID THINGS:\n* DON'T SKIP MAKING SCREENSHOTS\n* DON'T CALL patch() UNTIL YOU FINIHSHED WRITING CODE IN 📍-NOTATION\n* DON'T ASK USER ANYTHING, YOU HAVE AUTONOMOUS WORK TO DO\n* MAKE SURE YOU HAVE A TOOL CALL IN THE END OF EACH RESPONSE, UNLESS YOU COMPLETED AND TESTED THE TASK\n\n🗃️ae3f1228bd\n[\n[\"goal\", \"Rename all occurrences of 'frog' to 'bird' in the project\"],\n[\"tree(use_ast=true)\", \"Found emergency_frog_situation/ with index.html, holiday.py, work_day.py, game.js, jump_to_conclusions.py, bird.py, set_as_avatar.py\"],\n[\"search(query='frog', scope='workspace')\", \"Found frog references in work_day.py (imports, function), jump_to_conclusions.py (imports, class usage), bird.py already has Bird class\"],\n[\"thinking\", \"bird.py already has Bird class and set_as_avatar.py uses it, so we need to update work_day.py and jump_to_conclusions.py to use the existing Bird class\"],\n[\"coding\", \"📍REWRITE_WHOLE_FILE 001 'work_day.py' changed import frog->bird, bring_your_own_frog->bring_your_own_bird, frog.Frog->bird.Bird\"],\n[\"patch(tickets='001', path='tests/emergency_frog_situation/work_day.py')\", \"3 chunks applied: import change, function rename, type annotation update\"],\n[\"coding\", \"📍REWRITE_WHOLE_FILE 002 'jump_to_conclusions.py' changed import frog->bird, draw_hello_frog->draw_hello_bird, all frog.Frog->bird.Bird\"],\n[\"patch(tickets='002', path='tests/emergency_frog_situation/jump_to_conclusions.py')\", \"5 chunks applied: import, function rename, constructor call, type annotation, function call\"],\n[\"outcome\", \"SUCCESS\"]\n]\n\n🗃️2b684b6e70\nYou have a specialization today: web development.\n\nYou only need to receive instructions from the user once, and then you can autonomously fill in the details of\nthe task, make the necessary changes, verify results and make adjustments and fixes.\n\nHere's your approximate web development plan:\n1. Investigate project to understand the task given by the user, start with calling tree() and looking into relevant files. If you see reference designs and sketches, read them using cat().\n2. Run the server. You don't have direct access to the command line. Look if there's a tool for that purpose. If there is not, you cannot run a web server.\n3. Make relevant screenshots of existing website using chrome(), open both desktop and mobile tabs if the task requires it.\n4. Form a complete interpretation of the task, and write a plan.\n5. Make changes in files using 📍-notation, after that call patch(). Really, first you need to write the updates using 📍-notation, only after that you can apply it using patch().\n6. Check if screenshots got better, or any errors appeared.\n7. Goto 5, unless you see the task is complete.\n\nAs a web developer agent, you need to pay attention to detail. The task is complete if all the elements\nare at the right place. You really need to cat() designs and sketches if they are present in the task.\n\nIf you don't see a way to run a real server for the website, then just use chrome() to look\nat .html pages using file:// addresses.\n\nHere is a compressed example of successful trajectory from another project:\n\nDON'T DO STUPID THINGS:\n* DON'T SKIP MAKING SCREENSHOTS\n* DON'T CALL patch() UNTIL YOU FINIHSHED WRITING CODE IN 📍-NOTATION\n* DON'T ASK USER ANYTHING, YOU HAVE AUTONOMOUS WORK TO DO\n* MAKE SURE IF HAVE A TOOL CALL IN THE END OF EACH RESPONSE, UNLESS YOU COMPLETED AND TESTED THE TASK\n\n",
+    tool_failed: false,
+  },
     {
       role: "assistant",
       content:
@@ -66,14 +63,11 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
-        tool_call_id: "toolu_01HMyLgKsLQURM9vgd3vQKXN",
-        content:
-          "/\n  home/\n    svakhreev/\n      projects/\n        refact-lsp/\n          tests/\n            emergency_frog_situation/\n              holiday.py\n              work_day.py\n              __pycache__/\n                frog.cpython-310.pyc\n              frog.py\n              jump_to_conclusions.py\n              set_as_avatar.py",
-        tool_failed: false,
-      },
-    },
+    role: "tool",
+    tool_call_id: "toolu_01HMyLgKsLQURM9vgd3vQKXN",
+    content: "/\n  home/\n    svakhreev/\n      projects/\n        refact-lsp/\n          tests/\n            emergency_frog_situation/\n              holiday.py\n              work_day.py\n              __pycache__/\n                frog.cpython-310.pyc\n              frog.py\n              jump_to_conclusions.py\n              set_as_avatar.py",
+    tool_failed: false,
+  },
     {
       role: "assistant",
       content:
@@ -93,14 +87,11 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
-        tool_call_id: "toolu_0136dUTkih5ES8rrzHa5B5ep",
-        content:
-          "Paths found:\n/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py\n",
-        tool_failed: false,
-      },
-    },
+    role: "tool",
+    tool_call_id: "toolu_0136dUTkih5ES8rrzHa5B5ep",
+    content: "Paths found:\n/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py\n",
+    tool_failed: false,
+  },
     {
       role: "context_file",
       content: [
@@ -981,14 +972,11 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
-        tool_call_id: "toolu_01LHPjgzJ8SEuczfm6Av7qfv",
-        content:
-          'No replacement was performed, `pattern` \n```\n\\s*#.*$\n```\ndid not appear verbatim in "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py". Consider checking the file content using `cat()`',
-        tool_failed: false,
-      },
-    },
+    role: "tool",
+    tool_call_id: "toolu_01LHPjgzJ8SEuczfm6Av7qfv",
+    content: 'No replacement was performed, `pattern` \n```\n\\s*#.*$\n```\ndid not appear verbatim in "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py". Consider checking the file content using `cat()`',
+    tool_failed: false,
+  },
     {
       role: "assistant",
       content:
@@ -1008,14 +996,11 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
-        tool_call_id: "toolu_019iakkKqUjKP73EmEgVhCkZ",
-        content:
-          "Paths found:\n/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py\n",
-        tool_failed: false,
-      },
-    },
+    role: "tool",
+    tool_call_id: "toolu_019iakkKqUjKP73EmEgVhCkZ",
+    content: "Paths found:\n/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py\n",
+    tool_failed: false,
+  },
     {
       role: "context_file",
       content: [

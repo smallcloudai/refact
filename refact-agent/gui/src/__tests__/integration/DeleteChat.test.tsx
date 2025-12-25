@@ -1,4 +1,4 @@
-import { render } from "../utils/test-utils";
+import { render } from "../../utils/test-utils";
 import { describe, expect, it } from "vitest";
 import {
   server,
@@ -11,9 +11,12 @@ import {
   emptyTrajectories,
   trajectorySave,
   trajectoryDelete,
-} from "../utils/mockServer";
-import { InnerApp } from "../features/App";
-import { HistoryState } from "../features/History/historySlice";
+  chatSessionSubscribe,
+  chatSessionCommand,
+  chatSessionAbort,
+} from "../../utils/mockServer";
+import { InnerApp } from "../../features/App";
+import { HistoryState } from "../../features/History/historySlice";
 
 describe("Delete a Chat form history", () => {
   server.use(
@@ -26,6 +29,9 @@ describe("Delete a Chat form history", () => {
     emptyTrajectories,
     trajectorySave,
     trajectoryDelete,
+    chatSessionSubscribe,
+    chatSessionCommand,
+    chatSessionAbort,
   );
   it("can delete a chat", async () => {
     const now = new Date().toISOString();

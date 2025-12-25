@@ -110,6 +110,7 @@ pub async fn generate_follow_up_message(
             x.into_iter().last().map(|last_m| match last_m.content {
                 ChatContent::SimpleText(text) => Some(text),
                 ChatContent::Multimodal(_) => None,
+                ChatContent::ContextFiles(_) => None,
             })
         })
         .flatten()

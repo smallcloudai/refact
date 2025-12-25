@@ -1,203 +1,154 @@
 use std::sync::Arc;
-use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
-use tracing::{info, warn};
+use tracing::info;
+use uuid::Uuid;
 
 use crate::caps::resolve_chat_model;
-use crate::caps::ChatModelRecord;
 use crate::tools::tools_description::ToolDesc;
 use crate::tools::tools_list::get_available_tools;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{SamplingParameters, PostprocessSettings, ChatPost, ChatMessage, ChatUsage, ChatToolCall, ReasoningEffort};
-use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
-use crate::scratchpad_abstract::ScratchpadAbstract;
+use crate::call_validation::{ChatMeta, ChatMode, SamplingParameters, ChatMessage, ChatUsage, ChatToolCall, ReasoningEffort};
+use crate::global_context::try_load_caps_quickly_if_not_present;
+use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpads::multimodality::chat_content_raw_from_value;
-use crate::yaml_configs::customization_loader::load_customization;
+use crate::chat::prepare::{prepare_chat_passthrough, ChatPrepareOptions};
 
 
 const MAX_NEW_TOKENS: usize = 4096;
 
 
-pub async fn create_chat_post_and_scratchpad(
-    global_context: Arc<ARwLock<GlobalContext>>,
+async fn subchat_non_stream(
     ccx: Arc<AMutex<AtCommandsContext>>,
     model_id: &str,
-    messages: Vec<&ChatMessage>,
+    messages: Vec<ChatMessage>,
+    tools: Vec<ToolDesc>,
+    prepend_system_prompt: bool,
     temperature: Option<f32>,
     max_new_tokens: usize,
     n: usize,
     reasoning_effort: Option<ReasoningEffort>,
-    prepend_system_prompt: bool,
-    tools: Vec<ToolDesc>,
-    tool_choice: Option<String>,
     only_deterministic_messages: bool,
-    _should_execute_remotely: bool,
-) -> Result<(ChatPost, Box<dyn ScratchpadAbstract>, Arc<ChatModelRecord>), String> {
-    let caps = try_load_caps_quickly_if_not_present(
-        global_context.clone(), 0,
-    ).await.map_err(|e| {
-        warn!("no caps: {:?}", e);
-        "no caps".to_string()
-    })?;
-    let mut error_log = Vec::new();
-    let tconfig = load_customization(global_context.clone(), true, &mut error_log).await;
-    for e in error_log.iter() {
-        tracing::error!("{e}");
-    }
+) -> Result<Vec<Vec<ChatMessage>>, String> {
+    let gcx = {
+        let ccx_locked = ccx.lock().await;
+        ccx_locked.global_context.clone()
+    };
 
-    let mut chat_post = ChatPost {
-        messages: messages.iter().map(|x|json!(x)).collect(),
-        parameters: SamplingParameters {
-            max_new_tokens,
-            temperature,
-            top_p: None,
-            stop: vec![],
-            n: Some(n),
-            reasoning_effort,
-            ..Default::default()  // TODO
-        },
-        model: model_id.to_string(),
-        stream: Some(false),
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await
+        .map_err(|e| format!("no caps: {:?}", e))?;
+    let model_rec = resolve_chat_model(caps, model_id)?;
+
+    let tokenizer_arc = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await?;
+    let t = HasTokenizerAndEot::new(tokenizer_arc);
+
+    let meta = ChatMeta {
+        chat_id: Uuid::new_v4().to_string(),
+        chat_mode: ChatMode::AGENT,
+        chat_remote: false,
+        current_config_file: String::new(),
+        context_tokens_cap: Some(model_rec.base.n_ctx),
+        include_project_info: true,
+        request_attempt_id: Uuid::new_v4().to_string(),
+        use_compression: false,
+    };
+
+    let mut parameters = SamplingParameters {
+        max_new_tokens,
         temperature,
         n: Some(n),
-        tool_choice,
-        only_deterministic_messages,
-        subchat_tool_parameters: tconfig.subchat_tool_parameters.clone(),
-        postprocess_parameters: PostprocessSettings::new(),
+        reasoning_effort,
         ..Default::default()
     };
 
-    let model_rec = resolve_chat_model(caps, model_id)?;
-
-    if !model_rec.supports_tools {
-        tracing::warn!("supports_tools is false");
-    }
-
-    chat_post.max_tokens = Some(model_rec.base.n_ctx);
-
-    {
-        let mut ccx_locked = ccx.lock().await;
-        ccx_locked.current_model = model_id.to_string();
-    }
-
-    let scratchpad = crate::scratchpads::create_chat_scratchpad(
-        global_context.clone(),
-        &mut chat_post,
-        tools,
-        &messages.into_iter().cloned().collect::<Vec<_>>(),
+    let options = ChatPrepareOptions {
         prepend_system_prompt,
-        &model_rec,
-        false,
+        allow_at_commands: false,
+        allow_tool_prerun: false,
+        supports_tools: model_rec.supports_tools,
+        use_compression: false,
+    };
+
+    if only_deterministic_messages {
+        return Ok(vec![messages]);
+    }
+
+    let prepared = prepare_chat_passthrough(
+        gcx.clone(),
+        ccx.clone(),
+        &t,
+        messages.clone(),
+        model_id,
+        tools,
+        &meta,
+        &mut parameters,
+        &options,
+        &None,
     ).await?;
 
-    Ok((chat_post, scratchpad, model_rec))
-}
-
-#[allow(dead_code)]
-async fn chat_interaction_stream() {
-    todo!();
-}
-
-async fn chat_interaction_non_stream(
-    ccx: Arc<AMutex<AtCommandsContext>>,
-    mut spad: Box<dyn ScratchpadAbstract>,
-    model_rec: &ChatModelRecord,
-    prompt: &String,
-    chat_post: &ChatPost,
-) -> Result<Vec<Vec<ChatMessage>>, String> {
-    let meta = if model_rec.base.support_metadata {
-        Some(chat_post.meta.clone())
-    } else {
-        None
+    let (client, slowdown_arc) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.http_client.clone(), gcx_locked.http_client_slowdown.clone())
     };
-    
+
+    let _ = slowdown_arc.acquire().await;
+
     let t1 = std::time::Instant::now();
-    let j = crate::restream::scratchpad_interaction_not_stream_json(
-        ccx.clone(),
-        &mut spad,
-        "chat".to_string(),
-        prompt,
+    let j = crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint(
         &model_rec.base,
-        &chat_post.parameters,   // careful: includes n
-        chat_post.only_deterministic_messages,
-        meta
-    ).await.map_err(|e| {
-        warn!("network error communicating with the model (2): {:?}", e);
-        format!("network error communicating with the model (2): {:?}", e)
-    })?;
+        &prepared.prompt,
+        &client,
+        &parameters,
+        if model_rec.base.support_metadata { Some(meta) } else { None },
+    ).await.map_err(|e| format!("network error: {:?}", e))?;
     info!("non stream generation took {:?}ms", t1.elapsed().as_millis() as i32);
 
-    let usage_mb = j.get("usage")
-        .and_then(|value| match value {
-            Value::Object(o) => Some(o),
-            v => {
-                warn!("usage is not a dict: {:?}; Metering is lost", v);
-                None
-            }
-        })
-        .and_then(|o| match serde_json::from_value::<ChatUsage>(Value::Object(o.clone())) {
-            Ok(usage) => Some(usage),
-            Err(e) => {
-                warn!("Failed to parse usage object: {:?}; Metering is lost", e);
-                None
-            }
-        });
+    parse_llm_response(&j, messages)
+}
 
-    let det_messages = if let Some(det_messages) = j.get("deterministic_messages") {
-        if let Value::Array(arr) = det_messages {
-            let mut d_messages = vec![];
-            for a in arr {
-                let m = serde_json::from_value(a.clone()).map_err(|e| {
-                    warn!("error parsing det message's output: {}", e);
-                    format!("error parsing det message's output: {}", e)
-                })?;
-                d_messages.push(m);
-            }
-            d_messages
-        } else {
-            vec![]
-        }
-    } else {
-        vec![]
-    };
+fn parse_llm_response(j: &Value, original_messages: Vec<ChatMessage>) -> Result<Vec<Vec<ChatMessage>>, String> {
+    let usage_mb = j.get("usage")
+        .and_then(|value| value.as_object())
+        .and_then(|o| serde_json::from_value::<ChatUsage>(Value::Object(o.clone())).ok());
+
+    let choices = j.get("choices")
+        .and_then(|value| value.as_array())
+        .ok_or("error parsing model's output: choices doesn't exist")?;
+
+    let mut indexed_choices: Vec<(usize, &Value)> = choices.iter()
+        .map(|c| {
+            let idx = c.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as usize;
+            (idx, c)
+        })
+        .collect();
+    indexed_choices.sort_by_key(|(idx, _)| *idx);
 
     let mut results = vec![];
+    for (_, choice) in indexed_choices {
+        let message = choice.get("message")
+            .ok_or("error parsing model's output: choice.message doesn't exist")?;
 
-    let choices = j.get("choices").and_then(|value| value.as_array()).ok_or("error parsing model's output: choices doesn't exist".to_string())?;
-    for choice in choices {
-        // XXX: bug 'index' is ignored in scratchpad_interaction_not_stream_json, important when n>1
-        let message = choice.get("message").ok_or("error parsing model's output: choice.message doesn't exist".to_string())?;
+        let role = message.get("role")
+            .and_then(|v| v.as_str())
+            .ok_or("error parsing model's output: role doesn't exist")?.to_string();
 
-        // convert choice to a ChatMessage (we don't have code like this in any other place in rust, only in python and typescript)
-        let (role, content_value, tool_calls, tool_call_id, thinking_blocks) = {
-            (
-                message.get("role")
-                    .and_then(|v| v.as_str())
-                    .ok_or("error parsing model's output: choice0.message.role doesn't exist or is not a string".to_string())?.to_string(),
-                message.get("content")
-                    .ok_or("error parsing model's output: choice0.message.content doesn't exist".to_string())?
-                    .clone(),
-                message.get("tool_calls")
-                    .and_then(|v| v.as_array())
-                    .and_then(|arr| {
-                        serde_json::from_value::<Vec<ChatToolCall>>(Value::Array(arr.clone()))
-                            .map_err(|_| "error parsing model's output: choice0.message.tool_calls is not a valid ChatToolCall array".to_string())
-                            .ok()
-                    }),
-                message.get("tool_call_id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("").to_string(),
-                message.get("thinking_blocks")
-                    .and_then(|v| v.as_array())
-                    .map(|arr| arr.clone())
-            )
-        };
-
-        let content = chat_content_raw_from_value(content_value).and_then(|c|c.to_internal_format())
+        let content_value = message.get("content").cloned().unwrap_or(json!(null));
+        let content = chat_content_raw_from_value(content_value)
+            .and_then(|c| c.to_internal_format())
             .map_err(|e| format!("error parsing model's output: {}", e))?;
 
-        let mut ch_results = vec![];
+        let tool_calls = message.get("tool_calls")
+            .and_then(|v| v.as_array())
+            .and_then(|arr| serde_json::from_value::<Vec<ChatToolCall>>(Value::Array(arr.clone())).ok());
+
+        let tool_call_id = message.get("tool_call_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("").to_string();
+
+        let thinking_blocks = message.get("thinking_blocks")
+            .and_then(|v| v.as_array())
+            .cloned();
+
         let msg = ChatMessage {
             role,
             content,
@@ -207,36 +158,17 @@ async fn chat_interaction_non_stream(
             usage: usage_mb.clone(),
             ..Default::default()
         };
-        ch_results.extend(det_messages.clone());
-        ch_results.push(msg);
-        results.push(ch_results)
+
+        let mut extended = original_messages.clone();
+        extended.push(msg);
+        results.push(extended);
     }
-    if results.is_empty() && !det_messages.is_empty() {
-        results.push(det_messages);
+
+    if results.is_empty() {
+        results.push(original_messages);
     }
 
     Ok(results)
-}
-
-
-pub async fn chat_interaction(
-    ccx: Arc<AMutex<AtCommandsContext>>,
-    mut spad: Box<dyn ScratchpadAbstract>,
-    model_rec: &ChatModelRecord,
-    chat_post: &mut ChatPost,
-) -> Result<Vec<Vec<ChatMessage>>, String> {
-    let prompt = spad.prompt(ccx.clone(), &mut chat_post.parameters).await?;
-    let stream = chat_post.stream.unwrap_or(false);
-    if stream {
-        warn!("subchats doesn't support streaming, fallback to non-stream communications");
-    }
-    Ok(chat_interaction_non_stream(
-        ccx.clone(),
-        spad,
-        model_rec,
-        &prompt,
-        chat_post,
-    ).await?)
 }
 
 fn update_usage_from_messages(usage: &mut ChatUsage, messages: &Vec<Vec<ChatMessage>>) {
@@ -257,7 +189,7 @@ pub async fn subchat_single(
     model_id: &str,
     messages: Vec<ChatMessage>,
     tools_subset: Option<Vec<String>>,
-    tool_choice: Option<String>,
+    _tool_choice: Option<String>,
     only_deterministic_messages: bool,
     temperature: Option<f32>,
     max_new_tokens: Option<usize>,
@@ -268,9 +200,9 @@ pub async fn subchat_single(
     tx_toolid_mb: Option<String>,
     tx_chatid_mb: Option<String>,
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
-    let (gcx, should_execute_remotely) = {
+    let gcx = {
         let ccx_locked = ccx.lock().await;
-        (ccx_locked.global_context.clone(), ccx_locked.should_execute_remotely)
+        ccx_locked.global_context.clone()
     };
 
     info!("tools_subset {:?}", tools_subset);
@@ -285,7 +217,7 @@ pub async fn subchat_single(
         }).collect::<Vec<_>>());
 
         match tools_subset {
-            Some(tools_subset) => {
+            Some(ref tools_subset) => {
                 tools_turned_on_by_cmdline.into_iter().filter(|tool| {
                     tools_subset.contains(&tool.name)
                 }).collect()
@@ -301,51 +233,37 @@ pub async fn subchat_single(
     let tools = tools_desclist.into_iter().filter(|x| x.is_supported_by(model_id)).collect::<Vec<_>>();
 
     let max_new_tokens = max_new_tokens.unwrap_or(MAX_NEW_TOKENS);
-    let (mut chat_post, spad, model_rec) = create_chat_post_and_scratchpad(
-        gcx.clone(),
+
+    let results = subchat_non_stream(
         ccx.clone(),
         model_id,
-        messages.iter().collect::<Vec<_>>(),
+        messages.clone(),
+        tools,
+        prepend_system_prompt,
         temperature,
         max_new_tokens,
         n,
         reasoning_effort,
-        prepend_system_prompt,
-        tools,
-        tool_choice.clone(),
         only_deterministic_messages,
-        should_execute_remotely,
     ).await?;
-
-    let chat_response_msgs = chat_interaction(ccx.clone(), spad, &model_rec, &mut chat_post).await?;
-
-    let old_messages = messages.clone();
-    // no need to remove user from old_messages here, because allow_at is false
-
-    let results = chat_response_msgs.iter().map(|new_msgs| {
-        let mut extended_msgs = old_messages.clone();
-        extended_msgs.extend(new_msgs.clone());
-        extended_msgs
-    }).collect::<Vec<Vec<ChatMessage>>>();
 
     if let Some(usage_collector) = usage_collector_mb {
         update_usage_from_messages(usage_collector, &results);
     }
 
     if let Some(tx_chatid) = tx_chatid_mb {
-        assert!(tx_toolid_mb.is_some());
-        let tx_toolid = tx_toolid_mb.unwrap();
-        let subchat_tx = ccx.lock().await.subchat_tx.clone();
-        for (i, choice) in chat_response_msgs.iter().enumerate() {
-            // XXX: ...-choice will not work to store in chat_client.py
-            let cid = if chat_response_msgs.len() > 1 {
-                format!("{}-choice{}", tx_chatid, i)
-            } else {
-                tx_chatid.clone()
-            };
-            for msg_in_choice in choice {
-                let message = serde_json::json!({"tool_call_id": tx_toolid, "subchat_id": cid, "add_message": msg_in_choice});
-                let _ = subchat_tx.lock().await.send(message);
+        if let Some(tx_toolid) = tx_toolid_mb {
+            let subchat_tx = ccx.lock().await.subchat_tx.clone();
+            for (i, choice) in results.iter().enumerate() {
+                let cid = if results.len() > 1 {
+                    format!("{}-choice{}", tx_chatid, i)
+                } else {
+                    tx_chatid.clone()
+                };
+                if let Some(last_msg) = choice.last() {
+                    let message = json!({"tool_call_id": tx_toolid, "subchat_id": cid, "add_message": last_msg});
+                    let _ = subchat_tx.lock().await.send(message);
+                }
             }
         }
     }

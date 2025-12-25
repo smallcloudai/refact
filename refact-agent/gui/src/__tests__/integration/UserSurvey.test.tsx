@@ -1,6 +1,6 @@
 import { http, HttpResponse } from "msw";
-import { QUESTIONS_STUB } from "../__fixtures__";
-import { render } from "../utils/test-utils";
+import { QUESTIONS_STUB } from "../../__fixtures__";
+import { render } from "../../utils/test-utils";
 import { describe, expect, test } from "vitest";
 import {
   server,
@@ -16,8 +16,11 @@ import {
   telemetryNetwork,
   emptyTrajectories,
   trajectorySave,
-} from "../utils/mockServer";
-import { InnerApp } from "../features/App";
+  chatSessionSubscribe,
+  chatSessionCommand,
+  chatSessionAbort,
+} from "../../utils/mockServer";
+import { InnerApp } from "../../features/App";
 
 const userMock = http.get(
   "https://www.smallcloud.ai/v1/login",
@@ -70,6 +73,9 @@ describe("Start a new chat", () => {
       telemetryNetwork,
       emptyTrajectories,
       trajectorySave,
+      chatSessionSubscribe,
+      chatSessionCommand,
+      chatSessionAbort,
     );
 
     const { user, ...app } = render(<InnerApp />, {

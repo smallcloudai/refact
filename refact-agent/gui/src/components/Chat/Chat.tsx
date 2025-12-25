@@ -5,8 +5,8 @@ import { Flex, Button, Text, Card } from "@radix-ui/themes";
 import {
   useAppSelector,
   useAppDispatch,
-  useSendChatRequest,
-  useAutoSend,
+  useChatSubscription,
+  useChatActions,
 } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
 import {
@@ -46,7 +46,14 @@ export const Chat: React.FC<ChatProps> = ({
   const isStreaming = useAppSelector(selectIsStreaming);
 
   const chatId = useAppSelector(selectChatId);
-  const { submit, abort, retryFromIndex } = useSendChatRequest();
+
+  // SSE subscription for real-time state updates from engine
+  useChatSubscription(chatId, {
+    enabled: true,
+  });
+
+  // Actions for sending commands to the engine
+  const { submit, abort, retryFromIndex } = useChatActions();
 
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
@@ -61,8 +68,8 @@ export const Chat: React.FC<ChatProps> = ({
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
   const handleSubmit = useCallback(
-    (value: string, sendPolicy?: "immediate" | "after_flow") => {
-      submit({ question: value, sendPolicy });
+    (value: string) => {
+      void submit(value);
       if (isViewingRawJSON) {
         setIsViewingRawJSON(false);
       }
@@ -74,7 +81,16 @@ export const Chat: React.FC<ChatProps> = ({
     dispatch(push({ name: "thread history page", chatId }));
   }, [chatId, dispatch]);
 
-  useAutoSend();
+  const handleAbort = useCallback(() => {
+    void abort();
+  }, [abort]);
+
+  const handleRetry = useCallback(
+    (index: number, content: Parameters<typeof retryFromIndex>[1]) => {
+      void retryFromIndex(index, content);
+    },
+    [retryFromIndex],
+  );
 
   return (
     <DropzoneProvider asChild>
@@ -88,8 +104,8 @@ export const Chat: React.FC<ChatProps> = ({
       >
         <ChatContent
           key={`chat-content-${chatId}`}
-          onRetry={retryFromIndex}
-          onStopStreaming={abort}
+          onRetry={handleRetry}
+          onStopStreaming={handleAbort}
         />
 
         {shouldCheckpointsPopupBeShown && <Checkpoints />}

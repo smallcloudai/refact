@@ -6,19 +6,17 @@ import {
   selectIsWaiting,
   selectMessages,
 } from "../../features/Chat";
-import { useSendChatRequest } from "../../hooks/useSendChatRequest";
 
+// TODO: Implement regenerate command in engine for proper resend functionality
 function useResendMessages() {
   const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  const { retry } = useSendChatRequest();
 
   const handleResend = React.useCallback(() => {
-    if (messages.length > 0) {
-      retry(messages);
-    }
-  }, [messages, retry]);
+    // TODO: Send regenerate command to engine
+    console.warn("[ResendButton] Regenerate not yet implemented in new system");
+  }, []);
 
   const shouldShow = React.useMemo(() => {
     if (messages.length === 0) return false;

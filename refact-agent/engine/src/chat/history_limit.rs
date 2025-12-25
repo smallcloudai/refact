@@ -926,18 +926,227 @@ pub fn fix_and_limit_messages_history(
         let compression_msg = ChatMessage {
             role: "cd_instruction".to_string(),
             content: ChatContent::SimpleText(notice.to_string()),
-            finish_reason: None,
-            tool_calls: None,
-            tool_call_id: String::new(),
-            tool_failed: None,
-            usage: None,
-            checkpoints: Vec::new(),
-            thinking_blocks: None,
-            output_filter: None,
+            ..Default::default()
         };
         mutable_messages.push(compression_msg);
     }
 
     validate_chat_history(&mutable_messages).map(|msgs| (msgs, compression_strength))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::call_validation::{ChatToolCall, ChatToolFunction};
+
+    #[test]
+    fn test_get_model_token_params_claude() {
+        let (extra_tokens, budget_offset) = get_model_token_params("anthropic/claude-3-5-sonnet");
+        assert_eq!(extra_tokens, 150);
+        assert!((budget_offset - 0.15).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_get_model_token_params_claude_case_insensitive() {
+        let (extra_tokens, _) = get_model_token_params("CLAUDE-3-OPUS");
+        assert_eq!(extra_tokens, 150);
+    }
+
+    #[test]
+    fn test_get_model_token_params_default() {
+        let (extra_tokens, budget_offset) = get_model_token_params("gpt-4");
+        assert_eq!(extra_tokens, 3);
+        assert!((budget_offset - 0.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_get_model_token_params_unknown() {
+        let (extra_tokens, budget_offset) = get_model_token_params("custom-model");
+        assert_eq!(extra_tokens, 3);
+        assert!((budget_offset - 0.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_is_content_duplicate_overlapping_ranges() {
+        let content1 = "line1\nline2\nline3";
+        let content2 = "line2\nline3";
+        assert!(is_content_duplicate(content1, 1, 3, content2, 2, 3));
+    }
+
+    #[test]
+    fn test_is_content_duplicate_non_overlapping_ranges() {
+        let content1 = "line1\nline2";
+        let content2 = "line5\nline6";
+        assert!(!is_content_duplicate(content1, 1, 2, content2, 5, 6));
+    }
+
+    #[test]
+    fn test_is_content_duplicate_empty_content() {
+        assert!(!is_content_duplicate("", 1, 10, "content", 1, 10));
+        assert!(!is_content_duplicate("content", 1, 10, "", 1, 10));
+    }
+
+    #[test]
+    fn test_is_content_duplicate_substring_containment() {
+        let small = "line2\nline3";
+        let large = "line1\nline2\nline3\nline4";
+        assert!(is_content_duplicate(small, 2, 3, large, 1, 4));
+        assert!(is_content_duplicate(large, 1, 4, small, 2, 3));
+    }
+
+    #[test]
+    fn test_is_content_duplicate_exact_match() {
+        let content = "line1\nline2";
+        assert!(is_content_duplicate(content, 1, 2, content, 1, 2));
+    }
+
+    #[test]
+    fn test_is_content_duplicate_ignores_ellipsis_lines() {
+        let content1 = "...\nreal_line\n...";
+        let content2 = "real_line";
+        assert!(is_content_duplicate(content1, 1, 3, content2, 1, 1));
+    }
+
+    #[test]
+    fn test_remove_invalid_tool_calls_removes_unanswered() {
+        let mut messages = vec![
+            ChatMessage {
+                role: "assistant".to_string(),
+                tool_calls: Some(vec![
+                    ChatToolCall {
+                        id: "call_1".to_string(),
+                        index: Some(0),
+                        function: ChatToolFunction { name: "test".to_string(), arguments: "{}".to_string() },
+                        tool_type: "function".to_string(),
+                    },
+                ]),
+                ..Default::default()
+            },
+        ];
+        remove_invalid_tool_calls_and_tool_calls_results(&mut messages);
+        assert!(messages.is_empty());
+    }
+
+    #[test]
+    fn test_remove_invalid_tool_calls_keeps_answered() {
+        let mut messages = vec![
+            ChatMessage {
+                role: "assistant".to_string(),
+                tool_calls: Some(vec![
+                    ChatToolCall {
+                        id: "call_1".to_string(),
+                        index: Some(0),
+                        function: ChatToolFunction { name: "test".to_string(), arguments: "{}".to_string() },
+                        tool_type: "function".to_string(),
+                    },
+                ]),
+                ..Default::default()
+            },
+            ChatMessage {
+                role: "tool".to_string(),
+                tool_call_id: "call_1".to_string(),
+                content: ChatContent::SimpleText("result".to_string()),
+                ..Default::default()
+            },
+        ];
+        remove_invalid_tool_calls_and_tool_calls_results(&mut messages);
+        assert_eq!(messages.len(), 2);
+    }
+
+    #[test]
+    fn test_remove_invalid_tool_calls_removes_orphan_results() {
+        let mut messages = vec![
+            ChatMessage {
+                role: "tool".to_string(),
+                tool_call_id: "nonexistent_call".to_string(),
+                content: ChatContent::SimpleText("orphan result".to_string()),
+                ..Default::default()
+            },
+        ];
+        remove_invalid_tool_calls_and_tool_calls_results(&mut messages);
+        assert!(messages.is_empty());
+    }
+
+    #[test]
+    fn test_remove_invalid_tool_calls_keeps_last_duplicate() {
+        let mut messages = vec![
+            ChatMessage {
+                role: "assistant".to_string(),
+                tool_calls: Some(vec![
+                    ChatToolCall {
+                        id: "call_1".to_string(),
+                        index: Some(0),
+                        function: ChatToolFunction { name: "test".to_string(), arguments: "{}".to_string() },
+                        tool_type: "function".to_string(),
+                    },
+                ]),
+                ..Default::default()
+            },
+            ChatMessage {
+                role: "tool".to_string(),
+                tool_call_id: "call_1".to_string(),
+                content: ChatContent::SimpleText("first result".to_string()),
+                ..Default::default()
+            },
+            ChatMessage {
+                role: "diff".to_string(),
+                tool_call_id: "call_1".to_string(),
+                content: ChatContent::SimpleText("second result (diff)".to_string()),
+                ..Default::default()
+            },
+        ];
+        remove_invalid_tool_calls_and_tool_calls_results(&mut messages);
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[1].role, "diff");
+    }
+
+    #[test]
+    fn test_compression_strength_serialization() {
+        let strength = CompressionStrength::Medium;
+        let json = serde_json::to_value(&strength).unwrap();
+        assert_eq!(json, "medium");
+
+        let deserialized: CompressionStrength = serde_json::from_value(json).unwrap();
+        assert_eq!(deserialized, CompressionStrength::Medium);
+    }
+
+    #[test]
+    fn test_compression_strength_all_variants() {
+        assert_eq!(serde_json::to_value(&CompressionStrength::Absent).unwrap(), "absent");
+        assert_eq!(serde_json::to_value(&CompressionStrength::Low).unwrap(), "low");
+        assert_eq!(serde_json::to_value(&CompressionStrength::Medium).unwrap(), "medium");
+        assert_eq!(serde_json::to_value(&CompressionStrength::High).unwrap(), "high");
+    }
+
+    #[test]
+    fn test_recalculate_token_limits_basic() {
+        let token_counts = vec![100, 200, 300];
+        let tools_tokens = 50;
+        let n_ctx = 4096;
+        let max_new_tokens = 1024;
+
+        let (occupied, limit) = recalculate_token_limits(
+            &token_counts, tools_tokens, n_ctx, max_new_tokens, "gpt-4"
+        );
+
+        assert_eq!(occupied, 650);
+        assert_eq!(limit, 3072);
+    }
+
+    #[test]
+    fn test_recalculate_token_limits_claude_offset() {
+        let token_counts = vec![100];
+        let tools_tokens = 0;
+        let n_ctx = 4096;
+        let max_new_tokens = 1024;
+
+        let (_, limit) = recalculate_token_limits(
+            &token_counts, tools_tokens, n_ctx, max_new_tokens, "claude-3"
+        );
+
+        let expected_extra_budget = (4096.0 * 0.15) as usize;
+        let expected_limit = 4096 - 1024 - expected_extra_budget;
+        assert_eq!(limit as usize, expected_limit);
+    }
 }
 

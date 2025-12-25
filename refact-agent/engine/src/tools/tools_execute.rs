@@ -257,8 +257,10 @@ pub async fn run_tools(
                     if (m.role == "tool" || m.role == "diff") && m.tool_call_id == t_call.id {
                         generated_tool.push(m);
                         have_answer = true;
+                    } else if m.tool_call_id.is_empty() {
+                        generated_other.push(m);
                     } else {
-                        assert!(m.tool_call_id.is_empty());
+                        warn!("tool {} returned message with unexpected tool_call_id: {}", &t_call.function.name, m.tool_call_id);
                         generated_other.push(m);
                     }
                 },
@@ -267,7 +269,14 @@ pub async fn run_tools(
                 }
             }
         }
-        assert!(have_answer);
+        if !have_answer {
+            warn!("tool {} did not return a matching tool/diff message, adding error", &t_call.function.name);
+            let error_msg = tool_answer_err(
+                format!("Tool {} did not return a result", &t_call.function.name),
+                t_call.id.to_string()
+            );
+            generated_tool.push(error_msg);
+        }
     }
 
     let reserve_for_context = max_tokens_for_rag_chat_by_tools(

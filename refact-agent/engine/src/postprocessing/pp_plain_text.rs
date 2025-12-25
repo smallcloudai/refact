@@ -60,6 +60,10 @@ pub async fn postprocess_plain_text(
                             el
                         }).collect();
                         ChatContent::Multimodal(filtered_elements)
+                    },
+                    ChatContent::ContextFiles(files) => {
+                        // Context files don't need plain text processing
+                        ChatContent::ContextFiles(files)
                     }
                 };
             }
@@ -102,6 +106,10 @@ pub async fn postprocess_plain_text(
                     }
                     tok_used_global += used_in_msg;
                     ChatContent::Multimodal(new_content)
+                },
+                ChatContent::ContextFiles(files) => {
+                    // Context files don't need token-based truncation
+                    ChatContent::ContextFiles(files)
                 }
             };
             tok_used_global

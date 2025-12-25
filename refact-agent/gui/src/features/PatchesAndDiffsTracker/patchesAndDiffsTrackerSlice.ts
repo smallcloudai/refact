@@ -1,8 +1,8 @@
 import { createSelector, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { chatAskQuestionThunk, chatResponse } from "../Chat";
-import { isAssistantMessage, isDiffResponse } from "../../events";
-import { parseOrElse, partition } from "../../utils";
+import { applyChatEvent } from "../Chat/Thread/actions";
+import { partition } from "../../utils";
 import { RootState } from "../../app/store";
+import { isDiffMessage } from "../../services/refact";
 
 export type PatchMeta = {
   chatId: string;
@@ -46,42 +46,24 @@ export const patchesAndDiffsTrackerSlice = createSlice({
   },
 
   extraReducers: (builder) => {
-    builder.addCase(chatAskQuestionThunk.pending, (state, action) => {
-      if (action.meta.arg.messages.length === 0) return state;
-      const { messages, chatId } = action.meta.arg;
-      const lastMessage = messages[messages.length - 1];
-      if (!isAssistantMessage(lastMessage)) return state;
-      const toolCalls = lastMessage.tool_calls;
-      if (!toolCalls) return state;
-      const patches = toolCalls.reduce<PatchMeta[]>((acc, toolCall) => {
-        if (toolCall.id === undefined) return acc;
-        if (toolCall.function.name !== "patch") return acc;
-        const filePath = pathFromArgString(toolCall.function.arguments);
-        if (!filePath) return acc;
-        return [
-          ...acc,
-          {
-            chatId,
-            toolCallId: toolCall.id,
-            filePath,
-            started: false,
-            completed: false,
-          },
-        ];
-      }, []);
-      state.patches.push(...patches);
-    });
-
-    builder.addCase(chatResponse, (state, action) => {
-      if (!isDiffResponse(action.payload)) return state;
-      const { id, tool_call_id } = action.payload;
-      const next = state.patches.map((patchMeta) => {
-        if (patchMeta.chatId !== id) return patchMeta;
-        if (patchMeta.toolCallId !== tool_call_id) return patchMeta;
-        return { ...patchMeta, completed: true };
-      });
-
-      state.patches = next;
+    // Listen to SSE events for diff messages
+    builder.addCase(applyChatEvent, (state, action) => {
+      const { chat_id, ...event } = action.payload;
+      // Check for message_added events with diff role
+      if (event.type === "message_added") {
+        const msg = event.message;
+        if (isDiffMessage(msg)) {
+          const tool_call_id = "tool_call_id" in msg ? msg.tool_call_id : undefined;
+          if (tool_call_id) {
+            const next = state.patches.map((patchMeta) => {
+              if (patchMeta.chatId !== chat_id) return patchMeta;
+              if (patchMeta.toolCallId !== tool_call_id) return patchMeta;
+              return { ...patchMeta, completed: true };
+            });
+            state.patches = next;
+          }
+        }
+      }
     });
   },
 
@@ -128,17 +110,3 @@ export const selectCompletedPatchesFilePaths = createSelector(
 
 export const { setStartedByFilePaths, removePatchMetaByFileNameIfCompleted } =
   patchesAndDiffsTrackerSlice.actions;
-
-const pathFromArgString = (argString: string) => {
-  const args = parseOrElse<Record<string, unknown> | null>(argString, null);
-  if (
-    args &&
-    typeof args === "object" &&
-    "path" in args &&
-    typeof args.path === "string"
-  ) {
-    return args.path;
-  } else {
-    return null;
-  }
-};

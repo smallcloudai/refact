@@ -110,7 +110,7 @@ pub fn code_completion_post_validate(
     Ok(())
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ContextFile {
     pub file_name: String,
     pub file_content: String,
@@ -143,6 +143,8 @@ pub struct ChatToolFunction {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatToolCall {
     pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub index: Option<usize>,
     pub function: ChatToolFunction,
     #[serde(rename = "type")]
     pub tool_type: String,
@@ -153,6 +155,7 @@ pub struct ChatToolCall {
 pub enum ChatContent {
     SimpleText(String),
     Multimodal(Vec<MultimodalElement>),
+    ContextFiles(Vec<ContextFile>),
 }
 
 impl Default for ChatContent {
@@ -170,10 +173,14 @@ pub struct ChatUsage {
 
 #[derive(Debug, Serialize, Clone, Default)]
 pub struct ChatMessage {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub message_id: String,
     pub role: String,
     pub content: ChatContent,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub finish_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_content: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<ChatToolCall>>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -186,6 +193,12 @@ pub struct ChatMessage {
     pub checkpoints: Vec<Checkpoint>,
     #[serde(default, skip_serializing_if="Option::is_none")]
     pub thinking_blocks: Option<Vec<serde_json::Value>>,
+    /// Citations from web search results
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub citations: Vec<serde_json::Value>,
+    /// Extra provider-specific fields that should be preserved round-trip
+    #[serde(default, skip_serializing_if = "serde_json::Map::is_empty", flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
     #[serde(skip)]
     pub output_filter: Option<crate::postprocessing::pp_command_output::OutputFilter>,
 }
@@ -230,6 +243,7 @@ pub struct SubchatParameters {
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
+#[allow(dead_code)]
 pub struct ChatPost {
     pub messages: Vec<serde_json::Value>,
     #[serde(default)]
@@ -306,6 +320,7 @@ pub enum ChatMode {
 }
 
 impl ChatMode {
+    #[allow(dead_code)]
     pub fn supports_checkpoints(self) -> bool {
         match self {
             ChatMode::NO_TOOLS => false,
@@ -509,4 +524,15 @@ mod tests {
         };
         assert!(code_completion_post_validate(&post).is_err());
     }
+}
+
+pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Result<Vec<ChatMessage>, ScratchError> {
+    let messages: Vec<ChatMessage> = messages.iter()
+        .map(|x| serde_json::from_value(x.clone()))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            tracing::error!("can't deserialize ChatMessage: {}", e);
+            ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+        })?;
+    Ok(messages)
 }

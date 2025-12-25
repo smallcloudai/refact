@@ -126,6 +126,7 @@ pub async fn generate_code_edit(
         .and_then(|msg| match msg.content {
             ChatContent::SimpleText(text) => Some(text),
             ChatContent::Multimodal(_) => None,
+            ChatContent::ContextFiles(_) => None,
         })
         .ok_or("No edited code was generated".to_string())?;
 

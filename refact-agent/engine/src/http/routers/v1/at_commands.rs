@@ -23,9 +23,8 @@ use crate::caps::resolve_chat_model;
 use crate::custom_error::ScratchError;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::global_context::GlobalContext;
-use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
+use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, deserialize_messages_from_post};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
-use crate::http::routers::v1::chat::deserialize_messages_from_post;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 
@@ -162,6 +161,10 @@ pub async fn handle_v1_command_preview(
                     }
                 }
                 query
+            },
+            ChatContent::ContextFiles(_) => {
+                // Context files don't contain user query text
+                String::new()
             }
         }
     } else {
@@ -182,7 +185,7 @@ pub async fn handle_v1_command_preview(
     let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
         global_context.clone(),
         model_rec.base.n_ctx,
-        crate::http::routers::v1::chat::CHAT_TOP_N,
+        crate::constants::CHAT_TOP_N,
         true,
         vec![],
         "".to_string(),
@@ -208,7 +211,7 @@ pub async fn handle_v1_command_preview(
         ccx_locked.postprocess_parameters.clone()
     };
     if pp_settings.max_files_n == 0 {
-        pp_settings.max_files_n = crate::http::routers::v1::chat::CHAT_TOP_N;
+        pp_settings.max_files_n = crate::constants::CHAT_TOP_N;
     }
 
     let mut context_files = filter_only_context_file_from_context_tool(&messages_for_postprocessing);
@@ -248,6 +251,9 @@ pub async fn handle_v1_command_preview(
                         elem.m_content = query.clone();
                     }
                 }
+            },
+            ChatContent::ContextFiles(_) => {
+                // Context files are not user queries, leave unchanged
             }
         };
         itertools::concat(vec![preview.clone(), vec![last_message]])
@@ -284,7 +290,7 @@ pub async fn handle_v1_at_command_execute(
     let mut ccx = AtCommandsContext::new(
         global_context.clone(),
         post.n_ctx,
-        crate::http::routers::v1::chat::CHAT_TOP_N,
+        crate::constants::CHAT_TOP_N,
         true,
         vec![],
         "".to_string(),

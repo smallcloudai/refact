@@ -178,7 +178,8 @@ pub struct GlobalContext {
     pub init_shadow_repos_lock: Arc<AMutex<bool>>,
     pub git_operations_abort_flag: Arc<AtomicBool>,
     pub app_searchable_id: String,
-    pub trajectory_events_tx: Option<tokio::sync::broadcast::Sender<crate::http::routers::v1::trajectories::TrajectoryEvent>>,
+    pub trajectory_events_tx: Option<tokio::sync::broadcast::Sender<crate::chat::TrajectoryEvent>>,
+    pub chat_sessions: crate::chat::SessionsMap,
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -428,8 +429,11 @@ pub async fn create_global_context(
         git_operations_abort_flag: Arc::new(AtomicBool::new(false)),
         app_searchable_id: get_app_searchable_id(&workspace_dirs),
         trajectory_events_tx: Some(tokio::sync::broadcast::channel(100).0),
+        chat_sessions: crate::chat::create_sessions_map(),
     };
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;
+    crate::chat::start_session_cleanup_task(gcx.clone());
+    crate::chat::start_trajectory_watcher(gcx.clone());
     (gcx, ask_shutdown_receiver, cmdline)
 }

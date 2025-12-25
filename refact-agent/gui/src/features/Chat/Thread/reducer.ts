@@ -10,7 +10,6 @@ import {
   isLspChatMode,
 } from "./types";
 import { v4 as uuidv4 } from "uuid";
-import { chatResponse, chatAskedQuestion } from ".";
 import {
   setToolUse,
   enableSend,
@@ -19,8 +18,6 @@ import {
   setSystemPrompt,
   newChatAction,
   backUpMessages,
-  chatError,
-  doneStreaming,
   removeChatFromCache,
   restoreChat,
   setPreventSend,
@@ -56,24 +53,43 @@ import {
   addThreadImage,
   removeThreadImageByIndex,
   resetThreadImages,
-  chatAskQuestionThunk,
+  applyChatEvent,
 } from "./actions";
-import { formatChatResponse, postProcessMessagesAfterStreaming } from "./utils";
+import { applyDeltaOps } from "../../../services/refact/chatSubscription";
+import { postProcessMessagesAfterStreaming } from "./utils";
 import {
+  AssistantMessage,
   ChatMessages,
   commandsApi,
   isAssistantMessage,
   isDiffMessage,
-  isMultiModalToolResult,
   isToolCallMessage,
   isToolMessage,
   isUserMessage,
-  isUserResponse,
   ToolCall,
+  ToolConfirmationPauseReason,
   ToolMessage,
   validateToolCall,
 } from "../../../services/refact";
 import { capsApi } from "../../../services/refact";
+import type { PauseReason } from "../../../services/refact/chatSubscription";
+
+/**
+ * Convert engine's PauseReason to GUI's ToolConfirmationPauseReason.
+ * The engine uses string type, GUI uses "confirmation" | "denial".
+ */
+function convertPauseReasons(
+  reasons: PauseReason[] | undefined
+): ToolConfirmationPauseReason[] {
+  if (!reasons) return [];
+  return reasons.map((r) => ({
+    type: r.type === "denial" ? "denial" : "confirmation",
+    command: r.command,
+    rule: r.rule,
+    tool_call_id: r.tool_call_id,
+    integr_config_path: r.integr_config_path,
+  }));
+}
 
 const createChatThread = (
   tool_use: ToolUse,
@@ -224,52 +240,11 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.current_thread_id = newId;
   });
 
-  builder.addCase(chatResponse, (state, action) => {
-    const rt = getRuntime(state, action.payload.id);
-    if (!rt) return;
-
-    const messages = formatChatResponse(rt.thread.messages, action.payload);
-    rt.thread.messages = messages;
-    rt.streaming = true;
-    rt.waiting_for_response = false;
-
-    if (
-      isUserResponse(action.payload) &&
-      action.payload.compression_strength &&
-      action.payload.compression_strength !== "absent"
-    ) {
-      rt.thread.new_chat_suggested = {
-        wasRejectedByUser: false,
-        wasSuggested: true,
-      };
-    }
-  });
-
   builder.addCase(backUpMessages, (state, action) => {
     const rt = getRuntime(state, action.payload.id);
     if (rt) {
       rt.error = null;
       rt.thread.messages = action.payload.messages;
-    }
-  });
-
-  builder.addCase(chatError, (state, action) => {
-    const rt = getRuntime(state, action.payload.id);
-    if (rt) {
-      rt.streaming = false;
-      rt.prevent_send = true;
-      rt.waiting_for_response = false;
-      rt.error = action.payload.message;
-    }
-  });
-
-  builder.addCase(doneStreaming, (state, action) => {
-    const rt = getRuntime(state, action.payload.id);
-    if (rt) {
-      rt.streaming = false;
-      rt.waiting_for_response = false;
-      rt.thread.read = action.payload.id === state.current_thread_id;
-      rt.thread.messages = postProcessMessagesAfterStreaming(rt.thread.messages);
     }
   });
 
@@ -308,16 +283,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     if (rt) rt.thread.last_user_message_id = action.payload.messageId;
   });
 
-  builder.addCase(chatAskedQuestion, (state, action) => {
-    const rt = getRuntime(state, action.payload.id);
-    if (rt) {
-      rt.send_immediately = false;
-      rt.waiting_for_response = true;
-      rt.thread.read = false;
-      rt.prevent_send = false;
-    }
-  });
-
   builder.addCase(removeChatFromCache, (state, action) => {
     const id = action.payload.id;
     const rt = state.threads[id];
@@ -343,7 +308,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(restoreChat, (state, action) => {
     const existingRt = getRuntime(state, action.payload.id);
     if (existingRt) {
-      // Runtime exists (possibly running in background) - re-add to open tabs if needed
       if (!state.open_thread_ids.includes(action.payload.id)) {
         state.open_thread_ids.push(action.payload.id);
       }
@@ -416,7 +380,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     }
   });
 
-  // Update an already-open thread with fresh data from backend (used by subscription)
   builder.addCase(updateOpenThread, (state, action) => {
     const existingRt = getRuntime(state, action.payload.id);
     if (!existingRt) return;
@@ -424,14 +387,11 @@ export const chatReducer = createReducer(initialState, (builder) => {
     const incomingTitle = action.payload.thread.title;
     const incomingTitleGenerated = action.payload.thread.isTitleGenerated;
 
-    // Always allow title updates if backend generated it and local didn't
     if (incomingTitle && incomingTitleGenerated && !existingRt.thread.isTitleGenerated) {
       existingRt.thread.title = incomingTitle;
       existingRt.thread.isTitleGenerated = true;
     }
 
-    // For other fields, only update non-busy, non-current threads
-    // IMPORTANT: Exclude messages - local runtime is authoritative for messages
     const isCurrentThread = action.payload.id === state.current_thread_id;
     if (!existingRt.streaming && !existingRt.waiting_for_response && !existingRt.error && !isCurrentThread) {
       const { title, isTitleGenerated, messages, ...otherFields } = action.payload.thread;
@@ -598,7 +558,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(addThreadImage, (state, action) => {
     const rt = getRuntime(state, action.payload.id);
-    if (rt && rt.attached_images.length < 10) {
+    if (rt && rt.attached_images.length < 5) {
       rt.attached_images.push(action.payload.image);
     }
   });
@@ -616,6 +576,230 @@ export const chatReducer = createReducer(initialState, (builder) => {
     const rt = getRuntime(state, action.payload.id);
     if (rt) {
       rt.attached_images = [];
+    }
+  });
+
+  builder.addCase(applyChatEvent, (state, action) => {
+    const { chat_id, ...event } = action.payload;
+
+    let rt = getRuntime(state, chat_id);
+
+    switch (event.type) {
+      case "snapshot": {
+        const existingRuntime = rt;
+        const snapshotMessages = event.messages as ChatMessages;
+        const isBusy = event.runtime.state === "generating"
+          || event.runtime.state === "executing_tools"
+          || event.runtime.state === "waiting_ide";
+
+        if (existingRuntime && existingRuntime.thread.messages.length > 0 && snapshotMessages.length === 0) {
+          existingRuntime.streaming = event.runtime.state === "generating";
+          existingRuntime.waiting_for_response = isBusy;
+          existingRuntime.prevent_send = event.runtime.state === "error";
+          existingRuntime.error = event.runtime.error;
+          existingRuntime.confirmation.pause = event.runtime.paused;
+          existingRuntime.confirmation.pause_reasons = convertPauseReasons(event.runtime.pause_reasons);
+          existingRuntime.thread.checkpoints_enabled = event.thread.checkpoints_enabled;
+          existingRuntime.thread.isTitleGenerated = event.thread.is_title_generated;
+          break;
+        }
+
+        const thread: ChatThread = {
+          id: event.thread.id,
+          messages: snapshotMessages,
+          model: event.thread.model,
+          title: event.thread.title,
+          tool_use: event.thread.tool_use as ToolUse,
+          mode: event.thread.mode as LspChatMode,
+          boost_reasoning: event.thread.boost_reasoning,
+          context_tokens_cap: event.thread.context_tokens_cap == null ? undefined : event.thread.context_tokens_cap,
+          include_project_info: event.thread.include_project_info,
+          checkpoints_enabled: event.thread.checkpoints_enabled,
+          isTitleGenerated: event.thread.is_title_generated,
+          new_chat_suggested: { wasSuggested: false },
+        };
+
+        const newRt: ChatThreadRuntime = {
+          thread,
+          streaming: event.runtime.state === "generating",
+          waiting_for_response: isBusy,
+          prevent_send: event.runtime.state === "error",
+          error: event.runtime.error,
+          queued_messages: existingRuntime?.queued_messages ?? [],
+          send_immediately: existingRuntime?.send_immediately ?? false,
+          attached_images: existingRuntime?.attached_images ?? [],
+          confirmation: {
+            pause: event.runtime.paused,
+            pause_reasons: convertPauseReasons(event.runtime.pause_reasons),
+            status: existingRuntime?.confirmation.status ?? { wasInteracted: false, confirmationStatus: true },
+          },
+        };
+
+        state.threads[chat_id] = newRt;
+
+        if (!state.open_thread_ids.includes(chat_id)) {
+          state.open_thread_ids.push(chat_id);
+        }
+        if (!state.current_thread_id) {
+          state.current_thread_id = chat_id;
+        }
+        break;
+      }
+
+      case "thread_updated": {
+        if (!rt) break;
+        const { type: _, ...params } = event;
+        if ("model" in params && params.model) rt.thread.model = params.model as string;
+        if ("mode" in params && params.mode) rt.thread.mode = params.mode as LspChatMode;
+        if ("title" in params && params.title) rt.thread.title = params.title as string;
+        if ("boost_reasoning" in params) rt.thread.boost_reasoning = params.boost_reasoning as boolean;
+        if ("tool_use" in params && params.tool_use) rt.thread.tool_use = params.tool_use as ToolUse;
+        if ("context_tokens_cap" in params) {
+          rt.thread.context_tokens_cap = params.context_tokens_cap == null
+            ? undefined
+            : (params.context_tokens_cap as number);
+        }
+        if ("include_project_info" in params) rt.thread.include_project_info = params.include_project_info as boolean;
+        if ("checkpoints_enabled" in params) rt.thread.checkpoints_enabled = params.checkpoints_enabled as boolean;
+        if ("is_title_generated" in params) rt.thread.isTitleGenerated = params.is_title_generated as boolean;
+        break;
+      }
+
+      case "runtime_updated": {
+        if (!rt) break;
+        rt.streaming = event.state === "generating";
+        rt.waiting_for_response = event.state === "generating"
+          || event.state === "executing_tools"
+          || event.state === "waiting_ide";
+        rt.prevent_send = event.state === "error";
+        rt.error = event.error;
+        rt.confirmation.pause = event.paused;
+        if (!event.paused) {
+          rt.confirmation.pause_reasons = [];
+        }
+        break;
+      }
+
+      case "title_updated": {
+        if (!rt) break;
+        rt.thread.title = event.title;
+        rt.thread.isTitleGenerated = event.is_generated;
+        break;
+      }
+
+      case "message_added": {
+        if (!rt) break;
+        const msg = event.message as ChatMessages[number];
+        const messageId = "message_id" in msg ? msg.message_id : null;
+        if (messageId) {
+          const existingIdx = rt.thread.messages.findIndex(
+            (m) => "message_id" in m && m.message_id === messageId
+          );
+          if (existingIdx >= 0) {
+            const existing = rt.thread.messages[existingIdx];
+            if (isAssistantMessage(existing) && isAssistantMessage(msg)) {
+              const merged: AssistantMessage = {
+                ...msg,
+                reasoning_content: msg.reasoning_content ?? existing.reasoning_content,
+                thinking_blocks: msg.thinking_blocks ?? existing.thinking_blocks,
+                citations: msg.citations ?? existing.citations,
+                usage: msg.usage ?? existing.usage,
+                finish_reason: msg.finish_reason ?? existing.finish_reason,
+              };
+              rt.thread.messages[existingIdx] = merged;
+            } else {
+              rt.thread.messages[existingIdx] = msg;
+            }
+            break;
+          }
+        }
+        rt.thread.messages.splice(event.index, 0, msg);
+        break;
+      }
+
+      case "message_updated": {
+        if (!rt) break;
+        const idx = rt.thread.messages.findIndex(
+          (m) => "message_id" in m && m.message_id === event.message_id
+        );
+        if (idx >= 0) {
+          rt.thread.messages[idx] = event.message as ChatMessages[number];
+        }
+        break;
+      }
+
+      case "message_removed": {
+        if (!rt) break;
+        rt.thread.messages = rt.thread.messages.filter(
+          (m) => !("message_id" in m) || m.message_id !== event.message_id
+        );
+        break;
+      }
+
+      case "messages_truncated": {
+        if (!rt) break;
+        rt.thread.messages = rt.thread.messages.slice(0, event.from_index);
+        break;
+      }
+
+      case "stream_started": {
+        if (!rt) break;
+        rt.streaming = true;
+        rt.thread.messages.push({
+          role: "assistant",
+          content: "",
+          message_id: event.message_id,
+        } as ChatMessages[number]);
+        break;
+      }
+
+      case "stream_delta": {
+        if (!rt) break;
+        const msgIdx = rt.thread.messages.findIndex(
+          (m) => "message_id" in m && m.message_id === event.message_id
+        );
+        if (msgIdx >= 0) {
+          const msg = rt.thread.messages[msgIdx];
+          rt.thread.messages[msgIdx] = applyDeltaOps(
+            msg as Parameters<typeof applyDeltaOps>[0],
+            event.ops
+          ) as ChatMessages[number];
+        }
+        break;
+      }
+
+      case "stream_finished": {
+        if (!rt) break;
+        rt.streaming = false;
+        rt.waiting_for_response = false;
+        break;
+      }
+
+      case "pause_required": {
+        if (!rt) break;
+        rt.confirmation.pause = true;
+        rt.confirmation.pause_reasons = convertPauseReasons(event.reasons);
+        rt.streaming = false;
+        rt.waiting_for_response = false;
+        break;
+      }
+
+      case "pause_cleared": {
+        if (!rt) break;
+        rt.confirmation.pause = false;
+        rt.confirmation.pause_reasons = [];
+        break;
+      }
+
+      case "ide_tool_required": {
+        if (!rt) break;
+        rt.streaming = false;
+        rt.waiting_for_response = true;
+        break;
+      }
+
+      case "ack":
+        break;
     }
   });
 
@@ -653,22 +837,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
       }
     },
   );
-
-  // Handle rejected chat requests - set error state so spinner hides and SSE doesn't overwrite
-  builder.addMatcher(
-    chatAskQuestionThunk.rejected.match,
-    (state, action) => {
-      const chatId = action.meta.arg.chatId;
-      const rt = getRuntime(state, chatId);
-      if (rt && action.payload) {
-        const payload = action.payload as { detail?: string };
-        rt.error = payload.detail ?? "Unknown error";
-        rt.prevent_send = true;
-        rt.streaming = false;
-        rt.waiting_for_response = false;
-      }
-    },
-  );
 });
 
 export function maybeAppendToolCallResultFromIdeToMessages(
@@ -683,7 +851,7 @@ export function maybeAppendToolCallResultFromIdeToMessages(
   if (hasDiff) return;
 
   const maybeToolResult = messages.find(
-    (d) => isToolMessage(d) && d.content.tool_call_id === toolCallId,
+    (d) => isToolMessage(d) && d.tool_call_id === toolCallId,
   );
 
   const toolCalls = messages.reduce<ToolCall[]>((acc, message) => {
@@ -703,16 +871,16 @@ export function maybeAppendToolCallResultFromIdeToMessages(
   if (
     maybeToolResult &&
     isToolMessage(maybeToolResult) &&
-    typeof maybeToolResult.content.content === "string"
+    typeof maybeToolResult.content === "string"
   ) {
-    maybeToolResult.content.content = message;
+    maybeToolResult.content = message;
     return;
   } else if (
     maybeToolResult &&
     isToolMessage(maybeToolResult) &&
-    isMultiModalToolResult(maybeToolResult.content)
+    Array.isArray(maybeToolResult.content)
   ) {
-    maybeToolResult.content.content.push({
+    maybeToolResult.content.push({
       m_type: "text",
       m_content: message,
     });
@@ -727,11 +895,9 @@ export function maybeAppendToolCallResultFromIdeToMessages(
   if (assistantMessageIndex === -1) return;
   const toolMessage: ToolMessage = {
     role: "tool",
-    content: {
-      content: message,
-      tool_call_id: toolCallId,
-      tool_failed: false,
-    },
+    tool_call_id: toolCallId,
+    content: message,
+    tool_failed: false,
   };
 
   messages.splice(assistantMessageIndex + 1, 0, toolMessage);

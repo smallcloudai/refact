@@ -252,3 +252,40 @@ export const trajectoryDelete: HttpHandler = http.delete(
     return HttpResponse.json({ status: "ok" });
   },
 );
+
+// Chat Session (Stateless Trajectory UI) handlers
+export const chatSessionSubscribe: HttpHandler = http.get(
+  "http://127.0.0.1:8001/v1/chats/subscribe",
+  () => {
+    // Return an SSE stream that immediately closes (no events)
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        // Send a comment to keep connection alive, then close
+        controller.enqueue(encoder.encode(": keep-alive\n\n"));
+        // Don't close - let the client handle disconnection
+      },
+    });
+    return new HttpResponse(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
+  },
+);
+
+export const chatSessionCommand: HttpHandler = http.post(
+  "http://127.0.0.1:8001/v1/chats/:id/commands",
+  () => {
+    return HttpResponse.json({ status: "queued" });
+  },
+);
+
+export const chatSessionAbort: HttpHandler = http.post(
+  "http://127.0.0.1:8001/v1/chats/:id/abort",
+  () => {
+    return HttpResponse.json({ status: "ok" });
+  },
+);

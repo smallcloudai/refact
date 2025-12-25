@@ -7,6 +7,7 @@ import {
   isToolMessage,
   isUserMessage,
   ChatMessages,
+  ToolResult,
 } from "../../../services/refact/types";
 import { takeFromLast } from "../../../utils/takeFromLast";
 import { ChatThreadRuntime, QueuedUserMessage, ThreadConfirmation } from "./types";
@@ -140,15 +141,27 @@ export const toolMessagesSelector = createSelector(
 
 export const selectToolResultById = createSelector(
   [toolMessagesSelector, (_, id?: string) => id],
-  (messages, id) =>
-    messages.find((message) => message.content.tool_call_id === id)?.content,
+  (messages, id) => {
+    const msg = messages.find((message) => message.tool_call_id === id);
+    if (!msg) return undefined;
+    // Return in ToolResult format for compatibility with existing components
+    return {
+      tool_call_id: msg.tool_call_id,
+      content: msg.content,
+      tool_failed: msg.tool_failed,
+    } as ToolResult;
+  },
 );
 
 export const selectManyToolResultsByIds = (ids: string[]) =>
   createSelector(toolMessagesSelector, (messages) =>
     messages
-      .filter((message) => ids.includes(message.content.tool_call_id))
-      .map((toolMessage) => toolMessage.content),
+      .filter((message) => ids.includes(message.tool_call_id))
+      .map((msg) => ({
+        tool_call_id: msg.tool_call_id,
+        content: msg.content,
+        tool_failed: msg.tool_failed,
+      }) as ToolResult),
   );
 
 const selectDiffMessages = createSelector(selectMessages, (messages) =>
@@ -186,8 +199,8 @@ export const selectLastSentCompression = createSelector(
         if (isUserMessage(message) && message.compression_strength) {
           return message.compression_strength;
         }
-        if (isToolMessage(message) && message.content.compression_strength) {
-          return message.content.compression_strength;
+        if (isToolMessage(message) && message.compression_strength) {
+          return message.compression_strength;
         }
         return acc;
       },
@@ -219,7 +232,7 @@ function hasUncalledToolsInMessages(messages: ReturnType<typeof selectMessages>)
     if (!cur.tool_calls || cur.tool_calls.length === 0) return acc;
     const curToolCallIds = cur.tool_calls
       .map((toolCall) => toolCall.id)
-      .filter((id) => id !== undefined);
+      .filter((id): id is string => id !== undefined && !id.startsWith("srvtoolu_"));
     return [...acc, ...curToolCallIds];
   }, []);
 
@@ -227,7 +240,7 @@ function hasUncalledToolsInMessages(messages: ReturnType<typeof selectMessages>)
 
   const toolMessages = tailMessages
     .map((msg) => {
-      if (isToolMessage(msg)) return msg.content.tool_call_id;
+      if (isToolMessage(msg)) return msg.tool_call_id;
       if ("tool_call_id" in msg && typeof msg.tool_call_id === "string")
         return msg.tool_call_id;
       return undefined;

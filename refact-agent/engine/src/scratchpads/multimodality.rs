@@ -19,8 +19,8 @@ impl MultimodalElement {
             return Err(format!("MultimodalElement::new() received invalid type: {}", m_type));
         }
         if m_type.starts_with("image/") {
-            let _ = image_reader_from_b64string(&m_content)
-                .map_err(|e| format!("MultimodalElement::new() failed to parse m_content: {}", e));
+            image_reader_from_b64string(&m_content)
+                .map_err(|e| format!("MultimodalElement::new() failed to parse image: {}", e))?;
         }
         Ok(MultimodalElement { m_type, m_content })
     }
@@ -132,6 +132,7 @@ pub enum ChatMultimodalElement {
 pub enum ChatContentRaw {
     SimpleText(String),
     Multimodal(Vec<ChatMultimodalElement>),
+    ContextFiles(Vec<crate::call_validation::ContextFile>),
 }
 
 impl ChatContentRaw {
@@ -151,7 +152,8 @@ impl ChatContentRaw {
                     })
                     .collect();
                 internal_elements.map(ChatContent::Multimodal)
-            }
+            },
+            ChatContentRaw::ContextFiles(files) => Ok(ChatContent::ContextFiles(files.clone())),
         }
     }
 
@@ -159,6 +161,7 @@ impl ChatContentRaw {
         match self {
             ChatContentRaw::SimpleText(text) => text.is_empty(),
             ChatContentRaw::Multimodal(elements) => elements.is_empty(),
+            ChatContentRaw::ContextFiles(files) => files.is_empty(),
         }
     }
 }
@@ -172,6 +175,10 @@ impl ChatContent {
                 .map(|el|el.m_content.clone())
                 .collect::<Vec<_>>()
                 .join("\n\n"),
+            ChatContent::ContextFiles(files) => files.iter()
+                .map(|f| format!("{}:{}-{}\n{}", f.file_name, f.line1, f.line2, f.file_content))
+                .collect::<Vec<_>>()
+                .join("\n\n"),
         }
     }
 
@@ -181,6 +188,9 @@ impl ChatContent {
             ChatContent::Multimodal(_elements) => {
                 let tcnt = self.count_tokens(tokenizer, style).unwrap_or(0);
                 (tcnt as f32 * 2.618) as usize
+            },
+            ChatContent::ContextFiles(files) => {
+                files.iter().map(|f| f.file_content.len() + f.file_name.len()).sum()
             },
         }
     }
@@ -192,6 +202,12 @@ impl ChatContent {
                 .map(|e|e.count_tokens(tokenizer.clone(), style))
                 .collect::<Result<Vec<_>, _>>()
                 .map(|counts| counts.iter().sum()),
+            ChatContent::ContextFiles(files) => {
+                let total: i32 = files.iter()
+                    .map(|f| count_text_tokens(tokenizer.clone(), &f.file_content).unwrap_or(0) as i32)
+                    .sum();
+                Ok(total)
+            },
         }
     }
 
@@ -203,6 +219,10 @@ impl ChatContent {
                     .map(|el| el.to_orig(style))
                     .collect::<Vec<_>>();
                 ChatContentRaw::Multimodal(orig_elements)
+            },
+            ChatContent::ContextFiles(files) => {
+                // Serialize context files as JSON array
+                ChatContentRaw::ContextFiles(files.clone())
             }
         }
     }
@@ -233,6 +253,19 @@ pub fn chat_content_raw_from_value(value: Value) -> Result<ChatContentRaw, Strin
         Value::Null => Ok(ChatContentRaw::SimpleText(String::new())),
         Value::String(s) => Ok(ChatContentRaw::SimpleText(s)),
         Value::Array(array) => {
+            // First, try to parse as context files (check if first element has file_name)
+            if let Some(first) = array.first() {
+                if first.get("file_name").is_some() {
+                    // Looks like context files
+                    let files: Result<Vec<crate::call_validation::ContextFile>, _> =
+                        array.iter().map(|item| serde_json::from_value(item.clone())).collect();
+                    if let Ok(context_files) = files {
+                        return Ok(ChatContentRaw::ContextFiles(context_files));
+                    }
+                }
+            }
+
+            // Otherwise, try to parse as multimodal elements
             let mut elements = vec![];
             for (idx, item) in array.into_iter().enumerate() {
                 let element: ChatMultimodalElement = serde_json::from_value(item)
@@ -244,7 +277,34 @@ pub fn chat_content_raw_from_value(value: Value) -> Result<ChatContentRaw, Strin
 
             Ok(ChatContentRaw::Multimodal(elements))
         },
-        _ => Err("deserialize_chat_content() can't parse content".to_string()),
+        Value::Object(obj) => {
+            // Old tool message format: { "tool_call_id": "...", "content": "...", "tool_failed": bool }
+            // Try to extract and recursively parse the inner content field
+            if let Some(content_val) = obj.get("content") {
+                // Recursively parse the inner content
+                match chat_content_raw_from_value(content_val.clone()) {
+                    Ok(inner) => return Ok(inner),
+                    Err(_) => {
+                        // If recursive parsing fails, try to get as string
+                        if let Some(s) = content_val.as_str() {
+                            return Ok(ChatContentRaw::SimpleText(s.to_string()));
+                        }
+                    }
+                }
+            }
+            // If it's an object but not the old tool format, convert to JSON string
+            Ok(ChatContentRaw::SimpleText(serde_json::to_string(&Value::Object(obj)).unwrap_or_default()))
+        },
+        other => {
+            let type_name = match &other {
+                Value::Bool(_) => "bool",
+                Value::Number(_) => "number",
+                _ => "unknown"
+            };
+            let value_str = serde_json::to_string(&other).unwrap_or_else(|_| "failed to serialize".to_string());
+            tracing::error!("deserialize_chat_content() can't parse content type: {}, value: {}", type_name, value_str);
+            Err(format!("deserialize_chat_content() can't parse content"))
+        }
     }
 }
 
@@ -277,6 +337,9 @@ impl ChatMessage {
         if let Some(thinking_blocks) = self.thinking_blocks.clone() {
             dict.insert("thinking_blocks".to_string(), json!(thinking_blocks));
         }
+        if let Some(reasoning_content) = self.reasoning_content.clone() {
+            dict.insert("reasoning_content".to_string(), json!(reasoning_content));
+        }
 
         Value::Object(dict)
     }
@@ -285,12 +348,14 @@ impl ChatMessage {
 impl<'de> Deserialize<'de> for ChatMessage {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
         let value: Value = Deserialize::deserialize(deserializer)?;
-        let role = value.get("role")
+        let obj = value.as_object().ok_or_else(|| serde::de::Error::custom("expected object"))?;
+
+        let role = obj.get("role")
             .and_then(|s| s.as_str())
             .ok_or_else(|| serde::de::Error::missing_field("role"))?
             .to_string();
 
-        let content = match value.get("content") {
+        let content = match obj.get("content") {
             Some(content_value) => {
                 let content_raw: ChatContentRaw = chat_content_raw_from_value(content_value.clone())
                     .map_err(|e| serde::de::Error::custom(e))?;
@@ -299,28 +364,59 @@ impl<'de> Deserialize<'de> for ChatMessage {
             },
             None => ChatContent::SimpleText(String::new()),
         };
-        let finish_reason = value.get("finish_reason").and_then(|x| x.as_str().map(|x| x.to_string()));
 
-        let tool_calls: Option<Vec<ChatToolCall>> = value.get("tool_calls")
+        let message_id = obj.get("message_id").and_then(|x| x.as_str()).unwrap_or_default().to_string();
+        let finish_reason = obj.get("finish_reason").and_then(|x| x.as_str().map(|x| x.to_string()));
+        let reasoning_content = obj.get("reasoning_content").and_then(|x| x.as_str().map(|x| x.to_string()));
+        let tool_call_id = obj.get("tool_call_id").and_then(|s| s.as_str()).unwrap_or_default().to_string();
+        let tool_failed = obj.get("tool_failed").and_then(|x| x.as_bool());
+
+        let tool_calls: Option<Vec<ChatToolCall>> = obj.get("tool_calls")
             .and_then(|v| v.as_array())
             .map(|v| v.iter().map(|v| serde_json::from_value(v.clone()).map_err(serde::de::Error::custom)).collect::<Result<Vec<_>, _>>())
             .transpose()?;
-        let tool_call_id: Option<String> = value.get("tool_call_id")
-            .and_then(|s| s.as_str()).map(|s| s.to_string());
 
-        let thinking_blocks: Option<Vec<Value>> = value.get("thinking_blocks")
+        let thinking_blocks: Option<Vec<Value>> = obj.get("thinking_blocks")
             .and_then(|v| v.as_array())
-            .map(|v| v.iter().map(|v| serde_json::from_value(v.clone()).map_err(serde::de::Error::custom)).collect::<Result<Vec<_>, _>>())
-            .transpose()?;
+            .map(|v| v.iter().cloned().collect());
+
+        let citations: Vec<Value> = obj.get("citations")
+            .and_then(|v| v.as_array())
+            .map(|v| v.iter().cloned().collect())
+            .unwrap_or_default();
+
+        let usage: Option<crate::call_validation::ChatUsage> = obj.get("usage")
+            .and_then(|v| serde_json::from_value(v.clone()).ok());
+
+        let checkpoints: Vec<crate::git::checkpoints::Checkpoint> = obj.get("checkpoints")
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or_default();
+
+        const KNOWN_FIELDS: &[&str] = &[
+            "role", "content", "message_id", "finish_reason", "reasoning_content",
+            "tool_calls", "tool_call_id", "tool_failed", "usage", "checkpoints",
+            "thinking_blocks", "citations"
+        ];
+        let extra: serde_json::Map<String, Value> = obj.iter()
+            .filter(|(k, _)| !KNOWN_FIELDS.contains(&k.as_str()))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
 
         Ok(ChatMessage {
+            message_id,
             role,
             content,
             finish_reason,
+            reasoning_content,
             tool_calls,
-            tool_call_id: tool_call_id.unwrap_or_default(),
+            tool_call_id,
+            tool_failed,
+            usage,
+            checkpoints,
             thinking_blocks,
-            ..Default::default()
+            citations,
+            extra,
+            output_filter: None,
         })
     }
 }

@@ -483,6 +483,7 @@ pub async fn generate_commit_message_by_diff(
             x.into_iter().last().map(|last_m| match last_m.content {
                 ChatContent::SimpleText(text) => Some(text),
                 ChatContent::Multimodal(_) => None,
+                ChatContent::ContextFiles(_) => None,
             })
         })
         .flatten()

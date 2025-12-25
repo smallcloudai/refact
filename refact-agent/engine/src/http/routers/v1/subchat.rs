@@ -10,7 +10,7 @@ use crate::subchat::{subchat, subchat_single};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::custom_error::ScratchError;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
-use crate::http::routers::v1::chat::deserialize_messages_from_post;
+use crate::call_validation::deserialize_messages_from_post;
 
 
 #[derive(Deserialize)]

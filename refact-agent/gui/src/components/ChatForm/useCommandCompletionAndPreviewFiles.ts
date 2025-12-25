@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { Checkboxes } from "./useCheckBoxes";
-import { useAppSelector, useHasCaps, useSendChatRequest } from "../../hooks";
+import { useAppSelector, useHasCaps } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
 import {
   type CommandCompletionResponse,
   commandsApi,
 } from "../../services/refact/commands";
-import { ChatContextFile, ChatMeta } from "../../services/refact/types";
+import { ChatContextFile, ChatMeta, UserMessage, UserMessageContentWithImage } from "../../services/refact/types";
 import type { LspChatMessage } from "../../services/refact";
 import {
   getSelectedChatModel,
@@ -15,6 +15,7 @@ import {
   selectIsStreaming,
   selectMessages,
   selectThreadMode,
+  selectThreadImages,
 } from "../../features/Chat";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 
@@ -76,7 +77,7 @@ function useGetCommandPreviewQuery(
   query: string,
 ): (ChatContextFile | string)[] {
   const hasCaps = useHasCaps();
-  const { maybeAddImagesToQuestion } = useSendChatRequest();
+  const attachedImages = useAppSelector(selectThreadImages);
 
   const messages = useAppSelector(selectMessages);
   const chatId = useAppSelector(selectChatId);
@@ -84,7 +85,29 @@ function useGetCommandPreviewQuery(
   const currentThreadMode = useAppSelector(selectThreadMode);
   const currentModel = useAppSelector(getSelectedChatModel);
 
-  const userMessage = maybeAddImagesToQuestion(query);
+  // Build user message with attached images
+  const userMessage: UserMessage = useMemo(() => {
+    if (!attachedImages || attachedImages.length === 0) {
+      return { role: "user", content: query, checkpoints: [] };
+    }
+
+    const images: UserMessageContentWithImage[] = attachedImages
+      .filter((img) => typeof img.content === "string")
+      .map((img) => ({
+        type: "image_url" as const,
+        image_url: { url: img.content as string },
+      }));
+
+    if (images.length === 0) {
+      return { role: "user", content: query, checkpoints: [] };
+    }
+
+    return {
+      role: "user",
+      content: [...images, { type: "text" as const, text: query }],
+      checkpoints: [],
+    };
+  }, [query, attachedImages]);
 
   const messagesToSend: LspChatMessage[] = formatMessagesForLsp([
     ...messages,

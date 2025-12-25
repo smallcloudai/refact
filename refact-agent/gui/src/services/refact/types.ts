@@ -117,10 +117,11 @@ export function isSingleModelToolResult(toolResult: ToolResult) {
 
 interface BaseMessage {
   role: ChatRole;
+  message_id?: string;
   content:
     | string
     | ChatContextFile[]
-    | ToolResult
+    | MultiModalToolContent[]
     | DiffChunk[]
     | null
     | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
@@ -186,7 +187,10 @@ export interface SystemMessage extends BaseMessage {
 
 export interface ToolMessage extends BaseMessage {
   role: "tool";
-  content: ToolResult;
+  content: string | MultiModalToolContent[]; // Direct content from engine
+  tool_call_id: string; // At message level, not nested in content
+  tool_failed?: boolean;
+  compression_strength?: CompressionStrength;
 }
 
 // TODO: There maybe sub-types for this

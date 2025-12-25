@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::mpsc;
 use async_stream::stream;
@@ -9,6 +10,10 @@ use reqwest_eventsource::Error as REError;
 use serde_json::{json, Value};
 use tracing::info;
 use uuid;
+
+const STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(120);
+const STREAM_TOTAL_TIMEOUT: Duration = Duration::from_secs(15 * 60);
+const STREAM_HEARTBEAT: Duration = Duration::from_secs(2);
 
 use crate::call_validation::{ChatMeta, SamplingParameters};
 use crate::caps::BaseModelRecord;
@@ -126,22 +131,8 @@ pub async fn scratchpad_interaction_not_stream_json(
                     }
                 }
             }).collect::<Vec<_>>();
-            scratchpad_result = match scratchpad.response_message_n_choices(choices, finish_reasons) {
-                Ok(res) => Ok(res),
-                Err(err) => {
-                    if err == "not implemented" {
-                        info!("scratchpad doesn't implement response_message_n_choices, passing the original message through");
-                        Ok(model_says.clone())
-                    } else {
-                        Err(err)
-                    }
-                }
-            };
+            scratchpad_result = scratchpad.response_message_n_choices(choices, finish_reasons);
         } else {
-            // TODO: restore order using 'index'
-            // for oai_choice in oai_choices.as_array().unwrap() {
-            //     let index = oai_choice.get("index").unwrap().as_u64().unwrap() as usize;
-            // }
             let choices = oai_choices.as_array().unwrap().iter().map(|x| {
                 x.get("text")
                     .and_then(|val| val.as_str())
@@ -366,8 +357,39 @@ pub async fn scratchpad_interaction_stream(
             };
             let mut was_correct_output_even_if_error = false;
             let mut last_finish_reason = FinishReason::None;
-            // let mut test_countdown = 250;
-            while let Some(event) = event_source.next().await {
+            let stream_started_at = Instant::now();
+            let mut last_event_at = Instant::now();
+            let mut heartbeat = tokio::time::interval(STREAM_HEARTBEAT);
+            heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+            loop {
+                let event = tokio::select! {
+                    _ = heartbeat.tick() => {
+                        if stream_started_at.elapsed() > STREAM_TOTAL_TIMEOUT {
+                            let err_str = "LLM stream timeout";
+                            tracing::error!("{}", err_str);
+                            yield Result::<_, String>::Ok(format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap()));
+                            event_source.close();
+                            return;
+                        }
+                        if last_event_at.elapsed() > STREAM_IDLE_TIMEOUT {
+                            let err_str = "LLM stream stalled";
+                            tracing::error!("{}", err_str);
+                            yield Result::<_, String>::Ok(format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap()));
+                            event_source.close();
+                            return;
+                        }
+                        continue;
+                    }
+                    maybe_event = event_source.next() => {
+                        match maybe_event {
+                            Some(e) => e,
+                            None => break,
+                        }
+                    }
+                };
+                last_event_at = Instant::now();
+
                 match event {
                     Ok(Event::Open) => {},
                     Ok(Event::Message(message)) => {
@@ -506,15 +528,15 @@ pub fn try_insert_usage(msg_value: &mut serde_json::Value) -> bool {
     return false;
 }
 
-/// Generates tool call ID and index for tool calls missing them, required by providers like Gemini
 fn generate_id_and_index_for_tool_calls_if_missing(value: &mut serde_json::Value) {
     fn process_tool_call(tool_call: &mut serde_json::Value, idx: usize) {
-        if let Some(id) = tool_call.get_mut("id") {
-            if id.is_string() && id.as_str().unwrap_or("").is_empty() {
-                let uuid = uuid::Uuid::new_v4().to_string().replace("-", "");
-                *id = json!(format!("call_{uuid}"));
-                tracing::info!("Generated UUID for empty tool call ID: call_{}", uuid);
-            }
+        let needs_id = match tool_call.get("id") {
+            None => true,
+            Some(id) => id.is_null() || (id.is_string() && id.as_str().unwrap_or("").is_empty()),
+        };
+        if needs_id {
+            let uuid = uuid::Uuid::new_v4().to_string().replace("-", "");
+            tool_call["id"] = json!(format!("call_{uuid}"));
         }
         if tool_call.get("index").is_none() {
             tool_call["index"] = json!(idx);
@@ -565,17 +587,7 @@ fn _push_streaming_json_into_scratchpad(
             FinishReason::None
         });
         if let Some(_delta) = choice0.get("delta") {
-            (value, finish_reason) = match scratch.response_message_streaming(&json, finish_reason.clone()) {
-                Ok(res) => Ok(res),
-                Err(err) => {
-                    if err == "not implemented" {
-                        info!("scratchpad doesn't implement response_message_streaming, passing the original message through");
-                        Ok((json.clone(), finish_reason.clone()))
-                    } else {
-                        Err(err)
-                    }
-                }
-            }?;
+            (value, finish_reason) = scratch.response_message_streaming(&json, finish_reason.clone())?;
         } else if choices.as_array().map_or(true, |arr|arr.is_empty())  {
             value = json.clone();
         } else {

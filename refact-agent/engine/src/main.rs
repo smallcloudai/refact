@@ -58,6 +58,7 @@ mod call_validation;
 mod dashboard;
 mod lsp;
 mod http;
+mod chat;
 
 mod integrations;
 mod privacy;

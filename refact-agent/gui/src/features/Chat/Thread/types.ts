@@ -50,6 +50,7 @@ export type ChatThread = {
   increase_max_tokens?: boolean;
   include_project_info?: boolean;
   context_tokens_cap?: number;
+  checkpoints_enabled?: boolean;
 };
 
 export type SuggestedChat = {
@@ -58,6 +59,12 @@ export type SuggestedChat = {
 };
 
 export type ToolUse = "quick" | "explore" | "agent";
+
+export type ThreadConfirmation = {
+  pause: boolean;
+  pause_reasons: ToolConfirmationPauseReason[];
+  status: ToolConfirmationStatus;
+};
 
 export type ChatThreadRuntime = {
   thread: ChatThread;
@@ -68,11 +75,7 @@ export type ChatThreadRuntime = {
   queued_messages: QueuedUserMessage[];
   send_immediately: boolean;
   attached_images: ImageFile[];
-  confirmation: {
-    pause: boolean;
-    pause_reasons: ToolConfirmationPauseReason[];
-    status: ToolConfirmationStatus;
-  };
+  confirmation: ThreadConfirmation;
 };
 
 export type Chat = {

@@ -11,7 +11,7 @@ use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle
 use crate::http::routers::v1::at_tools::{handle_v1_get_tools, handle_v1_tools_check_if_confirmation_needed, handle_v1_tools_execute};
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::caps::handle_v1_ping;
-use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions};
+
 use crate::http::routers::v1::chat_based_handlers::{handle_v1_commit_message_from_diff, handle_v1_trajectory_compress};
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::docker::{handle_v1_docker_container_action, handle_v1_docker_container_list};
@@ -39,7 +39,8 @@ use crate::http::routers::v1::v1_integrations::{handle_v1_integration_get, handl
 use crate::http::routers::v1::file_edit_tools::handle_v1_file_edit_tool_dry_run;
 use crate::http::routers::v1::code_edit::handle_v1_code_edit;
 use crate::http::routers::v1::workspace::{handle_v1_get_app_searchable_id, handle_v1_set_active_group_id};
-use crate::http::routers::v1::trajectories::{
+use crate::chat::{
+    handle_v1_chat_subscribe, handle_v1_chat_command,
     handle_v1_trajectories_list, handle_v1_trajectories_get,
     handle_v1_trajectories_save, handle_v1_trajectories_delete,
     handle_v1_trajectories_subscribe,
@@ -49,7 +50,6 @@ mod ast;
 pub mod at_commands;
 pub mod at_tools;
 pub mod caps;
-pub mod chat;
 pub mod chat_based_handlers;
 pub mod code_completion;
 pub mod code_lens;
@@ -75,8 +75,7 @@ mod v1_integrations;
 pub mod vecdb;
 mod workspace;
 mod knowledge_graph;
-mod knowledge_enrichment;
-pub mod trajectories;
+pub mod knowledge_enrichment;
 
 pub fn make_v1_router() -> Router {
     let builder = Router::new()
@@ -85,9 +84,6 @@ pub fn make_v1_router() -> Router {
 
         .route("/code-completion", post(handle_v1_code_completion_web))
         .route("/code-lens", post(handle_v1_code_lens))
-
-        .route("/chat", post(handle_v1_chat))
-        .route("/chat/completions", post(handle_v1_chat_completions))  // standard
 
         .route("/telemetry-network", post(handle_v1_telemetry_network))
         .route("/telemetry-chat", post(handle_v1_telemetry_chat))
@@ -183,6 +179,8 @@ pub fn make_v1_router() -> Router {
         .route("/trajectories/:id", get(handle_v1_trajectories_get))
         .route("/trajectories/:id", put(handle_v1_trajectories_save))
         .route("/trajectories/:id", delete(handle_v1_trajectories_delete))
+        .route("/chats/subscribe", get(handle_v1_chat_subscribe))
+        .route("/chats/:chat_id/commands", post(handle_v1_chat_command))
         ;
 
     builder

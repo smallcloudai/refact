@@ -5,17 +5,11 @@ import {
   isRejected,
 } from "@reduxjs/toolkit";
 import {
-  doneStreaming,
   newChatAction,
-  chatAskQuestionThunk,
   restoreChat,
   newIntegrationChat,
-  setIsWaitingForResponse,
   upsertToolCall,
-  sendCurrentChatToLspAfterToolCallUpdate,
-  chatResponse,
-  chatError,
-  selectHasUncalledToolsById,
+  applyChatEvent,
   clearThreadPauseReasons,
   setThreadConfirmationStatus,
   setThreadPauseReasons,
@@ -32,7 +26,6 @@ import { toolsApi } from "../services/refact/tools";
 import {
   commandsApi,
   isDetailMessage,
-  isDetailMessageWithErrorType,
 } from "../services/refact/commands";
 import { pathApi } from "../services/refact/path";
 import { pingApi } from "../services/refact/ping";
@@ -50,7 +43,7 @@ import {
   ideForceReloadProjectTreeFiles,
 } from "../hooks/useEventBusForIDE";
 import { upsertToolCallIntoHistory } from "../features/History/historySlice";
-import { isToolResponse, modelsApi, providersApi } from "../services/refact";
+import { isToolMessage, isDiffMessage, modelsApi, providersApi } from "../services/refact";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -293,14 +286,6 @@ startListening({
     }
 
     if (
-      chatAskQuestionThunk.rejected.match(action) &&
-      !action.meta.aborted &&
-      typeof action.payload === "string"
-    ) {
-      listenerApi.dispatch(setError(action.payload));
-    }
-
-    if (
       (providersApi.endpoints.updateProvider.matchRejected(action) ||
         providersApi.endpoints.getProvider.matchRejected(action) ||
         providersApi.endpoints.getProviderTemplates.matchRejected(action) ||
@@ -344,69 +329,6 @@ startListening({
 });
 
 startListening({
-  actionCreator: doneStreaming,
-  effect: async (action, listenerApi) => {
-    const state = listenerApi.getState();
-    const chatId = action.payload.id;
-    const isCurrentThread = chatId === state.chat.current_thread_id;
-
-    if (isCurrentThread) {
-      listenerApi.dispatch(resetThreadImages({ id: chatId }));
-    }
-
-    const runtime = state.chat.threads[chatId];
-    if (!runtime) return;
-    if (runtime.error) return;
-    if (runtime.prevent_send) return;
-    if (runtime.confirmation.pause) return;
-
-    const hasUncalledTools = selectHasUncalledToolsById(state, chatId);
-    if (!hasUncalledTools) return;
-
-    const lastMessage = runtime.thread.messages[runtime.thread.messages.length - 1];
-    if (!lastMessage || !("tool_calls" in lastMessage) || !lastMessage.tool_calls) return;
-
-    // IMPORTANT: Set waiting=true immediately to prevent race conditions
-    // This blocks any other sender (like useAutoSend) from starting a duplicate request
-    // during the async confirmation check below
-    listenerApi.dispatch(setIsWaitingForResponse({ id: chatId, value: true }));
-
-    const isIntegrationChat = runtime.thread.mode === "CONFIGURE";
-    if (!isIntegrationChat) {
-      const confirmationResult = await listenerApi.dispatch(
-        toolsApi.endpoints.checkForConfirmation.initiate({
-          tool_calls: lastMessage.tool_calls,
-          messages: runtime.thread.messages,
-        }),
-      );
-
-      if ("data" in confirmationResult && confirmationResult.data?.pause) {
-        // setThreadPauseReasons will reset waiting_for_response to false
-        listenerApi.dispatch(setThreadPauseReasons({ id: chatId, pauseReasons: confirmationResult.data.pause_reasons }));
-        return;
-      }
-    }
-
-    // Re-check state after async operation to prevent duplicate requests
-    const latestState = listenerApi.getState();
-    const latestRuntime = latestState.chat.threads[chatId];
-    if (!latestRuntime) return;
-    if (latestRuntime.streaming) return;
-    if (latestRuntime.prevent_send) return;
-    if (latestRuntime.confirmation.pause) return;
-
-    void listenerApi.dispatch(
-      chatAskQuestionThunk({
-        messages: runtime.thread.messages,
-        chatId,
-        mode: runtime.thread.mode,
-        checkpointsEnabled: latestState.chat.checkpoints_enabled,
-      }),
-    );
-  },
-});
-
-startListening({
   matcher: isAnyOf(restoreChat, newChatAction, updateConfig),
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
@@ -428,27 +350,9 @@ startListening({
   },
 });
 
-startListening({
-  actionCreator: newIntegrationChat,
-  effect: async (_action, listenerApi) => {
-    const state = listenerApi.getState();
-    const runtime = state.chat.threads[state.chat.current_thread_id];
-    if (!runtime) return;
-    await listenerApi.dispatch(
-      chatAskQuestionThunk({
-        messages: runtime.thread.messages,
-        chatId: runtime.thread.id,
-      }),
-    );
-  },
-});
-
-// Telemetry
+// Telemetry for path API
 startListening({
   matcher: isAnyOf(
-    chatAskQuestionThunk.rejected.match,
-    chatAskQuestionThunk.fulfilled.match,
-    // give files api
     pathApi.endpoints.getFullPath.matchFulfilled,
     pathApi.endpoints.getFullPath.matchRejected,
     pathApi.endpoints.customizationPath.matchFulfilled,
@@ -459,44 +363,6 @@ startListening({
     pathApi.endpoints.integrationsPath.matchRejected,
   ),
   effect: (action, listenerApi) => {
-    const state = listenerApi.getState();
-    if (chatAskQuestionThunk.rejected.match(action) && !action.meta.condition) {
-      const { chatId, mode } = action.meta.arg;
-      const runtime = state.chat.threads[chatId];
-      const thread = runtime?.thread;
-      const scope = `sendChat_${thread?.model ?? "unknown"}_${mode}`;
-
-      if (isDetailMessageWithErrorType(action.payload)) {
-        const errorMessage = action.payload.detail;
-        listenerApi.dispatch(
-          action.payload.errorType === "GLOBAL"
-            ? setError(errorMessage)
-            : chatError({ id: chatId, message: errorMessage }),
-        );
-        const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
-          scope,
-          success: false,
-          error_message: errorMessage,
-        });
-        void listenerApi.dispatch(thunk);
-      }
-    }
-
-    if (chatAskQuestionThunk.fulfilled.match(action)) {
-      const { chatId, mode } = action.meta.arg;
-      const runtime = state.chat.threads[chatId];
-      const thread = runtime?.thread;
-      const scope = `sendChat_${thread?.model ?? "unknown"}_${mode}`;
-
-      const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
-        scope,
-        success: true,
-        error_message: "",
-      });
-
-      void listenerApi.dispatch(thunk);
-    }
-
     if (pathApi.endpoints.getFullPath.matchFulfilled(action)) {
       const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
         url: FULL_PATH_URL,
@@ -570,23 +436,8 @@ startListening({
     if (pauseReasons.length === 0) {
       listenerApi.dispatch(clearThreadPauseReasons({ id: chatId }));
       listenerApi.dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: true, confirmationStatus: true }));
-      // If we're about to dispatch a follow-up, set waiting=true; otherwise false
-      if (action.payload.accepted) {
-        listenerApi.dispatch(setIsWaitingForResponse({ id: chatId, value: true }));
-      } else {
-        listenerApi.dispatch(setIsWaitingForResponse({ id: chatId, value: false }));
-      }
     } else {
       listenerApi.dispatch(setThreadPauseReasons({ id: chatId, pauseReasons }));
-    }
-
-    if (pauseReasons.length === 0 && action.payload.accepted) {
-      void listenerApi.dispatch(
-        sendCurrentChatToLspAfterToolCallUpdate({
-          chatId,
-          toolCallId: action.payload.toolCallId,
-        }),
-      );
     }
   },
 });
@@ -621,15 +472,21 @@ startListening({
   },
 });
 
-// JB file refresh
-// TBD: this could include diff messages to
+// JB file refresh on tool results via SSE events
 startListening({
-  actionCreator: chatResponse,
+  actionCreator: applyChatEvent,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
     if (state.config.host !== "jetbrains") return;
-    if (!isToolResponse(action.payload)) return;
     if (!window.postIntellijMessage) return;
-    window.postIntellijMessage(ideForceReloadProjectTreeFiles());
+
+    const event = action.payload;
+    // Trigger file refresh when a tool message is added
+    if (event.type === "message_added") {
+      const msg = event.message;
+      if (isToolMessage(msg) || isDiffMessage(msg)) {
+        window.postIntellijMessage(ideForceReloadProjectTreeFiles());
+      }
+    }
   },
 });

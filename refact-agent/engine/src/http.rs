@@ -111,6 +111,7 @@ pub async fn http_post_json<T: Serialize, R: for<'de> serde::Deserialize<'de>>(
     post_result.json::<R>().await.map_err(|e| e.to_string())
 }
 
+#[allow(dead_code)]
 pub async fn http_post<T: Serialize>(
     url: &str,
     body: &T,
@@ -118,6 +119,7 @@ pub async fn http_post<T: Serialize>(
     _make_http_request("POST", url, body, 1).await.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn http_post_with_retries<T: Serialize>(
     url: &str,
     body: &T,

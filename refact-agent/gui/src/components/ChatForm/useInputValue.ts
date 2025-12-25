@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   useAppDispatch,
   useAppSelector,
-  useSendChatRequest,
+  useChatActions,
 } from "../../hooks";
 import { selectPages, change, ChatPage } from "../../features/Pages/pagesSlice";
 import { setInputValue, addInputValue } from "./actions";
@@ -18,7 +18,7 @@ export function useInputValue(
 ] {
   const [value, setValue] = useState<string>("");
   const [isSendImmediately, setIsSendImmediately] = useState<boolean>(false);
-  const { submit } = useSendChatRequest();
+  const { submit } = useChatActions();
   const dispatch = useAppDispatch();
   const pages = useAppSelector(selectPages);
 
@@ -40,12 +40,24 @@ export function useInputValue(
         );
         setUpIfNotReady();
 
-        if (payload.messages) {
+        if (payload.messages && payload.messages.length > 0) {
           debugRefact(`[DEBUG]: payload messages: `, payload.messages);
           setIsSendImmediately(true);
-          submit({
-            maybeMessages: payload.messages,
-          });
+          // Extract text from last user message if available
+          const lastMsg = payload.messages[payload.messages.length - 1];
+          if (lastMsg && lastMsg.role === "user") {
+            let content = "";
+            if (typeof lastMsg.content === "string") {
+              content = lastMsg.content;
+            } else if (Array.isArray(lastMsg.content)) {
+              const textItem = lastMsg.content.find(
+                (c: unknown): c is { type: "text"; text: string } =>
+                  typeof c === "object" && c !== null && "type" in c && c.type === "text"
+              );
+              content = textItem?.text ?? "";
+            }
+            void submit(content);
+          }
           return;
         }
       }

@@ -11,15 +11,19 @@ mod bug_tests {
 
     fn create_test_message(role: &str, content: &str) -> ChatMessage {
         ChatMessage {
+            message_id: String::new(),
             role: role.to_string(),
             content: ChatContent::SimpleText(content.to_string()),
             finish_reason: None,
+            reasoning_content: None,
             tool_calls: None,
             tool_call_id: String::new(),
             tool_failed: None,
             usage: None,
             checkpoints: Vec::new(),
             thinking_blocks: None,
+            citations: Vec::new(),
+            extra: serde_json::Map::new(),
             output_filter: None,
         }
     }
@@ -109,15 +113,19 @@ mod problem_highlighting_tests {
 
     fn create_test_message(role: &str, content: &str, tool_call_id: Option<String>, tool_calls: Option<Vec<ChatToolCall>>) -> ChatMessage {
         ChatMessage {
+            message_id: String::new(),
             role: role.to_string(),
             content: ChatContent::SimpleText(content.to_string()),
             finish_reason: None,
+            reasoning_content: None,
             tool_calls,
             tool_call_id: tool_call_id.unwrap_or_default(),
             tool_failed: if role == "tool" || role == "diff" { Some(false) } else { None },
             usage: None,
             checkpoints: Vec::new(),
             thinking_blocks: None,
+            citations: Vec::new(),
+            extra: serde_json::Map::new(),
             output_filter: None,
         }
     }
@@ -351,15 +359,19 @@ mod edge_case_tests {
 
     fn create_test_message(role: &str, content: &str) -> ChatMessage {
         ChatMessage {
+            message_id: String::new(),
             role: role.to_string(),
             content: ChatContent::SimpleText(content.to_string()),
             finish_reason: None,
+            reasoning_content: None,
             tool_calls: None,
             tool_call_id: String::new(),
             tool_failed: None,
             usage: None,
             checkpoints: Vec::new(),
             thinking_blocks: None,
+            citations: Vec::new(),
+            extra: serde_json::Map::new(),
             output_filter: None,
         }
     }

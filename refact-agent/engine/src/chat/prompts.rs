@@ -11,7 +11,7 @@ use crate::http::http_post_json;
 use crate::http::routers::v1::system_prompt::{PrependSystemPromptPost, PrependSystemPromptResponse};
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
-use crate::scratchpads::system_context::{
+use super::system_context::{
     self, create_instruction_files_message, gather_system_context, generate_git_info_prompt,
     gather_git_info
 };

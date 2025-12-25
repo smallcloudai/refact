@@ -53,7 +53,7 @@ pub fn max_tokens_for_rag_chat_by_tools(
     if tools.is_empty() {
         return base_limit.min(4096);
     }
-    let context_files_len = context_files.len().min(crate::http::routers::v1::chat::CHAT_TOP_N);
+    let context_files_len = context_files.len().min(crate::constants::CHAT_TOP_N);
     let mut overall_tool_limit: usize = 0;
     for tool in tools {
         let is_cat_with_lines = if tool.function.name == "cat" {
@@ -102,9 +102,18 @@ fn calculate_image_tokens_by_dimensions_openai(mut width: u32, mut height: u32) 
     small_chunks_needed as i32 * COST_PER_SMALL_CHUNK + CONST_COST
 }
 
+const MAX_IMAGE_BASE64_LEN: usize = 15 * 1024 * 1024;
+const MAX_IMAGE_BYTES: usize = 10 * 1024 * 1024;
+
 pub fn image_reader_from_b64string(image_b64: &str) -> Result<ImageReader<Cursor<Vec<u8>>>, String> {
+    if image_b64.len() > MAX_IMAGE_BASE64_LEN {
+        return Err(format!("image base64 too large: {} bytes", image_b64.len()));
+    }
     #[allow(deprecated)]
     let image_bytes = base64::decode(image_b64).map_err(|_| "base64 decode failed".to_string())?;
+    if image_bytes.len() > MAX_IMAGE_BYTES {
+        return Err(format!("image too large: {} bytes", image_bytes.len()));
+    }
     let cursor = Cursor::new(image_bytes);
     let reader = ImageReader::new(cursor).with_guessed_format().map_err(|e| e.to_string())?;
     Ok(reader)

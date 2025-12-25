@@ -17,7 +17,6 @@ import {
   useIsOnline,
   useConfig,
   useCapsForToolUse,
-  useSendChatRequest,
   useCompressChat,
   useAutoFocusOnce,
 } from "../../hooks";
@@ -96,7 +95,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const pauseReasonsWithPause = useAppSelector(selectThreadConfirmation);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const isOnline = useIsOnline();
-  const { retry } = useSendChatRequest();
 
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messages = useAppSelector(selectMessages);
@@ -113,11 +111,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   }, [threadToolUse]);
 
   const onClearError = useCallback(() => {
-    if (messages.length > 0 && chatError) {
-      retry(messages);
-    }
+    // Just clear the error - user can resend manually
     dispatch(clearError());
-  }, [dispatch, retry, messages, chatError]);
+  }, [dispatch]);
 
   const caps = useCapsForToolUse();
 

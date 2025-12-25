@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::path::PathBuf;
 use std::{sync::Arc, sync::Weak, time::SystemTime};
 use std::future::Future;

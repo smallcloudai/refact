@@ -5,18 +5,16 @@ import {
 } from "@reduxjs/toolkit";
 import {
   backUpMessages,
-  chatAskedQuestion,
   ChatThread,
-  doneStreaming,
   isLspChatMode,
   maybeAppendToolCallResultFromIdeToMessages,
   restoreChat,
   setChatMode,
   SuggestedChat,
+  applyChatEvent,
 } from "../Chat/Thread";
 import {
   trajectoriesApi,
-  chatThreadToTrajectoryData,
   TrajectoryData,
   trajectoryDataToChatThread,
 } from "../../services/refact";
@@ -203,15 +201,6 @@ export const {
 } = historySlice.actions;
 export const { getChatById, getHistory } = historySlice.selectors;
 
-async function persistToBackend(
-  dispatch: AppDispatch,
-  thread: ChatThread,
-  existingCreatedAt?: string,
-) {
-  const data = chatThreadToTrajectoryData(thread, existingCreatedAt);
-  dispatch(trajectoriesApi.endpoints.saveTrajectory.initiate(data));
-}
-
 export const historyMiddleware = createListenerMiddleware();
 const startHistoryListening = historyMiddleware.startListening.withTypes<
   RootState,
@@ -219,20 +208,18 @@ const startHistoryListening = historyMiddleware.startListening.withTypes<
 >();
 
 startHistoryListening({
-  actionCreator: doneStreaming,
+  actionCreator: applyChatEvent,
   effect: (action, listenerApi) => {
-    const state = listenerApi.getState();
+    const event = action.payload;
+    if (event.type !== "stream_finished") return;
+    if (event.finish_reason === "abort" || event.finish_reason === "error") return;
 
-    const runtime = state.chat.threads[action.payload.id];
+    const state = listenerApi.getState();
+    const runtime = state.chat.threads[event.chat_id];
     if (!runtime) return;
     const thread = runtime.thread;
 
-    const existingChat = state.history[thread.id];
-    const existingCreatedAt = existingChat?.createdAt;
-
-    // Title generation is now handled by the backend
     listenerApi.dispatch(saveChat(thread));
-    persistToBackend(listenerApi.dispatch, thread, existingCreatedAt);
   },
 });
 
@@ -244,23 +231,16 @@ startHistoryListening({
     if (!runtime) return;
     const thread = runtime.thread;
 
-    const existingChat = state.history[thread.id];
     const toSave = {
       ...thread,
       messages: action.payload.messages,
       project_name: thread.project_name ?? state.current_project.name,
     };
     listenerApi.dispatch(saveChat(toSave));
-    persistToBackend(listenerApi.dispatch, toSave, existingChat?.createdAt);
   },
 });
 
-startHistoryListening({
-  actionCreator: chatAskedQuestion,
-  effect: (action, listenerApi) => {
-    listenerApi.dispatch(markChatAsUnread(action.payload.id));
-  },
-});
+
 
 startHistoryListening({
   actionCreator: restoreChat,
@@ -281,10 +261,8 @@ startHistoryListening({
     const thread = runtime.thread;
     if (!(thread.id in state.history)) return;
 
-    const existingChat = state.history[thread.id];
     const toSave = { ...thread, mode: action.payload };
     listenerApi.dispatch(saveChat(toSave));
-    persistToBackend(listenerApi.dispatch, toSave, existingChat?.createdAt);
   },
 });
 

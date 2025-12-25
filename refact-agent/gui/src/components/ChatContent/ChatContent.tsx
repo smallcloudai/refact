@@ -239,6 +239,7 @@ function renderMessages(
         key={key}
         message={head.content}
         reasoningContent={head.reasoning_content}
+        thinkingBlocks={head.thinking_blocks}
         toolCalls={head.tool_calls}
         serverExecutedTools={head.server_executed_tools}
         citations={head.citations}
