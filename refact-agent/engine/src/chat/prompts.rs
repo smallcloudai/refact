@@ -291,14 +291,13 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
     stream_back_to_user: &mut HasRagResults,
     tool_names: HashSet<String>,
 ) -> Vec<call_validation::ChatMessage> {
-    let have_system = !messages.is_empty() && messages[0].role == "system";
-    if have_system {
-        return messages;
-    }
-    if messages.len() == 0 {
+    if messages.is_empty() {
         tracing::error!("What's that? Messages list is empty");
         return messages;
     }
+
+    let have_system = messages.first().map(|m| m.role == "system").unwrap_or(false);
+    let have_cd_instruction = messages.iter().any(|m| m.role == "cd_instruction");
 
     let is_inside_container = gcx.read().await.cmdline.inside_container;
     if chat_meta.chat_remote && !is_inside_container {
@@ -312,48 +311,50 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
         return messages;
     }
 
-    match chat_meta.chat_mode {
-        ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {
-            let system_message_content = system_prompt_add_extra_instructions(
-                gcx.clone(),
-                get_default_system_prompt(gcx.clone(), chat_meta.chat_mode.clone()).await,
-                tool_names,
-                chat_meta,
-            ).await;
-            let msg = ChatMessage {
-                role: "system".to_string(),
-                content: ChatContent::SimpleText(system_message_content),
-                ..Default::default()
-            };
-            stream_back_to_user.push_in_json(serde_json::json!(msg));
-            messages.insert(0, msg);
-        },
-        ChatMode::CONFIGURE => {
-            crate::integrations::config_chat::mix_config_messages(
-                gcx.clone(),
-                &chat_meta,
-                &mut messages,
-                stream_back_to_user,
-            ).await;
-        },
-        ChatMode::PROJECT_SUMMARY => {
-            crate::integrations::project_summary_chat::mix_project_summary_messages(
-                gcx.clone(),
-                &chat_meta,
-                &mut messages,
-                stream_back_to_user,
-            ).await;
-        },
+    if !have_system {
+        match chat_meta.chat_mode {
+            ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {
+                let system_message_content = system_prompt_add_extra_instructions(
+                    gcx.clone(),
+                    get_default_system_prompt(gcx.clone(), chat_meta.chat_mode.clone()).await,
+                    tool_names,
+                    chat_meta,
+                ).await;
+                let msg = ChatMessage {
+                    role: "system".to_string(),
+                    content: ChatContent::SimpleText(system_message_content),
+                    ..Default::default()
+                };
+                stream_back_to_user.push_in_json(serde_json::json!(msg));
+                messages.insert(0, msg);
+            },
+            ChatMode::CONFIGURE => {
+                crate::integrations::config_chat::mix_config_messages(
+                    gcx.clone(),
+                    &chat_meta,
+                    &mut messages,
+                    stream_back_to_user,
+                ).await;
+            },
+            ChatMode::PROJECT_SUMMARY => {
+                crate::integrations::project_summary_chat::mix_project_summary_messages(
+                    gcx.clone(),
+                    &chat_meta,
+                    &mut messages,
+                    stream_back_to_user,
+                ).await;
+            },
+        }
     }
 
-    if chat_meta.include_project_info {
+    if chat_meta.include_project_info && !have_cd_instruction {
         match gather_and_inject_system_context(&gcx, &mut messages, stream_back_to_user).await {
             Ok(()) => {},
             Err(e) => {
                 tracing::warn!("Failed to gather system context: {}", e);
             },
         }
-    } else {
+    } else if !chat_meta.include_project_info {
         tracing::info!("Skipping project/system context injection (include_project_info=false)");
     }
 

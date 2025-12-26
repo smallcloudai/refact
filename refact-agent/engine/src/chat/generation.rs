@@ -80,12 +80,6 @@ pub async fn run_llm_generation(
 ) -> Result<(), String> {
     let chat_mode = parse_chat_mode(&thread.mode);
 
-    let mut messages = messages;
-    let last_is_user = messages.last().map(|m| m.role == "user").unwrap_or(false);
-    if chat_mode == ChatMode::AGENT && last_is_user {
-        let _ = enrich_messages_with_knowledge(gcx.clone(), &mut messages).await;
-    }
-
     let tools: Vec<crate::tools::tools_description::ToolDesc> =
         crate::tools::tools_list::get_available_tools_by_chat_mode(gcx.clone(), chat_mode).await
             .into_iter()
@@ -113,17 +107,23 @@ pub async fn run_llm_generation(
         use_compression: thread.use_compression,
     };
 
-    let session_has_system = {
+    let mut messages = messages;
+
+    let (session_has_system, session_has_cd_instruction) = {
         let session = session_arc.lock().await;
-        session.messages.first().map(|m| m.role == "system").unwrap_or(false)
+        let has_system = session.messages.first().map(|m| m.role == "system").unwrap_or(false);
+        let has_cd = session.messages.iter().any(|m| m.role == "cd_instruction");
+        (has_system, has_cd)
     };
 
-    if !session_has_system {
+    let needs_preamble = !session_has_system || (!session_has_cd_instruction && thread.include_project_info);
+
+    if needs_preamble {
         let tool_names: std::collections::HashSet<String> = tools.iter()
             .map(|t| t.name.clone())
             .collect();
         let mut has_rag_results = crate::scratchpads::scratchpad_utils::HasRagResults::new();
-        let messages_with_system = prepend_the_right_system_prompt_and_maybe_more_initial_messages(
+        let messages_with_preamble = prepend_the_right_system_prompt_and_maybe_more_initial_messages(
             gcx.clone(),
             messages.clone(),
             &meta,
@@ -131,20 +131,64 @@ pub async fn run_llm_generation(
             tool_names,
         ).await;
 
-        let prepended_count = messages_with_system.len().saturating_sub(messages.len());
-        if prepended_count > 0 {
+        let first_user_idx_in_new = messages_with_preamble.iter()
+            .position(|m| m.role == "user")
+            .unwrap_or(messages_with_preamble.len());
+
+        if first_user_idx_in_new > 0 {
             let mut session = session_arc.lock().await;
-            for (i, msg) in messages_with_system.iter().take(prepended_count).enumerate() {
-                session.messages.insert(i, msg.clone());
+            let first_user_idx_in_session = session.messages.iter()
+                .position(|m| m.role == "user")
+                .unwrap_or(0);
+
+            for (i, msg) in messages_with_preamble.iter().take(first_user_idx_in_new).enumerate() {
+                if session.messages.iter().any(|m| m.role == msg.role && m.role == "system") && msg.role == "system" {
+                    continue;
+                }
+                if session.messages.iter().any(|m| m.role == "cd_instruction") && msg.role == "cd_instruction" {
+                    continue;
+                }
+                let mut msg_with_id = msg.clone();
+                if msg_with_id.message_id.is_empty() {
+                    msg_with_id.message_id = Uuid::new_v4().to_string();
+                }
+                session.messages.insert(first_user_idx_in_session + i, msg_with_id.clone());
                 session.emit(ChatEvent::MessageAdded {
-                    message: msg.clone(),
-                    index: i,
+                    message: msg_with_id,
+                    index: first_user_idx_in_session + i,
                 });
             }
             session.increment_version();
-            info!("Saved {} prepended messages to session at index 0", prepended_count);
+            info!("Saved preamble messages to session before first user message");
         }
-        messages = messages_with_system;
+        messages = messages_with_preamble;
+    }
+
+    let last_is_user = messages.last().map(|m| m.role == "user").unwrap_or(false);
+    if chat_mode == ChatMode::AGENT && last_is_user {
+        let msg_count_before = messages.len();
+        let _ = enrich_messages_with_knowledge(gcx.clone(), &mut messages).await;
+        if messages.len() > msg_count_before {
+            let mut session = session_arc.lock().await;
+            let session_last_user_idx = session.messages.iter().rposition(|m| m.role == "user").unwrap_or(0);
+            let local_last_user_idx = messages.iter().rposition(|m| m.role == "user").unwrap_or(0);
+            if local_last_user_idx > 0 {
+                let enriched_msg = &messages[local_last_user_idx - 1];
+                if enriched_msg.role == "context_file" {
+                    let mut msg_with_id = enriched_msg.clone();
+                    if msg_with_id.message_id.is_empty() {
+                        msg_with_id.message_id = Uuid::new_v4().to_string();
+                    }
+                    session.messages.insert(session_last_user_idx, msg_with_id.clone());
+                    session.emit(ChatEvent::MessageAdded {
+                        message: msg_with_id,
+                        index: session_last_user_idx,
+                    });
+                    session.increment_version();
+                    info!("Saved knowledge enrichment context_file to session at index {}", session_last_user_idx);
+                }
+            }
+        }
     }
 
     let mut parameters = SamplingParameters {
