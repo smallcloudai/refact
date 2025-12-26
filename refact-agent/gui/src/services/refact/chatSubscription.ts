@@ -145,6 +145,14 @@ export type EventEnvelope =
   | {
       chat_id: string;
       seq: string;
+      type: "subchat_update";
+      tool_call_id: string;
+      subchat_id: string;
+      attached_files?: string[];
+    }
+  | {
+      chat_id: string;
+      seq: string;
       type: "ack";
       client_request_id: string;
       accepted: boolean;

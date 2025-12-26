@@ -155,6 +155,12 @@ pub enum ChatEvent {
         tool_name: String,
         args: serde_json::Value,
     },
+    SubchatUpdate {
+        tool_call_id: String,
+        subchat_id: String,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        attached_files: Vec<String>,
+    },
     Ack {
         client_request_id: String,
         accepted: bool,

@@ -816,6 +816,25 @@ export const chatReducer = createReducer(initialState, (builder) => {
         break;
       }
 
+      case "subchat_update": {
+        if (!rt) break;
+        for (const msg of rt.thread.messages) {
+          if (!isAssistantMessage(msg) || !msg.tool_calls) continue;
+          const tc = msg.tool_calls.find((t) => t.id === event.tool_call_id);
+          if (tc) {
+            tc.subchat = event.subchat_id;
+            if (event.attached_files && event.attached_files.length > 0) {
+              tc.attached_files = [
+                ...(tc.attached_files ?? []),
+                ...event.attached_files.filter((f) => !tc.attached_files?.includes(f)),
+              ];
+            }
+            break;
+          }
+        }
+        break;
+      }
+
       case "ack":
         break;
     }
