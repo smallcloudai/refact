@@ -1,12 +1,3 @@
-/**
- * Chat Commands Service Tests
- *
- * Tests for the REST API command service.
- * These tests require the refact-lsp server to be running on port 8001.
- *
- * Run with: npm run test:no-watch -- chatCommands
- */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   sendChatCommand,
@@ -20,12 +11,18 @@ import {
   type ChatCommand,
 } from "../services/refact/chatCommands";
 
-// Mock fetch for unit tests
-const mockFetch = vi.fn();
+type MockRequestInit = { body?: string; headers?: Record<string, string> };
+type MockCall = [string, MockRequestInit];
+
+const mockFetch = vi.fn<(url: string, init: MockRequestInit) => Promise<Response>>();
+
+function getRequestBody(call: MockCall): Record<string, unknown> {
+  return JSON.parse(call[1].body ?? "{}") as Record<string, unknown>;
+}
 
 describe("chatCommands", () => {
   beforeEach(() => {
-    global.fetch = mockFetch;
+    global.fetch = mockFetch as unknown as typeof fetch;
     mockFetch.mockReset();
   });
 
@@ -35,9 +32,7 @@ describe("chatCommands", () => {
 
   describe("sendChatCommand", () => {
     it("should send POST request to correct URL", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       const chatId = "test-chat-123";
       const port = 8001;
@@ -55,35 +50,25 @@ describe("chatCommands", () => {
     });
 
     it("should include client_request_id in request body", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       const command = { type: "abort" as const };
 
       await sendChatCommand("test", 8001, undefined, command);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody).toHaveProperty("client_request_id");
       expect(typeof calledBody.client_request_id).toBe("string");
       expect(calledBody.type).toBe("abort");
     });
 
     it("should include authorization header when apiKey provided", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       await sendChatCommand("test", 8001, "test-key", { type: "abort" as const });
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            "Authorization": "Bearer test-key",
-          }),
-        }),
-      );
+      const call = mockFetch.mock.calls[0] as MockCall;
+      expect(call[1].headers).toHaveProperty("Authorization", "Bearer test-key");
     });
 
     it("should throw on HTTP error", async () => {
@@ -92,7 +77,7 @@ describe("chatCommands", () => {
         status: 500,
         statusText: "Internal Server Error",
         text: () => Promise.resolve("Error details"),
-      });
+      } as Response);
 
       await expect(
         sendChatCommand("test", 8001, undefined, { type: "abort" as const }),
@@ -102,21 +87,17 @@ describe("chatCommands", () => {
 
   describe("sendUserMessage", () => {
     it("should send user_message command with string content", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       await sendUserMessage("test-chat", "Hello world", 8001);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody.type).toBe("user_message");
       expect(calledBody.content).toBe("Hello world");
     });
 
     it("should send user_message command with multi-modal content", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       const content = [
         { type: "text" as const, text: "What is this?" },
@@ -125,7 +106,7 @@ describe("chatCommands", () => {
 
       await sendUserMessage("test-chat", content, 8001);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody.type).toBe("user_message");
       expect(Array.isArray(calledBody.content)).toBe(true);
       expect(calledBody.content).toEqual(content);
@@ -134,29 +115,21 @@ describe("chatCommands", () => {
 
   describe("updateChatParams", () => {
     it("should send set_params command", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
-      await updateChatParams(
-        "test-chat",
-        { model: "gpt-4", mode: "AGENT" },
-        8001,
-      );
+      await updateChatParams("test-chat", { model: "gpt-4", mode: "AGENT" }, 8001);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody.type).toBe("set_params");
       expect(calledBody.patch).toEqual({ model: "gpt-4", mode: "AGENT" });
     });
 
     it("should send partial params update", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       await updateChatParams("test-chat", { boost_reasoning: true }, 8001);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody.type).toBe("set_params");
       expect(calledBody.patch).toEqual({ boost_reasoning: true });
     });
@@ -164,39 +137,33 @@ describe("chatCommands", () => {
 
   describe("abortGeneration", () => {
     it("should send abort command", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       await abortGeneration("test-chat", 8001);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody.type).toBe("abort");
     });
   });
 
   describe("respondToToolConfirmation", () => {
     it("should send tool_decision command with accepted=true", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       await respondToToolConfirmation("test-chat", "call_123", true, 8001);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody.type).toBe("tool_decision");
       expect(calledBody.tool_call_id).toBe("call_123");
       expect(calledBody.accepted).toBe(true);
     });
 
     it("should send tool_decision command with accepted=false", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       await respondToToolConfirmation("test-chat", "call_456", false, 8001);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody.type).toBe("tool_decision");
       expect(calledBody.tool_call_id).toBe("call_456");
       expect(calledBody.accepted).toBe(false);
@@ -205,9 +172,7 @@ describe("chatCommands", () => {
 
   describe("respondToToolConfirmations", () => {
     it("should send tool_decisions command with object array", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       const decisions = [
         { tool_call_id: "call_1", accepted: true },
@@ -217,37 +182,30 @@ describe("chatCommands", () => {
 
       await respondToToolConfirmations("test-chat", decisions, 8001);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody.type).toBe("tool_decisions");
       expect(calledBody.decisions).toEqual(decisions);
-      expect(Array.isArray(calledBody.decisions)).toBe(true);
-      expect(calledBody.decisions[0]).toHaveProperty("tool_call_id");
-      expect(calledBody.decisions[0]).toHaveProperty("accepted");
     });
   });
 
   describe("updateMessage", () => {
     it("should send update_message command", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       await updateMessage("test-chat", "msg_5", "Updated text", 8001);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody.type).toBe("update_message");
       expect(calledBody.message_id).toBe("msg_5");
       expect(calledBody.content).toBe("Updated text");
     });
 
     it("should send update_message with regenerate flag", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       await updateMessage("test-chat", "msg_5", "Updated text", 8001, undefined, true);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody.type).toBe("update_message");
       expect(calledBody.regenerate).toBe(true);
     });
@@ -255,25 +213,21 @@ describe("chatCommands", () => {
 
   describe("removeMessage", () => {
     it("should send remove_message command", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       await removeMessage("test-chat", "msg_5", 8001);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody.type).toBe("remove_message");
       expect(calledBody.message_id).toBe("msg_5");
     });
 
     it("should send remove_message with regenerate flag", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-      });
+      mockFetch.mockResolvedValueOnce({ ok: true } as Response);
 
       await removeMessage("test-chat", "msg_5", 8001, undefined, true);
 
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const calledBody = getRequestBody(mockFetch.mock.calls[0] as MockCall);
       expect(calledBody.type).toBe("remove_message");
       expect(calledBody.regenerate).toBe(true);
     });

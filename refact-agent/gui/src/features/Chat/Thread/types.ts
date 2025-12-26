@@ -82,7 +82,7 @@ export type ChatThreadRuntime = {
 export type Chat = {
   current_thread_id: string;
   open_thread_ids: string[];
-  threads: Record<string, ChatThreadRuntime>;
+  threads: Record<string, ChatThreadRuntime | undefined>;
   system_prompt: SystemPrompts;
   tool_use: ToolUse;
   checkpoints_enabled?: boolean;

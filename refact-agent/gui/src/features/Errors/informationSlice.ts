@@ -18,7 +18,7 @@ export const informationSlice = createSlice({
   initialState,
   reducers: {
     setInformation: (state, action: PayloadAction<string>) => {
-      if (state.message) return state;
+      if (state.message) return;
       state.message = action.payload;
     },
     clearInformation: (state, _action: PayloadAction) => {
@@ -49,8 +49,8 @@ export const informationSlice = createSlice({
         if (state.dismissed && balance > 2000) {
           state.dismissed = false;
         }
-        if (state.dismissed) return state;
-        if (state.message) return state;
+        if (state.dismissed) return;
+        if (state.message) return;
         if (balance <= 2000) {
           state.type = "balance";
           state.message =
@@ -62,14 +62,13 @@ export const informationSlice = createSlice({
     builder.addMatcher(
       smallCloudApi.endpoints.getUser.matchFulfilled,
       (state, action) => {
-        if (state.dismissed) return state;
-        if (state.message) return state;
+        if (state.dismissed) return;
+        if (state.message) return;
         if (action.payload.metering_balance <= 2000) {
           state.type = "balance";
           state.message =
             "Your account is running low on credits. Please top up your account to continue using the service.";
         }
-        return state;
       },
     );
   },

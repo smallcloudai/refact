@@ -74,6 +74,12 @@ pub fn apply_setparams_patch(thread: &mut ThreadParams, patch: &serde_json::Valu
             changed = true;
         }
     }
+    if let Some(compression) = patch.get("use_compression").and_then(|v| v.as_bool()) {
+        if thread.use_compression != compression {
+            thread.use_compression = compression;
+            changed = true;
+        }
+    }
 
     let mut sanitized_patch = patch.clone();
     if let Some(obj) = sanitized_patch.as_object_mut() {
@@ -338,7 +344,7 @@ async fn handle_tool_decisions(
         }
 
         let chat_mode = super::generation::parse_chat_mode(&thread.mode);
-        let tool_results = execute_tools(gcx.clone(), &tool_calls_to_execute, &messages, &thread, chat_mode).await;
+        let (tool_results, _) = execute_tools(gcx.clone(), &tool_calls_to_execute, &messages, &thread, chat_mode, super::tools::ExecuteToolsOptions::default()).await;
 
         {
             let mut session = session_arc.lock().await;

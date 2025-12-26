@@ -15,7 +15,6 @@ function useResendMessages() {
 
   const handleResend = React.useCallback(() => {
     // TODO: Send regenerate command to engine
-    console.warn("[ResendButton] Regenerate not yet implemented in new system");
   }, []);
 
   const shouldShow = React.useMemo(() => {

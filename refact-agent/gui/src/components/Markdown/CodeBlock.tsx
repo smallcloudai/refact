@@ -90,7 +90,7 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
           language={language}
           useInlineStyles={useInlineStyles}
         >
-          {textWithOutIndent ? textWithOutIndent : "No content"}
+          {textWithOutIndent ?? ""}
         </SyntaxHighlighter>
       </Text>
     );

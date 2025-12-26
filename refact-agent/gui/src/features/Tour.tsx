@@ -35,21 +35,13 @@ export const restart = createAction("tour/restart");
 export const tourReducer = createReducer<TourState>(initialState, (builder) => {
   builder.addCase(next, (state) => {
     if (state.type === "in_progress") {
-      return {
-        ...state,
-        step: state.step + 1,
-      };
+      state.step = state.step + 1;
     }
-    return state;
   });
   builder.addCase(close, (state) => {
     if (state.type === "in_progress") {
-      return {
-        ...state,
-        type: "closed",
-      };
+      return { type: "closed" as const, step: state.step };
     }
-    return state;
   });
   builder.addCase(finish, () => {
     return { type: "finished" };

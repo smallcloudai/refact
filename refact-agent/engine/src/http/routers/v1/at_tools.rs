@@ -9,17 +9,16 @@ use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatMessage, ChatMeta, ChatToolCall, PostprocessSettings, SubchatParameters};
-use crate::caps::resolve_chat_model;
+use crate::call_validation::{ChatMessage, ChatMeta, ChatMode, ChatToolCall, PostprocessSettings, SubchatParameters};
+use crate::chat::tools::{execute_tools, ExecuteToolsOptions};
+use crate::chat::types::ThreadParams;
 use crate::http::http_post_json;
-use crate::constants::CHAT_TOP_N;
 use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::tools::tools_description::{set_tool_config, MatchConfirmDenyResult, ToolConfig, ToolDesc, ToolGroupCategory, ToolSource};
 use crate::tools::tools_list::{get_available_tool_groups, get_available_tools};
 use crate::custom_error::ScratchError;
-use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
-use crate::tools::tools_execute::run_tools;
+use crate::global_context::GlobalContext;
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -271,35 +270,44 @@ pub async fn handle_v1_tools_execute(
     let tools_execute_post = serde_json::from_slice::<ToolsExecutePost>(&body_bytes)
       .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
-    let model_rec = resolve_chat_model(caps, &tools_execute_post.model_name)
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let tool_calls: Vec<ChatToolCall> = tools_execute_post.messages.last()
+        .and_then(|m| m.tool_calls.clone())
+        .unwrap_or_default();
 
-    let mut ccx = AtCommandsContext::new(
+    if tool_calls.is_empty() {
+        let response = ToolExecuteResponse {
+            messages: vec![],
+            tools_ran: false,
+        };
+        let response_json = serde_json::to_string(&response)
+            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Response JSON problem: {}", e)))?;
+        return Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/json")
+            .body(Body::from(response_json))
+            .unwrap());
+    }
+
+    let thread = ThreadParams {
+        id: tools_execute_post.chat_id.clone(),
+        model: tools_execute_post.model_name.clone(),
+        context_tokens_cap: Some(tools_execute_post.n_ctx),
+        ..Default::default()
+    };
+
+    let options = ExecuteToolsOptions {
+        subchat_tool_parameters: Some(tools_execute_post.subchat_tool_parameters.clone()),
+        postprocess_settings: Some(tools_execute_post.postprocess_parameters.clone()),
+    };
+
+    let (messages, tools_ran) = execute_tools(
         gcx.clone(),
-        tools_execute_post.n_ctx,
-        CHAT_TOP_N,
-        false,
-        tools_execute_post.messages.clone(),
-        tools_execute_post.chat_id.clone(),
-        false,
-        model_rec.base.id.clone(),
+        &tool_calls,
+        &tools_execute_post.messages,
+        &thread,
+        ChatMode::AGENT,
+        options,
     ).await;
-    ccx.subchat_tool_parameters = tools_execute_post.subchat_tool_parameters.clone();
-    ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();
-    let ccx_arc = Arc::new(AMutex::new(ccx));
-
-    let mut at_tools = get_available_tools(gcx.clone()).await.into_iter()
-        .map(|tool| {
-            let spec = tool.tool_description();
-            (spec.name, tool)
-        }).collect::<IndexMap<_, _>>();
-
-    let (messages, tools_ran) = run_tools(
-        ccx_arc.clone(), &mut at_tools, tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &tools_execute_post.style
-    ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error running tools: {}", e)))?;
 
     let response = ToolExecuteResponse {
         messages,
@@ -313,6 +321,5 @@ pub async fn handle_v1_tools_execute(
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .body(Body::from(response_json))
-        .unwrap()
-    )
+        .unwrap())
 }

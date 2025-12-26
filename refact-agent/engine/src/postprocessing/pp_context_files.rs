@@ -251,7 +251,7 @@ async fn pp_limit_and_merge(
     lines_by_useful.sort_by(|a, b| {
         let av = a.useful + a.file_ref.cpath_symmetry_breaker;
         let bv = b.useful + b.file_ref.cpath_symmetry_breaker;
-        bv.partial_cmp(&av).unwrap()
+        bv.partial_cmp(&av).unwrap_or(std::cmp::Ordering::Equal)
     });
 
     // Convert line_content to tokens up to the limit
@@ -312,34 +312,35 @@ async fn pp_limit_and_merge(
         }
         let file_ref = lines.first().unwrap().file_ref.clone();
         let cpath = file_ref.cpath.clone();
-        let (mut out, mut first_line, mut last_line, mut prev_line, mut anything) = (String::new(), 0, 0, 0, false);
+        let (mut out, mut first_line, mut last_taken_line, mut prev_line, mut anything) = (String::new(), 0, 0, 0, false);
+        let total_line_count = lines.len();
         for (i, line_ref) in lines.iter_mut().enumerate() {
-            last_line = i;
             if !line_ref.take {
                 continue;
             }
             if !anything { first_line = i; }
             anything = true;
+            last_taken_line = i;
             if i > prev_line + 1 {
                 out.push_str("...\n");
             }
             out.push_str(&format!("{:4} | {}\n", line_ref.line_n + 1, line_ref.line_content));
             prev_line = i;
         }
-        if last_line > prev_line + 1 {
+        if total_line_count > prev_line + 1 {
             out.push_str("...\n");
         }
         if DEBUG >= 2 {
             info!("file {:?}:\n{}", cpath, out);
         } else if DEBUG == 1 {
-            info!("file {:?}:{}-{}", cpath, first_line + 1, last_line + 1);
+            info!("file {:?}:{}-{}", cpath, first_line + 1, last_taken_line + 1);
         }
         if !anything {
             continue;
         }
         let total_lines = lines.len();
         let out_line1 = first_line + 1;
-        let out_line2 = last_line + 1;
+        let out_line2 = last_taken_line + 1;
         // Defensive check: ensure line numbers don't exceed file length
         if out_line1 > total_lines || out_line2 > total_lines {
             warn!("Output line numbers ({}, {}) exceed file length {} for {:?}, clamping",

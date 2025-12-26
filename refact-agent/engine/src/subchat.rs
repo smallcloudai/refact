@@ -107,13 +107,27 @@ async fn subchat_non_stream(
 }
 
 fn parse_llm_response(j: &Value, original_messages: Vec<ChatMessage>) -> Result<Vec<Vec<ChatMessage>>, String> {
+    if let Some(err) = j.get("error") {
+        return Err(format!("model error: {}", err));
+    }
+    if let Some(msg) = j.get("detail") {
+        return Err(format!("model error: {}", msg));
+    }
+    if let Some(msg) = j.get("human_readable_message") {
+        return Err(format!("model error: {}", msg));
+    }
+
     let usage_mb = j.get("usage")
         .and_then(|value| value.as_object())
         .and_then(|o| serde_json::from_value::<ChatUsage>(Value::Object(o.clone())).ok());
 
     let choices = j.get("choices")
         .and_then(|value| value.as_array())
-        .ok_or("error parsing model's output: choices doesn't exist")?;
+        .ok_or_else(|| format!("error parsing model's output: choices doesn't exist, response: {}", j))?;
+
+    if choices.is_empty() {
+        return Ok(vec![original_messages]);
+    }
 
     let mut indexed_choices: Vec<(usize, &Value)> = choices.iter()
         .map(|c| {

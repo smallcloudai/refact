@@ -127,10 +127,3 @@ pub async fn http_post_with_retries<T: Serialize>(
 ) -> Result<(), String> {
     _make_http_request("POST", url, body, max_attempts).await.map(|_| ())
 }
-
-pub async fn http_get_json<R: for<'de> serde::Deserialize<'de>>(
-    url: &str,
-) -> Result<R, String> {
-    let get_result = _make_http_request("GET", url, &(), 1).await?;
-    get_result.json::<R>().await.map_err(|e| e.to_string())
-}

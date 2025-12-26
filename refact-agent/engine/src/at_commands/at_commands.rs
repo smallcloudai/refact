@@ -27,6 +27,7 @@ pub struct AtCommandsContext {
     #[allow(dead_code)]
     pub is_preview: bool,
     pub pp_skeleton: bool,
+    #[allow(dead_code)] // Reserved for future use
     pub correction_only_up_to_step: usize,  // suppresses context_file messages, writes a correction message instead
     pub chat_id: String,
     pub current_model: String,

@@ -64,6 +64,8 @@ export function useChatSubscription(
     null,
   );
   const connectingRef = useRef(false);
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  const connectRef = useRef<() => void>(() => {});
 
   const cleanup = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -85,7 +87,7 @@ export function useChatSubscription(
     }
 
     reconnectTimeoutRef.current = setTimeout(() => {
-      connect();
+      connectRef.current();
     }, delayMs);
   }, [autoReconnect, enabled, chatId, port]);
 
@@ -110,7 +112,6 @@ export function useChatSubscription(
               return;
             }
             if (seq > lastSeqRef.current + 1n) {
-              console.warn("[useChatSubscription] Sequence gap detected, reconnecting");
               cleanup();
               setStatus("disconnected");
               scheduleReconnect(0);
@@ -121,7 +122,8 @@ export function useChatSubscription(
           dispatch(applyChatEvent(envelope));
           callbacksRef.current.onEvent?.(envelope);
         } catch (err) {
-          console.error("[useChatSubscription] Error processing event:", err, envelope);
+          // Error processing event - likely malformed data
+          callbacksRef.current.onError?.(err instanceof Error ? err : new Error(String(err)));
         }
       },
       onConnected: () => {
@@ -143,7 +145,7 @@ export function useChatSubscription(
         cleanup();
         scheduleReconnect(reconnectDelay);
       },
-    }, apiKey || undefined);
+    }, apiKey ?? undefined);
   }, [
     chatId,
     port,
@@ -154,6 +156,9 @@ export function useChatSubscription(
     scheduleReconnect,
     reconnectDelay,
   ]);
+
+  // Keep ref in sync for scheduleReconnect to use
+  connectRef.current = connect;
 
   const disconnect = useCallback(() => {
     cleanup();

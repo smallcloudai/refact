@@ -52,8 +52,10 @@ export const backUpMessages = createAction<
 >("chatThread/backUpMessages");
 
 export const setChatModel = createAction<string>("chatThread/setChatModel");
-export const getSelectedChatModel = (state: RootState) =>
-  state.chat.threads[state.chat.current_thread_id]?.thread.model ?? "";
+export const getSelectedChatModel = (state: RootState) => {
+  const runtime = state.chat.threads[state.chat.current_thread_id] as { thread: { model: string } } | undefined;
+  return runtime?.thread.model ?? "";
+};
 
 export const setSystemPrompt = createAction<SystemPrompts>(
   "chatThread/setSystemPrompt",
@@ -199,7 +201,7 @@ export const setContextTokensCap = createAction<PayloadWithChatAndNumber>(
 );
 
 export const restoreChatFromBackend = createAsyncThunk<
-  void,
+  undefined,
   { id: string; fallback: ChatHistoryItem },
   { dispatch: AppDispatch; state: RootState }
 >(
@@ -223,9 +225,9 @@ export const restoreChatFromBackend = createAsyncThunk<
 
       thunkApi.dispatch(restoreChat(historyItem));
     } catch {
-      // Backend not available, use fallback from history
       thunkApi.dispatch(restoreChat(fallback));
     }
+    return undefined;
   },
 );
 

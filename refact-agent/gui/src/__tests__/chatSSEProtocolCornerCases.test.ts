@@ -6,6 +6,7 @@
  * Run with: npm run test:no-watch -- chatSSEProtocolCornerCases
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/require-await, @typescript-eslint/ban-ts-comment */
 // @ts-nocheck - Testing runtime behavior
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { subscribeToChatEvents } from "../services/refact/chatSubscription";
@@ -468,7 +469,7 @@ describe("SSE Protocol - Disconnect Handling", () => {
     const onDisconnected = vi.fn();
     const encoder = new TextEncoder();
     
-    let abortFn: (() => void) | null = null;
+    const _abortFn: (() => void) | null = null;
     const mockFetch = vi.fn().mockImplementation((url, options) => {
       const abortController = options.signal;
       

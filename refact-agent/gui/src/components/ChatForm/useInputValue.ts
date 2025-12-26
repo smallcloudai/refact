@@ -45,7 +45,7 @@ export function useInputValue(
           setIsSendImmediately(true);
           // Extract text from last user message if available
           const lastMsg = payload.messages[payload.messages.length - 1];
-          if (lastMsg && lastMsg.role === "user") {
+          if (lastMsg.role === "user") {
             let content = "";
             if (typeof lastMsg.content === "string") {
               content = lastMsg.content;

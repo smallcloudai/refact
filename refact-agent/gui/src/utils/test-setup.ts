@@ -8,6 +8,8 @@ import MatchMediaMock from "vitest-matchmedia-mock";
 import React from "react";
 const matchMediaMock = new MatchMediaMock();
 
+(globalThis as Record<string, unknown>).__REFACT_LSP_PORT__ = 8001;
+
 beforeAll(() => {
   stubResizeObserver();
   stubIntersectionObserver();

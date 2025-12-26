@@ -255,17 +255,25 @@ pub async fn context_file_from_file_path(
         line2 = colon.line2;
     }
 
-    // Validate line numbers - if they exceed file length, reset to whole file
-    if line1 > file_line_count || line2 > file_line_count {
+    if line1 == 0 && line2 == 0 {
+        line1 = 1;
+        line2 = file_line_count;
+    } else if line1 == 0 && line2 > 0 {
+        line1 = 1;
+        line2 = line2.min(file_line_count);
+    } else if line1 > 0 && line2 == 0 {
+        line1 = line1.min(file_line_count);
+        line2 = file_line_count;
+    } else if line1 > file_line_count || line2 > file_line_count {
         tracing::warn!(
-            "Line numbers ({}, {}) exceed file length {} for {:?}, resetting to whole file",
+            "Line numbers ({}, {}) exceed file length {} for {:?}, clamping",
             line1, line2, file_line_count, file_path_no_colon
         );
-        line1 = 1;
-        line2 = file_line_count;
-    } else if line1 == 0 && line2 == 0 {
-        line1 = 1;
-        line2 = file_line_count;
+        line1 = line1.min(file_line_count).max(1);
+        line2 = line2.min(file_line_count).max(1);
+    }
+    if line1 > line2 {
+        std::mem::swap(&mut line1, &mut line2);
     }
 
     Ok(ContextFile {

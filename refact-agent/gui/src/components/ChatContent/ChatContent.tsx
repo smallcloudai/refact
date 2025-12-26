@@ -54,7 +54,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
 
-  const isConfig = thread?.mode === "CONFIGURE";
+  const isConfig = thread !== null && thread.mode === "CONFIGURE";
   const isWaiting = useAppSelector(selectIsWaiting);
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
@@ -66,8 +66,6 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   };
 
   const handleReturnToConfigurationClick = useCallback(() => {
-    // console.log(`[DEBUG]: going back to configuration page`);
-    // TBD: should it be allowed to run in the background?
     onStopStreaming();
     dispatch(
       popBackTo({

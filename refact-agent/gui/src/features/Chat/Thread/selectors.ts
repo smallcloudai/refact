@@ -28,8 +28,9 @@ export const selectCurrentThreadId = (state: RootState) => state.chat.current_th
 export const selectOpenThreadIds = (state: RootState) => state.chat.open_thread_ids;
 export const selectAllThreads = (state: RootState) => state.chat.threads;
 
-export const selectRuntimeById = (state: RootState, chatId: string): ChatThreadRuntime | null =>
-  state.chat.threads[chatId] ?? null;
+export const selectRuntimeById = (state: RootState, chatId: string): ChatThreadRuntime | null => {
+  return state.chat.threads[chatId] ?? null;
+};
 
 export const selectCurrentRuntime = (state: RootState): ChatThreadRuntime | null =>
   state.chat.threads[state.chat.current_thread_id] ?? null;
@@ -122,14 +123,14 @@ export const getSelectedSystemPrompt = (state: RootState) =>
 
 export const selectAnyThreadStreaming = createSelector(
   [selectAllThreads],
-  (threads) => Object.values(threads).some((rt) => rt.streaming),
+  (threads) => Object.values(threads).some((rt) => rt?.streaming),
 );
 
 export const selectStreamingThreadIds = createSelector(
   [selectAllThreads],
   (threads) =>
     Object.entries(threads)
-      .filter(([, rt]) => rt.streaming)
+      .filter(([, rt]) => rt?.streaming)
       .map(([id]) => id),
 );
 

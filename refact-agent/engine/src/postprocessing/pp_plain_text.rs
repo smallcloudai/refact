@@ -32,20 +32,17 @@ fn limit_text_by_tokens(
 pub async fn postprocess_plain_text(
     plain_text_messages: Vec<ChatMessage>,
     tokenizer: Option<Arc<Tokenizer>>,
-    _tokens_limit: usize,
+    tokens_limit: usize,
     style: &Option<String>,
 ) -> (Vec<ChatMessage>, usize) {
     if plain_text_messages.is_empty() {
-        return (vec![], _tokens_limit);
+        return (vec![], tokens_limit);
     }
 
-    let mut tok_used_global = 0;
+    let mut remaining_budget = tokens_limit;
     let mut new_messages = vec![];
 
     for mut msg in plain_text_messages.into_iter() {
-        let limit_tokens = msg.output_filter.as_ref().and_then(|f| f.limit_tokens);
-
-        // Apply line-based filtering first (if filter exists and has line limits)
         if let Some(ref filter) = msg.output_filter {
             if filter.limit_lines < usize::MAX || filter.limit_chars < usize::MAX || !filter.grep.is_empty() {
                 msg.content = match msg.content {
@@ -62,66 +59,69 @@ pub async fn postprocess_plain_text(
                         ChatContent::Multimodal(filtered_elements)
                     },
                     ChatContent::ContextFiles(files) => {
-                        // Context files don't need plain text processing
                         ChatContent::ContextFiles(files)
                     }
                 };
             }
         }
+
+        let per_msg_limit = msg.output_filter.as_ref().and_then(|f| f.limit_tokens);
         msg.output_filter = None;
 
-        // Apply token-based truncation (if limit_tokens is Some)
-        let tok_used = if let Some(tok_limit) = limit_tokens {
-            msg.content = match msg.content {
-                ChatContent::SimpleText(text) => {
-                    let (new_content, used) = limit_text_by_tokens(tokenizer.clone(), &text, tok_limit);
-                    tok_used_global += used;
-                    ChatContent::SimpleText(new_content)
-                },
-                ChatContent::Multimodal(elements) => {
-                    let mut new_content = vec![];
-                    let mut used_in_msg = 0;
+        let effective_limit = match per_msg_limit {
+            Some(msg_limit) => msg_limit.min(remaining_budget),
+            None => remaining_budget,
+        };
 
-                    for element in elements {
-                        if element.is_text() {
-                            let remaining = tok_limit.saturating_sub(used_in_msg);
-                            let (new_text, used) = limit_text_by_tokens(tokenizer.clone(), &element.m_content, remaining);
-                            used_in_msg += used;
+        if effective_limit < 50 {
+            msg.content = ChatContent::SimpleText("... truncated (token limit reached)".to_string());
+            new_messages.push(msg);
+            continue;
+        }
+
+        let tokens_used = match msg.content {
+            ChatContent::SimpleText(ref text) => {
+                let (new_content, used) = limit_text_by_tokens(tokenizer.clone(), text, effective_limit);
+                msg.content = ChatContent::SimpleText(new_content);
+                used
+            },
+            ChatContent::Multimodal(ref elements) => {
+                let mut new_content = vec![];
+                let mut used_in_msg = 0;
+
+                for element in elements {
+                    if element.is_text() {
+                        let remaining = effective_limit.saturating_sub(used_in_msg);
+                        let (new_text, used) = limit_text_by_tokens(tokenizer.clone(), &element.m_content, remaining);
+                        used_in_msg += used;
+                        new_content.push(MultimodalElement {
+                            m_type: element.m_type.clone(),
+                            m_content: new_text,
+                        });
+                    } else if element.is_image() {
+                        let tokens = element.count_tokens(None, style).unwrap_or(0) as usize;
+                        if used_in_msg + tokens > effective_limit {
                             new_content.push(MultimodalElement {
-                                m_type: element.m_type,
-                                m_content: new_text,
+                                m_type: "text".to_string(),
+                                m_content: "Image truncated: too many tokens".to_string(),
                             });
-                        } else if element.is_image() {
-                            let tokens = element.count_tokens(None, style).unwrap() as usize;
-                            if used_in_msg + tokens > tok_limit {
-                                new_content.push(MultimodalElement {
-                                    m_type: "text".to_string(),
-                                    m_content: "Image truncated: too many tokens".to_string(),
-                                });
-                            } else {
-                                new_content.push(element.clone());
-                                used_in_msg += tokens;
-                            }
+                        } else {
+                            new_content.push(element.clone());
+                            used_in_msg += tokens;
                         }
                     }
-                    tok_used_global += used_in_msg;
-                    ChatContent::Multimodal(new_content)
-                },
-                ChatContent::ContextFiles(files) => {
-                    // Context files don't need token-based truncation
-                    ChatContent::ContextFiles(files)
                 }
-            };
-            tok_used_global
-        } else {
-            // No token limit - just count tokens used
-            msg.content.size_estimate(tokenizer.clone(), style)
+                msg.content = ChatContent::Multimodal(new_content);
+                used_in_msg
+            },
+            ChatContent::ContextFiles(_) => {
+                msg.content.size_estimate(tokenizer.clone(), style)
+            }
         };
-        tok_used_global = tok_used;
 
+        remaining_budget = remaining_budget.saturating_sub(tokens_used);
         new_messages.push(msg);
     }
 
-    let tok_unused = _tokens_limit.saturating_sub(tok_used_global);
-    (new_messages, tok_unused)
+    (new_messages, remaining_budget)
 }

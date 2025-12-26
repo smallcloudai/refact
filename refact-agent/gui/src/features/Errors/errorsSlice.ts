@@ -15,7 +15,7 @@ export const errorSlice = createSlice({
   initialState,
   reducers: {
     setError: (state, action: PayloadAction<string>) => {
-      if (state.message) return state;
+      if (state.message) return;
       state.message = action.payload;
       if (state.message.includes(BALLANCE_LIMIT_MESSAGES[0])) {
         state.type = "balance";

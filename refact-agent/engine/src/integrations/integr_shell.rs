@@ -26,7 +26,7 @@ use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::OutputFilter;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationTrait};
 use crate::custom_error::YamlError;
-use crate::tools::tools_execute::{command_should_be_denied, command_should_be_confirmed_by_user};
+use crate::tools::tools_description::{command_should_be_denied, command_should_be_confirmed_by_user};
 
 
 #[derive(Deserialize, Serialize, Clone, Default)]

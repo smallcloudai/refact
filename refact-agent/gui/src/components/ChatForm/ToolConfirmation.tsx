@@ -18,16 +18,7 @@ import {
   selectMessages,
   setAutomaticPatch,
 } from "../../features/Chat";
-
-export const PATCH_LIKE_FUNCTIONS = [
-  "patch",
-  "text_edit",
-  "create_textdoc",
-  "update_textdoc",
-  "replace_textdoc",
-  "update_textdoc_regex",
-  "update_textdoc_by_lines",
-];
+import { PATCH_LIKE_FUNCTIONS } from "./constants";
 
 type ToolConfirmationProps = {
   pauseReasons: ToolConfirmationPauseReason[];
@@ -222,7 +213,7 @@ const PatchConfirmation: React.FC<PatchConfirmationProps> = ({
     () => assistantMessages[assistantMessages.length - 1],
     [assistantMessages],
   );
-  const toolCalls = lastAssistantMessage?.tool_calls;
+  const toolCalls = lastAssistantMessage.tool_calls;
 
   const messageForPatch = useMemo(() => {
     if (!toolCalls || toolCalls.length === 0) return "Apply changes";

@@ -75,8 +75,7 @@ function chatThreadToHistoryItem(thread: ChatThread): ChatHistoryItem {
 
   return {
     ...thread,
-    // Use thread title if available, otherwise truncated first user message
-    title: thread.title || getFirstUserContentFromChat(thread.messages),
+    title: thread.title ?? getFirstUserContentFromChat(thread.messages),
     createdAt: thread.createdAt ?? now,
     updatedAt: now,
     integration: thread.integration,
@@ -103,10 +102,10 @@ export const historySlice = createSlice({
   initialState,
   reducers: {
     saveChat: (state, action: PayloadAction<ChatThread>) => {
-      if (action.payload.messages.length === 0) return state;
+      if (action.payload.messages.length === 0) return;
       const chat = chatThreadToHistoryItem(action.payload);
       const existing = state[chat.id];
-      if (existing?.isTitleGenerated && !chat.isTitleGenerated) {
+      if (existing.isTitleGenerated && !chat.isTitleGenerated) {
         chat.title = existing.title;
         chat.isTitleGenerated = true;
       }
@@ -117,10 +116,12 @@ export const historySlice = createSlice({
         const sorted = messages.sort((a, b) =>
           b.updatedAt.localeCompare(a.updatedAt),
         );
-        return sorted.slice(0, 100).reduce(
-          (acc, c) => ({ ...acc, [c.id]: c }),
-          {},
-        );
+        const idsToKeep = new Set(sorted.slice(0, 100).map((c) => c.id));
+        const idsToRemove = Object.keys(state).filter((id) => !idsToKeep.has(id));
+        for (const id of idsToRemove) {
+          // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+          delete state[id];
+        }
       }
     },
 
@@ -143,6 +144,7 @@ export const historySlice = createSlice({
     },
 
     deleteChatById: (state, action: PayloadAction<string>) => {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete state[action.payload];
     },
 
@@ -247,7 +249,7 @@ startHistoryListening({
   effect: (action, listenerApi) => {
     const chat = listenerApi.getState().chat;
     const runtime = chat.threads[action.payload.id];
-    if (runtime?.streaming) return;
+    if (!runtime || runtime.streaming) return;
     listenerApi.dispatch(markChatAsRead(action.payload.id));
   },
 });
@@ -269,7 +271,7 @@ startHistoryListening({
 startHistoryListening({
   actionCreator: deleteChatById,
   effect: (action, listenerApi) => {
-    listenerApi.dispatch(
+    void listenerApi.dispatch(
       trajectoriesApi.endpoints.deleteTrajectory.initiate(action.payload),
     );
   },

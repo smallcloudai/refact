@@ -6,7 +6,7 @@ use crate::call_validation::{ChatToolCall, ContextFile};
 use crate::postprocessing::pp_context_files::RESERVE_FOR_QUESTION_AND_FOLLOWUP;
 
 pub struct HasRagResults {
-    pub was_sent: bool,
+    was_sent: bool,
     pub in_json: Vec<Value>,
 }
 
@@ -24,7 +24,8 @@ impl HasRagResults {
         self.in_json.push(value);
     }
 
-    pub fn response_streaming(&mut self) -> Result<Vec<Value>, String> {
+    #[allow(dead_code)] // Used for streaming responses
+    fn response_streaming(&mut self) -> Result<Vec<Value>, String> {
         if self.was_sent == true || self.in_json.is_empty() {
             return Ok(vec![]);
         }
@@ -43,6 +44,7 @@ pub fn parse_image_b64_from_image_url_openai(image_url: &str) -> Option<(String,
     })
 }
 
+#[allow(dead_code)] // Reserved for future RAG token calculation
 pub fn max_tokens_for_rag_chat_by_tools(
     tools: &Vec<ChatToolCall>,
     context_files: &Vec<ContextFile>,

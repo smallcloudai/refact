@@ -163,12 +163,9 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const onCreateNewChat = useCallback(() => {
     setRenamingTabId(null);
 
-    // Auto-close empty chat tab when creating a new chat
-    if (currentChatId) {
-      const currentThread = allThreads[currentChatId];
-      if (currentThread && currentThread.thread.messages.length === 0) {
-        dispatch(closeThread({ id: currentChatId }));
-      }
+    const currentThread = allThreads[currentChatId] as { thread: { messages: unknown[] } } | undefined;
+    if (currentThread && currentThread.thread.messages.length === 0) {
+      dispatch(closeThread({ id: currentChatId }));
     }
 
     dispatch(newChatAction());
@@ -237,7 +234,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         if (!runtime) return null;
         return {
           id,
-          title: runtime.thread.title || "New Chat",
+          title: runtime.thread.title ?? "New Chat",
           read: runtime.thread.read,
           streaming: runtime.streaming,
           waiting: runtime.waiting_for_response,

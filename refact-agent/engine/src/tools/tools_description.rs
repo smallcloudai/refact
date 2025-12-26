@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use glob::Pattern;
 use serde_json::{Value, json};
 use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
@@ -9,7 +10,32 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::custom_error::MapErrToString;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
-use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied};
+
+pub fn command_should_be_confirmed_by_user(
+    command: &String,
+    commands_need_confirmation_rules: &Vec<String>,
+) -> (bool, String) {
+    if let Some(rule) = commands_need_confirmation_rules.iter().find(|glob| {
+        let pattern = Pattern::new(glob).unwrap();
+        pattern.matches(&command)
+    }) {
+        return (true, rule.clone());
+    }
+    (false, "".to_string())
+}
+
+pub fn command_should_be_denied(
+    command: &String,
+    commands_deny_rules: &Vec<String>,
+) -> (bool, String) {
+    if let Some(rule) = commands_deny_rules.iter().find(|glob| {
+        let pattern = Pattern::new(glob).unwrap();
+        pattern.matches(&command)
+    }) {
+        return (true, rule.clone());
+    }
+    (false, "".to_string())
+}
 
 #[derive(Clone, Debug)]
 pub enum MatchConfirmDenyResult {
@@ -187,6 +213,7 @@ pub trait Tool: Send + Sync {
 
     fn tool_depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
 
+    #[allow(dead_code)] // Trait method for future usage tracking
     fn usage(&mut self) -> &mut Option<ChatUsage> {
         static mut DEFAULT_USAGE: Option<ChatUsage> = None;
         #[allow(static_mut_refs)]

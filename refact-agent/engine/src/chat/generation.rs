@@ -20,6 +20,7 @@ use super::openai_merge::merge_tool_call;
 use super::trajectories::{maybe_save_trajectory, check_external_reload_pending};
 use super::tools::check_tool_calls_and_continue;
 use super::prepare::{prepare_chat_passthrough, ChatPrepareOptions};
+use super::prompts::prepend_the_right_system_prompt_and_maybe_more_initial_messages;
 
 pub fn parse_chat_mode(mode: &str) -> ChatMode {
     match mode.to_uppercase().as_str() {
@@ -109,8 +110,42 @@ pub async fn run_llm_generation(
         context_tokens_cap: thread.context_tokens_cap,
         include_project_info: thread.include_project_info,
         request_attempt_id: Uuid::new_v4().to_string(),
-        use_compression: false,
+        use_compression: thread.use_compression,
     };
+
+    let session_has_system = {
+        let session = session_arc.lock().await;
+        session.messages.first().map(|m| m.role == "system").unwrap_or(false)
+    };
+
+    if !session_has_system {
+        let tool_names: std::collections::HashSet<String> = tools.iter()
+            .map(|t| t.name.clone())
+            .collect();
+        let mut has_rag_results = crate::scratchpads::scratchpad_utils::HasRagResults::new();
+        let messages_with_system = prepend_the_right_system_prompt_and_maybe_more_initial_messages(
+            gcx.clone(),
+            messages.clone(),
+            &meta,
+            &mut has_rag_results,
+            tool_names,
+        ).await;
+
+        let prepended_count = messages_with_system.len().saturating_sub(messages.len());
+        if prepended_count > 0 {
+            let mut session = session_arc.lock().await;
+            for (i, msg) in messages_with_system.iter().take(prepended_count).enumerate() {
+                session.messages.insert(i, msg.clone());
+                session.emit(ChatEvent::MessageAdded {
+                    message: msg.clone(),
+                    index: i,
+                });
+            }
+            session.increment_version();
+            info!("Saved {} prepended messages to session at index 0", prepended_count);
+        }
+        messages = messages_with_system;
+    }
 
     let mut parameters = SamplingParameters {
         temperature: Some(0.0),
@@ -132,11 +167,11 @@ pub async fn run_llm_generation(
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
     let options = ChatPrepareOptions {
-        prepend_system_prompt: true,
+        prepend_system_prompt: false,
         allow_at_commands: true,
         allow_tool_prerun: true,
         supports_tools: model_rec.supports_tools,
-        use_compression: false,
+        use_compression: thread.use_compression,
     };
 
     let prepared = prepare_chat_passthrough(
@@ -181,12 +216,13 @@ async fn run_streaming_generation(
 
     let _ = slowdown_arc.acquire().await;
 
-    let (chat_id, context_tokens_cap, include_project_info) = {
+    let (chat_id, context_tokens_cap, include_project_info, use_compression) = {
         let session = session_arc.lock().await;
         (
             session.chat_id.clone(),
             session.thread.context_tokens_cap,
             session.thread.include_project_info,
+            session.thread.use_compression,
         )
     };
 
@@ -198,7 +234,7 @@ async fn run_streaming_generation(
         context_tokens_cap,
         include_project_info,
         request_attempt_id: Uuid::new_v4().to_string(),
-        use_compression: false,
+        use_compression,
     });
 
     let mut event_source = crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint_streaming(

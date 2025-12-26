@@ -173,14 +173,21 @@ export function subscribeToChatEvents(
   const url = `http://127.0.0.1:${port}/v1/chats/subscribe?chat_id=${encodeURIComponent(chatId)}`;
 
   const abortController = new AbortController();
-  let isConnected = false;
+  const state = { connected: false };
 
   const headers: Record<string, string> = {};
   if (apiKey) {
-    headers["Authorization"] = `Bearer ${apiKey}`;
+    headers.Authorization = `Bearer ${apiKey}`;
   }
 
-  fetch(url, {
+  const disconnect = () => {
+    if (state.connected) {
+      state.connected = false;
+      callbacks.onDisconnected?.();
+    }
+  };
+
+  void fetch(url, {
     method: "GET",
     headers,
     signal: abortController.signal,
@@ -194,14 +201,14 @@ export function subscribeToChatEvents(
         throw new Error("Response body is null");
       }
 
-      isConnected = true;
+      state.connected = true;
       callbacks.onConnected?.();
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
 
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -209,7 +216,7 @@ export function subscribeToChatEvents(
         buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
         const blocks = buffer.split("\n\n");
-        buffer = blocks.pop() || "";
+        buffer = blocks.pop() ?? "";
 
         for (const block of blocks) {
           if (!block.trim()) continue;
@@ -228,38 +235,29 @@ export function subscribeToChatEvents(
           try {
             const parsed = JSON.parse(dataStr) as unknown;
             if (!isValidChatEventBasic(parsed)) {
-              console.error("[SSE] Event structure invalid:", parsed);
               continue;
             }
             normalizeSeq(parsed);
-            callbacks.onEvent(parsed as EventEnvelope);
-          } catch (e) {
-            console.error("[SSE] Failed to parse event:", e, dataStr);
+            callbacks.onEvent(parsed);
+          } catch {
+            // Parse error, skip this event
           }
         }
       }
 
-      if (isConnected) {
-        callbacks.onDisconnected?.();
-        isConnected = false;
-      }
+      disconnect();
     })
-    .catch((err) => {
-      if (err.name !== "AbortError") {
-        callbacks.onError(err);
-        if (isConnected) {
-          callbacks.onDisconnected?.();
-          isConnected = false;
-        }
+    .catch((err: unknown) => {
+      const error = err as Error;
+      if (error.name !== "AbortError") {
+        callbacks.onError(error);
+        disconnect();
       }
     });
 
   return () => {
     abortController.abort();
-    if (isConnected) {
-      callbacks.onDisconnected?.();
-      isConnected = false;
-    }
+    disconnect();
   };
 }
 
@@ -272,21 +270,21 @@ function isValidChatEventBasic(data: unknown): data is EventEnvelope {
   return true;
 }
 
-function normalizeSeq(obj: any): void {
-  const s = obj.seq;
+function normalizeSeq(obj: EventEnvelope): void {
+  const s = obj.seq as string | number;
   if (typeof s === "string") {
     const trimmed = s.trim();
     if (!/^\d+$/.test(trimmed)) {
       throw new Error("Invalid seq string");
     }
-    obj.seq = trimmed;
+    (obj as { seq: string }).seq = trimmed;
     return;
   }
   if (typeof s === "number") {
     if (!Number.isFinite(s) || !Number.isInteger(s) || s < 0) {
       throw new Error("Invalid seq number");
     }
-    obj.seq = String(s);
+    (obj as { seq: string }).seq = String(s);
     return;
   }
   throw new Error("Missing/invalid seq");
@@ -296,7 +294,15 @@ export function applyDeltaOps(
   message: ChatMessage,
   ops: DeltaOp[],
 ): ChatMessage {
-  const updated: any = { ...message };
+  const updated = { ...message } as ChatMessage & {
+    content?: string;
+    reasoning_content?: string;
+    tool_calls?: unknown[];
+    thinking_blocks?: unknown[];
+    citations?: unknown[];
+    usage?: unknown;
+    extra?: Record<string, unknown>;
+  };
 
   for (const op of ops) {
     switch (op.op) {
@@ -310,7 +316,7 @@ export function applyDeltaOps(
 
       case "append_reasoning":
         updated.reasoning_content =
-          (updated.reasoning_content || "") + op.text;
+          (updated.reasoning_content ?? "") + op.text;
         break;
 
       case "set_tool_calls":
@@ -333,14 +339,10 @@ export function applyDeltaOps(
         break;
 
       case "merge_extra":
-        updated.extra = { ...(updated.extra || {}), ...op.extra };
-        break;
-
-      default:
-        console.warn("[applyDeltaOps] Unknown delta op:", (op as any).op);
+        updated.extra = { ...(updated.extra ?? {}), ...op.extra };
         break;
     }
   }
 
-  return updated as ChatMessage;
+  return updated;
 }

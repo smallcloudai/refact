@@ -236,11 +236,15 @@ export function formatMessagesForChat(
       });
     }
 
-    if (
-      message.role === "context_file" &&
-      typeof message.content === "string"
-    ) {
-      const files = parseOrElse<ChatContextFile[]>(message.content, []);
+    if (message.role === "context_file") {
+      let files: ChatContextFile[];
+      if (typeof message.content === "string") {
+        files = parseOrElse<ChatContextFile[]>(message.content, []);
+      } else if (Array.isArray(message.content)) {
+        files = message.content as ChatContextFile[];
+      } else {
+        files = [];
+      }
       const contextFileMessage: ChatContextFileMessage = {
         role: message.role,
         content: files,

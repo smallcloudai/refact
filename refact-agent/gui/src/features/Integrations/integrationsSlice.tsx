@@ -18,13 +18,13 @@ export const integrationsSlice = createSlice({
   reducers: {
     addToCacheOnMiss: (state, action: PayloadAction<Integration>) => {
       const key = action.payload.integr_config_path;
-      if (key in state.cachedForms) return state;
+      if (key in state.cachedForms) return;
 
       state.cachedForms[key] = action.payload.integr_values;
     },
     //TODO: could just be the path
     removeFromCache: (state, action: PayloadAction<string>) => {
-      if (!(action.payload in state.cachedForms)) return state;
+      if (!(action.payload in state.cachedForms)) return;
 
       const nextCache = Object.entries(
         state.cachedForms,

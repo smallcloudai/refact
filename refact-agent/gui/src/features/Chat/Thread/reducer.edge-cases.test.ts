@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-non-null-assertion */
 import { expect, test, describe, beforeEach } from "vitest";
 import { chatReducer } from "./reducer";
 import type { Chat } from "./types";
@@ -80,12 +81,12 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       };
       state = chatReducer(state, applyChatEvent(messageAdded));
 
-      const runtime = state.threads[chatId];
-      const assistantMsg = runtime?.thread.messages[1];
+      const runtime = state.threads[chatId]!;
+      const assistantMsg = runtime.thread.messages[1];
 
-      expect(assistantMsg?.role).toBe("assistant");
-      expect(assistantMsg?.content).toBe("Here is my answer");
-      if (assistantMsg?.role === "assistant") {
+      expect(assistantMsg.role).toBe("assistant");
+      expect(assistantMsg.content).toBe("Here is my answer");
+      if (assistantMsg.role === "assistant") {
         expect(assistantMsg.reasoning_content).toBe("Let me think about this...");
       }
     });
@@ -128,11 +129,11 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       };
       state = chatReducer(state, applyChatEvent(messageAdded));
 
-      const runtime = state.threads[chatId];
-      const assistantMsg = runtime?.thread.messages[1];
+      const runtime = state.threads[chatId]!;
+      const assistantMsg = runtime.thread.messages[1];
 
-      expect(assistantMsg?.role).toBe("assistant");
-      if (assistantMsg?.role === "assistant") {
+      expect(assistantMsg.role).toBe("assistant");
+      if (assistantMsg.role === "assistant") {
         expect(assistantMsg.thinking_blocks).toBeDefined();
         expect(assistantMsg.thinking_blocks?.length).toBe(1);
       }
@@ -176,11 +177,11 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       };
       state = chatReducer(state, applyChatEvent(messageAdded));
 
-      const runtime = state.threads[chatId];
-      const assistantMsg = runtime?.thread.messages[1];
+      const runtime = state.threads[chatId]!;
+      const assistantMsg = runtime.thread.messages[1];
 
-      expect(assistantMsg?.role).toBe("assistant");
-      if (assistantMsg?.role === "assistant") {
+      expect(assistantMsg.role).toBe("assistant");
+      if (assistantMsg.role === "assistant") {
         expect(assistantMsg.usage).toBeDefined();
         expect(assistantMsg.usage?.prompt_tokens).toBe(100);
       }
@@ -194,8 +195,8 @@ describe("Chat Thread Reducer - Edge Cases", () => {
         { role: "assistant", content: "Hi there!" },
       ])));
 
-      const runtime1 = state.threads[chatId];
-      expect(runtime1?.thread.messages).toHaveLength(2);
+      const runtime1 = state.threads[chatId]!;
+      expect(runtime1.thread.messages).toHaveLength(2);
 
       const emptySnapshot: ChatEventEnvelope = {
         chat_id: chatId,
@@ -224,10 +225,10 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       };
 
       state = chatReducer(state, applyChatEvent(emptySnapshot));
-      const runtime2 = state.threads[chatId];
+      const runtime2 = state.threads[chatId]!;
 
       // Empty snapshots are accepted as truth to prevent permanent desync
-      expect(runtime2?.thread.messages).toHaveLength(0);
+      expect(runtime2.thread.messages).toHaveLength(0);
     });
 
     test("should update thread params even with empty snapshot", () => {
@@ -262,14 +263,14 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       };
 
       state = chatReducer(state, applyChatEvent(emptySnapshot));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
       // Empty snapshots clear messages (backend is source of truth)
-      expect(runtime?.thread.messages).toHaveLength(0);
+      expect(runtime.thread.messages).toHaveLength(0);
       // But thread params are updated
-      expect(runtime?.thread.title).toBe("Updated Title");
-      expect(runtime?.thread.model).toBe("gpt-4o");
-      expect(runtime?.thread.mode).toBe("EXPLORE");
+      expect(runtime.thread.title).toBe("Updated Title");
+      expect(runtime.thread.model).toBe("gpt-4o");
+      expect(runtime.thread.mode).toBe("EXPLORE");
     });
   });
 
@@ -320,8 +321,8 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       };
       state = chatReducer(state, applyChatEvent(delta3));
 
-      const runtime = state.threads[chatId];
-      const msg = runtime?.thread.messages.find(m => m.message_id === "msg-extra") as Record<string, unknown> | undefined;
+      const runtime = state.threads[chatId]!;
+      const msg = runtime.thread.messages.find(m => m.message_id === "msg-extra") as Record<string, unknown> | undefined;
 
       expect((msg?.extra as any)?.metering_a).toBe(150);
       expect((msg?.extra as any)?.metering_b).toBe(200);
@@ -342,7 +343,7 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       };
       state = chatReducer(state, applyChatEvent(streamStart));
 
-      expect(state.threads[chatId]?.streaming).toBe(true);
+      expect(state.threads[chatId]!.streaming).toBe(true);
 
       const streamFinished: ChatEventEnvelope = {
         chat_id: chatId,
@@ -372,10 +373,10 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       };
       state = chatReducer(state, applyChatEvent(runtimeIdle));
 
-      const runtime = state.threads[chatId];
-      expect(runtime?.streaming).toBe(false);
-      expect(runtime?.thread.messages).toHaveLength(1);
-      expect(runtime?.thread.messages[0].role).toBe("user");
+      const runtime = state.threads[chatId]!;
+      expect(runtime.streaming).toBe(false);
+      expect(runtime.thread.messages).toHaveLength(1);
+      expect(runtime.thread.messages[0].role).toBe("user");
     });
   });
 
@@ -401,9 +402,9 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       };
       state = chatReducer(state, applyChatEvent(pauseRequired));
 
-      const runtime = state.threads[chatId];
-      expect(runtime?.confirmation.pause).toBe(true);
-      expect(runtime?.confirmation.pause_reasons).toHaveLength(1);
+      const runtime = state.threads[chatId]!;
+      expect(runtime.confirmation.pause).toBe(true);
+      expect(runtime.confirmation.pause_reasons).toHaveLength(1);
     });
 
     test("should handle pause_cleared event", () => {
@@ -416,7 +417,7 @@ describe("Chat Thread Reducer - Edge Cases", () => {
         reasons: [{ type: "confirmation", command: "shell", rule: "deny_all", tool_call_id: "tc-1", integr_config_path: null }],
       };
       state = chatReducer(state, applyChatEvent(pauseRequired));
-      expect(state.threads[chatId]?.confirmation.pause).toBe(true);
+      expect(state.threads[chatId]!.confirmation.pause).toBe(true);
 
       const pauseCleared: ChatEventEnvelope = {
         chat_id: chatId,
@@ -425,8 +426,8 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       };
       state = chatReducer(state, applyChatEvent(pauseCleared));
 
-      expect(state.threads[chatId]?.confirmation.pause).toBe(false);
-      expect(state.threads[chatId]?.confirmation.pause_reasons).toHaveLength(0);
+      expect(state.threads[chatId]!.confirmation.pause).toBe(false);
+      expect(state.threads[chatId]!.confirmation.pause_reasons).toHaveLength(0);
     });
   });
 
@@ -463,10 +464,10 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       };
       state = chatReducer(state, applyChatEvent(errorState));
 
-      const runtime = state.threads[chatId];
-      expect(runtime?.error).toBe("Model not found");
-      expect(runtime?.thread.messages).toHaveLength(1);
-      expect(runtime?.streaming).toBe(false);
+      const runtime = state.threads[chatId]!;
+      expect(runtime.error).toBe("Model not found");
+      expect(runtime.thread.messages).toHaveLength(1);
+      expect(runtime.streaming).toBe(false);
     });
   });
 });

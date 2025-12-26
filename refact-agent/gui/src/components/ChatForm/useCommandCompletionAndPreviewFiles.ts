@@ -85,9 +85,8 @@ function useGetCommandPreviewQuery(
   const currentThreadMode = useAppSelector(selectThreadMode);
   const currentModel = useAppSelector(getSelectedChatModel);
 
-  // Build user message with attached images
   const userMessage: UserMessage = useMemo(() => {
-    if (!attachedImages || attachedImages.length === 0) {
+    if (attachedImages.length === 0) {
       return { role: "user", content: query, checkpoints: [] };
     }
 

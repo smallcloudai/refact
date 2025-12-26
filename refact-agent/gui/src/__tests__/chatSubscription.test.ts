@@ -6,6 +6,7 @@
  * Run with: npm run test:no-watch -- chatSubscription
  */
 
+/* eslint-disable @typescript-eslint/require-await */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   subscribeToChatEvents,

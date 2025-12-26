@@ -111,7 +111,7 @@ pub fn output_mini_postprocessing(filter: &OutputFilter, output: &str) -> String
     }
 
     let mut line_indices: Vec<usize> = (0..lines.len()).collect();
-    line_indices.sort_by(|&a, &b| ratings[b].partial_cmp(&ratings[a]).unwrap());
+    line_indices.sort_by(|&a, &b| ratings[b].partial_cmp(&ratings[a]).unwrap_or(std::cmp::Ordering::Equal));
 
     let mut current_lines = 0;
     let mut current_chars = 0;

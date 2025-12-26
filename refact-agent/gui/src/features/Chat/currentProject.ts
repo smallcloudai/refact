@@ -24,10 +24,14 @@ export const currentProjectInfoReducer = createReducer(
 );
 
 export const selectThreadProjectOrCurrentProject = (state: RootState) => {
-  const runtime = state.chat.threads[state.chat.current_thread_id];
-  const thread = runtime?.thread;
-  if (thread?.integration?.project) {
+  const threadId = state.chat.current_thread_id;
+  const runtime = threadId ? state.chat.threads[threadId] : undefined;
+  if (!runtime) {
+    return state.current_project.name;
+  }
+  const thread = runtime.thread;
+  if (thread.integration?.project) {
     return thread.integration.project;
   }
-  return thread?.project_name ?? state.current_project.name;
+  return thread.project_name ?? state.current_project.name;
 };

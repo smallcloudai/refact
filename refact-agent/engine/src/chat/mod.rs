@@ -1,8 +1,8 @@
-mod types;
+pub mod types;
 mod session;
 mod queue;
 mod generation;
-mod tools;
+pub mod tools;
 mod trajectories;
 mod content;
 mod openai_merge;

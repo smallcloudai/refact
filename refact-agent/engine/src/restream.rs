@@ -108,8 +108,14 @@ pub async fn scratchpad_interaction_not_stream_json(
         scratchpad_result = scratchpad.response_n_choices(choices, finish_reasons);
 
     } else if let Some(oai_choices) = model_says.clone().get("choices") {
-        let choice0 = oai_choices.as_array().unwrap().get(0).unwrap();
-        let finish_reasons = oai_choices.clone().as_array().unwrap().iter().map(
+        let choices_arr = oai_choices.as_array().ok_or_else(|| {
+            ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "choices is not an array".to_string())
+        })?;
+        if choices_arr.is_empty() {
+            return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "choices array is empty".to_string()));
+        }
+        let choice0 = &choices_arr[0];
+        let finish_reasons = choices_arr.iter().map(
             |x| FinishReason::from_json_val(x.get("finish_reason").unwrap_or(&json!(""))).unwrap_or_else(|err| {
                 tracing::error!("Couldn't parse finish_reason: {err}. Fallback to finish_reason=null");
                 FinishReason::None
@@ -119,7 +125,7 @@ pub async fn scratchpad_interaction_not_stream_json(
             if let Ok(det_msgs) = scratchpad.response_spontaneous() {
                 model_says["deterministic_messages"] = json!(det_msgs);
             }
-            let choices = oai_choices.clone().as_array().unwrap().iter().map(|x| {
+            let choices = choices_arr.iter().map(|x| {
                 match (x.get("message"), x.get("message").and_then(|msg| msg.get("content")), x.get("message").and_then(|msg| msg.get("content")).and_then(|content| content.as_str())) {
                     (Some(_), Some(_), Some(content)) => content.to_string(),
                     (msg, content, as_str) => {
@@ -133,7 +139,7 @@ pub async fn scratchpad_interaction_not_stream_json(
             }).collect::<Vec<_>>();
             scratchpad_result = scratchpad.response_message_n_choices(choices, finish_reasons);
         } else {
-            let choices = oai_choices.as_array().unwrap().iter().map(|x| {
+            let choices = choices_arr.iter().map(|x| {
                 x.get("text")
                     .and_then(|val| val.as_str())
                     .map(|s| s.to_string())

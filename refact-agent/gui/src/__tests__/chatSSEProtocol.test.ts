@@ -7,6 +7,7 @@
  * Run with: npm run test:no-watch -- chatSSEProtocol
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/require-await, @typescript-eslint/ban-ts-comment */
 // @ts-nocheck - Testing runtime behavior with discriminated unions
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { subscribeToChatEvents, applyDeltaOps, type EventEnvelope, type DeltaOp } from "../services/refact/chatSubscription";

@@ -146,7 +146,7 @@ export const ContextFiles: React.FC<{
   const [open, setOpen] = React.useState(false);
   const { queryPathThenOpenFile } = useEventsBusForIDE();
 
-  if (files.length === 0) return null;
+  if (!Array.isArray(files) || files.length === 0) return null;
 
   const fileNames = files.map((file) => filename(file.file_name));
 

@@ -71,6 +71,7 @@ import {
   ToolConfirmationPauseReason,
   ToolMessage,
   validateToolCall,
+  DiffChunk,
 } from "../../../services/refact";
 import { capsApi } from "../../../services/refact";
 
@@ -137,6 +138,20 @@ const getThreadMode = ({
   if (integration) return "CONFIGURE";
   if (maybeMode) return maybeMode === "CONFIGURE" ? "AGENT" : maybeMode;
   return chatModeToLspMode({ toolUse: tool_use });
+};
+
+const normalizeMessage = (msg: ChatMessages[number]): ChatMessages[number] => {
+  if (msg.role === "diff" && typeof msg.content === "string") {
+    try {
+      const parsed: unknown = JSON.parse(msg.content);
+      if (Array.isArray(parsed)) {
+        return { ...msg, content: parsed as DiffChunk[] } as ChatMessages[number];
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return msg;
 };
 
 const createInitialState = (): Chat => {
@@ -273,7 +288,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
     const id = action.payload.id;
     const rt = state.threads[id];
     if (rt && !rt.streaming && !rt.confirmation.pause) {
-      delete state.threads[id];
+      const { [id]: _, ...rest } = state.threads;
+      state.threads = rest;
       state.open_thread_ids = state.open_thread_ids.filter((tid) => tid !== id);
     }
   });
@@ -284,7 +300,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.open_thread_ids = state.open_thread_ids.filter((tid) => tid !== id);
     const rt = state.threads[id];
     if (rt && (force || (!rt.streaming && !rt.waiting_for_response && !rt.confirmation.pause))) {
-      delete state.threads[id];
+      const { [id]: _, ...rest } = state.threads;
+      state.threads = rest;
     }
     if (state.current_thread_id === id) {
       state.current_thread_id = state.open_thread_ids[0] ?? "";
@@ -381,7 +398,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
     const isCurrentThread = action.payload.id === state.current_thread_id;
     if (!existingRt.streaming && !existingRt.waiting_for_response && !existingRt.error && !isCurrentThread) {
-      const { title, isTitleGenerated, messages, ...otherFields } = action.payload.thread;
+      const { title: _title, isTitleGenerated: _isTitleGenerated, messages: _messages, ...otherFields } = action.payload.thread;
       existingRt.thread = {
         ...existingRt.thread,
         ...otherFields,
@@ -569,12 +586,12 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(applyChatEvent, (state, action) => {
     const { chat_id, ...event } = action.payload;
 
-    let rt = getRuntime(state, chat_id);
+    const rt = getRuntime(state, chat_id);
 
     switch (event.type) {
       case "snapshot": {
         const existingRuntime = rt;
-        const snapshotMessages = event.messages as ChatMessages;
+        const snapshotMessages = (event.messages as ChatMessages).map(normalizeMessage);
         const isBusy = event.runtime.state === "generating"
           || event.runtime.state === "executing_tools"
           || event.runtime.state === "waiting_ide";
@@ -591,7 +608,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
           tool_use: isToolUse(event.thread.tool_use) ? event.thread.tool_use : "agent",
           mode: isLspChatMode(event.thread.mode) ? event.thread.mode : "AGENT",
           boost_reasoning: event.thread.boost_reasoning,
-          context_tokens_cap: event.thread.context_tokens_cap == null ? undefined : event.thread.context_tokens_cap,
+          context_tokens_cap: event.thread.context_tokens_cap ?? undefined,
           include_project_info: event.thread.include_project_info,
           checkpoints_enabled: event.thread.checkpoints_enabled,
           isTitleGenerated: event.thread.is_title_generated,
@@ -679,7 +696,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
       case "message_added": {
         if (!rt) break;
-        const msg = event.message as ChatMessages[number];
+        const msg = normalizeMessage(event.message );
         const messageId = "message_id" in msg ? msg.message_id : null;
         if (messageId) {
           const existingIdx = rt.thread.messages.findIndex(
@@ -714,7 +731,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
           (m) => "message_id" in m && m.message_id === event.message_id
         );
         if (idx >= 0) {
-          rt.thread.messages[idx] = event.message as ChatMessages[number];
+          rt.thread.messages[idx] = normalizeMessage(event.message );
         }
         break;
       }
@@ -755,7 +772,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
           rt.thread.messages[msgIdx] = applyDeltaOps(
             msg as Parameters<typeof applyDeltaOps>[0],
             event.ops
-          ) as ChatMessages[number];
+          ) ;
         }
         break;
       }

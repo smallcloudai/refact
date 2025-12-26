@@ -9,6 +9,7 @@
  * Note: These tests are skipped in CI if no server is available.
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 import { describe, it, expect, vi } from "vitest";
 
 // Increase test timeout for integration tests
@@ -75,7 +76,7 @@ async function collectEvents(
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
+          buffer = lines.pop() ?? "";
 
           for (const line of lines) {
             if (line.startsWith("data: ")) {
@@ -250,7 +251,7 @@ describe.skipIf(!(await isServerAvailable()))(
         expect(eventTypes).toContain("stream_started");
 
         // May have stream_delta and stream_finished depending on timing
-        console.log("Event types received:", eventTypes);
+        // Debug: eventTypes contains the received event types
       });
     });
 
@@ -285,7 +286,7 @@ describe.skipIf(!(await isServerAvailable()))(
         const events = await eventsPromise;
         const eventTypes = events.map((e: unknown) => (e as { type: string }).type);
 
-        console.log("Abort test events:", eventTypes);
+        // Debug: eventTypes contains abort test events
 
         // Should have stream_started and either message_removed (abort) or stream_finished (too late)
         expect(eventTypes).toContain("stream_started");

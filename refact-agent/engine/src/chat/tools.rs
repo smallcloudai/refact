@@ -3,10 +3,19 @@ use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tracing::info;
 use uuid::Uuid;
 
+use indexmap::IndexMap;
+
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatContent, ChatMessage, ChatMode};
+use crate::call_validation::{ChatContent, ChatMessage, ChatMode, ChatToolCall, ContextFile, PostprocessSettings, SubchatParameters};
 use crate::global_context::GlobalContext;
 use crate::constants::CHAT_TOP_N;
+use crate::postprocessing::pp_tool_results::{postprocess_tool_results, ToolBudget};
+
+#[derive(Default)]
+pub struct ExecuteToolsOptions {
+    pub subchat_tool_parameters: Option<IndexMap<String, SubchatParameters>>,
+    pub postprocess_settings: Option<PostprocessSettings>,
+}
 
 use super::types::*;
 use super::generation::start_generation;
@@ -14,6 +23,18 @@ use super::trajectories::maybe_save_trajectory;
 
 fn is_server_executed_tool(tool_call_id: &str) -> bool {
     tool_call_id.starts_with("srvtoolu_")
+}
+
+#[allow(dead_code)] // Helper for creating error tool responses
+pub fn tool_answer_err(content: String, tool_call_id: String) -> ChatMessage {
+    ChatMessage {
+        role: "tool".to_string(),
+        content: ChatContent::SimpleText(content),
+        tool_calls: None,
+        tool_call_id,
+        tool_failed: Some(true),
+        ..Default::default()
+    }
 }
 
 #[cfg(test)]
@@ -111,7 +132,7 @@ pub async fn check_tool_calls_and_continue(
         session.set_runtime_state(SessionState::ExecutingTools, None);
     }
 
-    let tool_results = execute_tools(gcx.clone(), &tools_to_execute, &messages, &thread, chat_mode).await;
+    let (tool_results, _) = execute_tools(gcx.clone(), &tools_to_execute, &messages, &thread, chat_mode, ExecuteToolsOptions::default()).await;
 
     {
         let mut session = session_arc.lock().await;
@@ -214,16 +235,37 @@ pub async fn check_tools_confirmation(
 
 pub async fn execute_tools(
     gcx: Arc<ARwLock<GlobalContext>>,
-    tool_calls: &[crate::call_validation::ChatToolCall],
+    tool_calls: &[ChatToolCall],
     messages: &[ChatMessage],
     thread: &ThreadParams,
     chat_mode: ChatMode,
-) -> Vec<ChatMessage> {
-    let mut result_messages = Vec::new();
+    options: ExecuteToolsOptions,
+) -> (Vec<ChatMessage>, bool) {
+    if tool_calls.is_empty() {
+        return (vec![], false);
+    }
+
+    let n_ctx = thread.context_tokens_cap.unwrap_or(8192);
+    let budget = match ToolBudget::try_from_n_ctx(n_ctx) {
+        Ok(b) => b,
+        Err(e) => {
+            let error_messages: Vec<ChatMessage> = tool_calls.iter().map(|tc| {
+                ChatMessage {
+                    message_id: Uuid::new_v4().to_string(),
+                    role: "tool".to_string(),
+                    content: ChatContent::SimpleText(format!("Error: {}", e)),
+                    tool_call_id: tc.id.clone(),
+                    tool_failed: Some(true),
+                    ..Default::default()
+                }
+            }).collect();
+            return (error_messages, false);
+        }
+    };
 
     let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
         gcx.clone(),
-        thread.context_tokens_cap.unwrap_or(8192),
+        n_ctx,
         CHAT_TOP_N,
         false,
         messages.to_vec(),
@@ -231,6 +273,14 @@ pub async fn execute_tools(
         false,
         thread.model.clone(),
     ).await));
+
+    {
+        let mut ccx_locked = ccx.lock().await;
+        ccx_locked.tokens_for_rag = (n_ctx / 2).max(4096);
+        if let Some(params) = options.subchat_tool_parameters {
+            ccx_locked.subchat_tool_parameters = params;
+        }
+    }
 
     let mut all_tools = crate::tools::tools_list::get_available_tools_by_chat_mode(gcx.clone(), chat_mode).await
         .into_iter()
@@ -240,16 +290,17 @@ pub async fn execute_tools(
         })
         .collect::<indexmap::IndexMap<_, _>>();
 
+    let mut tool_messages: Vec<ChatMessage> = Vec::new();
+    let mut context_files: Vec<ContextFile> = Vec::new();
+
     for tool_call in tool_calls {
         let tool = match all_tools.get_mut(&tool_call.function.name) {
             Some(t) => t,
             None => {
-                result_messages.push(ChatMessage {
+                tool_messages.push(ChatMessage {
                     message_id: Uuid::new_v4().to_string(),
                     role: "tool".to_string(),
-                    content: ChatContent::SimpleText(
-                        format!("Error: tool '{}' not found", tool_call.function.name)
-                    ),
+                    content: ChatContent::SimpleText(format!("Error: tool '{}' not found", tool_call.function.name)),
                     tool_call_id: tool_call.id.clone(),
                     tool_failed: Some(true),
                     ..Default::default()
@@ -262,12 +313,10 @@ pub async fn execute_tools(
             match serde_json::from_str(&tool_call.function.arguments) {
                 Ok(a) => a,
                 Err(e) => {
-                    result_messages.push(ChatMessage {
+                    tool_messages.push(ChatMessage {
                         message_id: Uuid::new_v4().to_string(),
                         role: "tool".to_string(),
-                        content: ChatContent::SimpleText(
-                            format!("Error parsing arguments: {}", e)
-                        ),
+                        content: ChatContent::SimpleText(format!("Error parsing arguments: {}", e)),
                         tool_call_id: tool_call.id.clone(),
                         tool_failed: Some(true),
                         ..Default::default()
@@ -280,8 +329,6 @@ pub async fn execute_tools(
 
         match tool.tool_execute(ccx.clone(), &tool_call.id, &args).await {
             Ok((_corrections, results)) => {
-                let mut context_files: Vec<crate::call_validation::ContextFile> = Vec::new();
-
                 for result in results {
                     match result {
                         crate::call_validation::ContextEnum::ChatMessage(mut msg) => {
@@ -291,26 +338,17 @@ pub async fn execute_tools(
                             if msg.tool_failed.is_none() {
                                 msg.tool_failed = Some(false);
                             }
-                            result_messages.push(msg);
+                            tool_messages.push(msg);
                         }
                         crate::call_validation::ContextEnum::ContextFile(cf) => {
                             context_files.push(cf);
                         }
                     }
                 }
-
-                if !context_files.is_empty() {
-                    result_messages.push(ChatMessage {
-                        message_id: Uuid::new_v4().to_string(),
-                        role: "context_file".to_string(),
-                        content: ChatContent::ContextFiles(context_files),
-                        ..Default::default()
-                    });
-                }
             }
             Err(e) => {
                 info!("Tool execution failed: {}: {}", tool_call.function.name, e);
-                result_messages.push(ChatMessage {
+                tool_messages.push(ChatMessage {
                     message_id: Uuid::new_v4().to_string(),
                     role: "tool".to_string(),
                     content: ChatContent::SimpleText(format!("Error: {}", e)),
@@ -322,5 +360,19 @@ pub async fn execute_tools(
         }
     }
 
-    result_messages
+    let pp_settings = options.postprocess_settings.unwrap_or_default();
+
+    let results = postprocess_tool_results(
+        gcx,
+        None,
+        tool_messages,
+        context_files,
+        budget,
+        pp_settings,
+        messages,
+    ).await;
+
+    (results, true)
 }
+
+

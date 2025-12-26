@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Chat } from "./Chat";
@@ -37,7 +38,7 @@ const Template: React.FC<{
       wasSuggested: false,
     },
   };
-  const threadId = threadData.id ?? "test";
+  const threadId = threadData.id;
   const store = setUpStore({
     tour: {
       type: "finished",
@@ -118,7 +119,7 @@ export const Primary: Story = {};
 export const Configuration: Story = {
   args: {
     thread:
-      CHAT_CONFIG_THREAD.threads[CHAT_CONFIG_THREAD.current_thread_id]?.thread,
+      CHAT_CONFIG_THREAD.threads[CHAT_CONFIG_THREAD.current_thread_id]!.thread,
   },
 };
 

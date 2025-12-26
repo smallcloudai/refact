@@ -18,6 +18,13 @@ import {
   selectCurrentThreadId,
   ideToolRequired,
   saveTitle,
+  setBoostReasoning,
+  setIncludeProjectInfo,
+  setContextTokensCap,
+  setEnabledCheckpoints,
+  setToolUse,
+  setChatMode,
+  setChatModel,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -434,14 +441,14 @@ startListening({
 
     try {
       const { sendChatCommand } = await import("../services/refact/chatCommands");
-      await sendChatCommand(chatId, port, apiKey || undefined, {
+      await sendChatCommand(chatId, port, apiKey ?? undefined, {
         type: "ide_tool_result",
         tool_call_id: toolCallId,
         content: accepted === true ? "Tool executed successfully" : "Tool execution rejected",
         tool_failed: accepted !== true,
-      } as any);
-    } catch (error) {
-      console.error("[middleware] Failed to send ide_tool_result:", error);
+      });
+    } catch {
+      // Silently ignore - backend may not support this command
     }
   },
 });
@@ -490,12 +497,12 @@ startListening({
 
     try {
       const { sendChatCommand } = await import("../services/refact/chatCommands");
-      await sendChatCommand(chatId, port, apiKey || undefined, {
+      await sendChatCommand(chatId, port, apiKey ?? undefined, {
         type: "set_params",
         patch: { title, is_title_generated: isTitleGenerated },
-      } as any);
-    } catch (error) {
-      console.error("[middleware] Failed to save title:", error);
+      });
+    } catch {
+      // Silently ignore - backend may not support this command
     }
   },
 });
@@ -528,6 +535,161 @@ startListening({
         toolName: event.tool_name,
         args: event.args,
       }));
+    }
+  },
+});
+
+// Sync thread params to backend when changed via Redux actions
+startListening({
+  actionCreator: setBoostReasoning,
+  effect: async (action, listenerApi) => {
+    const state = listenerApi.getState();
+    const port = state.config.lspPort;
+    const apiKey = state.config.apiKey;
+    const chatId = action.payload.chatId;
+
+    if (!port || !chatId) return;
+
+    try {
+      const { sendChatCommand } = await import("../services/refact/chatCommands");
+      await sendChatCommand(chatId, port, apiKey ?? undefined, {
+        type: "set_params",
+        patch: { boost_reasoning: action.payload.value },
+      });
+    } catch {
+      // Silently ignore - backend may not support this command
+    }
+  },
+});
+
+startListening({
+  actionCreator: setIncludeProjectInfo,
+  effect: async (action, listenerApi) => {
+    const state = listenerApi.getState();
+    const port = state.config.lspPort;
+    const apiKey = state.config.apiKey;
+    const chatId = action.payload.chatId;
+
+    if (!port || !chatId) return;
+
+    try {
+      const { sendChatCommand } = await import("../services/refact/chatCommands");
+      await sendChatCommand(chatId, port, apiKey ?? undefined, {
+        type: "set_params",
+        patch: { include_project_info: action.payload.value },
+      });
+    } catch {
+      // Silently ignore - backend may not support this command
+    }
+  },
+});
+
+startListening({
+  actionCreator: setContextTokensCap,
+  effect: async (action, listenerApi) => {
+    const state = listenerApi.getState();
+    const port = state.config.lspPort;
+    const apiKey = state.config.apiKey;
+    const chatId = action.payload.chatId;
+
+    if (!port || !chatId) return;
+
+    try {
+      const { sendChatCommand } = await import("../services/refact/chatCommands");
+      await sendChatCommand(chatId, port, apiKey ?? undefined, {
+        type: "set_params",
+        patch: { context_tokens_cap: action.payload.value },
+      });
+    } catch {
+      // Silently ignore - backend may not support this command
+    }
+  },
+});
+
+startListening({
+  actionCreator: setEnabledCheckpoints,
+  effect: async (action, listenerApi) => {
+    const state = listenerApi.getState();
+    const port = state.config.lspPort;
+    const apiKey = state.config.apiKey;
+    const chatId = state.chat.current_thread_id;
+
+    if (!port || !chatId) return;
+
+    try {
+      const { sendChatCommand } = await import("../services/refact/chatCommands");
+      await sendChatCommand(chatId, port, apiKey ?? undefined, {
+        type: "set_params",
+        patch: { checkpoints_enabled: action.payload },
+      });
+    } catch {
+      // Silently ignore - backend may not support this command
+    }
+  },
+});
+
+startListening({
+  actionCreator: setToolUse,
+  effect: async (action, listenerApi) => {
+    const state = listenerApi.getState();
+    const port = state.config.lspPort;
+    const apiKey = state.config.apiKey;
+    const chatId = state.chat.current_thread_id;
+
+    if (!port || !chatId) return;
+
+    try {
+      const { sendChatCommand } = await import("../services/refact/chatCommands");
+      await sendChatCommand(chatId, port, apiKey ?? undefined, {
+        type: "set_params",
+        patch: { tool_use: action.payload },
+      });
+    } catch {
+      // Silently ignore - backend may not support this command
+    }
+  },
+});
+
+startListening({
+  actionCreator: setChatMode,
+  effect: async (action, listenerApi) => {
+    const state = listenerApi.getState();
+    const port = state.config.lspPort;
+    const apiKey = state.config.apiKey;
+    const chatId = state.chat.current_thread_id;
+
+    if (!port || !chatId) return;
+
+    try {
+      const { sendChatCommand } = await import("../services/refact/chatCommands");
+      await sendChatCommand(chatId, port, apiKey ?? undefined, {
+        type: "set_params",
+        patch: { mode: action.payload },
+      });
+    } catch {
+      // Silently ignore - backend may not support this command
+    }
+  },
+});
+
+startListening({
+  actionCreator: setChatModel,
+  effect: async (action, listenerApi) => {
+    const state = listenerApi.getState();
+    const port = state.config.lspPort;
+    const apiKey = state.config.apiKey;
+    const chatId = state.chat.current_thread_id;
+
+    if (!port || !chatId) return;
+
+    try {
+      const { sendChatCommand } = await import("../services/refact/chatCommands");
+      await sendChatCommand(chatId, port, apiKey ?? undefined, {
+        type: "set_params",
+        patch: { model: action.payload },
+      });
+    } catch {
+      // Silently ignore - backend may not support this command
     }
   },
 });

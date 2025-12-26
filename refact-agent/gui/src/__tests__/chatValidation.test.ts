@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 import { describe, test, expect } from "vitest";
 import { isLspChatMessage } from "../services/refact/chat";
 import { applyDeltaOps } from "../services/refact/chatSubscription";

@@ -3,7 +3,7 @@ import { useAppSelector } from "./useAppSelector";
 import { selectLspPort, selectApiKey } from "../features/Config/configSlice";
 import {
   sendChatCommand,
-  type ChatCommand,
+  type ChatCommandBase,
 } from "../services/refact/chatCommands";
 
 export function useSendChatCommand() {
@@ -13,14 +13,9 @@ export function useSendChatCommand() {
   return useCallback(
     async (
       chatId: string,
-      command: Omit<ChatCommand, "client_request_id">,
+      command: ChatCommandBase,
     ) => {
-      try {
-        await sendChatCommand(chatId, port, apiKey || undefined, command);
-      } catch (error) {
-        console.error("[useSendChatCommand] Failed to send command:", error);
-        throw error;
-      }
+      await sendChatCommand(chatId, port, apiKey ?? undefined, command);
     },
     [port, apiKey],
   );

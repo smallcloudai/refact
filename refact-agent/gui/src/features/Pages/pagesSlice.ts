@@ -100,14 +100,14 @@ export const pagesSlice = createSlice({
       });
       if (pageIndex === -1) {
         state.push(action.payload);
-        return state;
+        return;
       }
-      return state.slice(0, pageIndex + 1);
+      state.length = pageIndex + 1;
     },
 
     change: (state, action: PayloadAction<Page>) => {
-      const last = state.slice(0, -1);
-      return last.concat(action.payload);
+      state.pop();
+      state.push(action.payload);
     },
   },
   selectors: {

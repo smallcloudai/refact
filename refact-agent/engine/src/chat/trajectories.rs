@@ -155,6 +155,7 @@ pub async fn load_trajectory_for_chat(
         context_tokens_cap: t.get("context_tokens_cap").and_then(|v| v.as_u64()).map(|n| n as usize),
         include_project_info: t.get("include_project_info").and_then(|v| v.as_bool()).unwrap_or(true),
         checkpoints_enabled: t.get("checkpoints_enabled").and_then(|v| v.as_bool()).unwrap_or(true),
+        use_compression: t.get("use_compression").and_then(|v| v.as_bool()).unwrap_or(true),
         is_title_generated: t.get("isTitleGenerated").and_then(|v| v.as_bool()).unwrap_or(false),
     };
 
@@ -1162,6 +1163,7 @@ mod tests {
                 context_tokens_cap: Some(8000),
                 include_project_info: false,
                 checkpoints_enabled: true,
+                use_compression: true,
                 is_title_generated: true,
             },
             messages: vec![ChatMessage::new("user".to_string(), "Hello".to_string())],

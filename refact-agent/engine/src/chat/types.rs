@@ -41,9 +41,13 @@ pub struct ThreadParams {
     pub context_tokens_cap: Option<usize>,
     pub include_project_info: bool,
     pub checkpoints_enabled: bool,
+    #[serde(default = "default_use_compression")]
+    pub use_compression: bool,
     #[serde(default)]
     pub is_title_generated: bool,
 }
+
+fn default_use_compression() -> bool { true }
 
 impl Default for ThreadParams {
     fn default() -> Self {
@@ -57,6 +61,7 @@ impl Default for ThreadParams {
             context_tokens_cap: None,
             include_project_info: true,
             checkpoints_enabled: true,
+            use_compression: true,
             is_title_generated: false,
         }
     }

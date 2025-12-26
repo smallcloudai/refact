@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { expect, test, describe, beforeEach } from "vitest";
 import { chatReducer } from "./reducer";
 import type { Chat } from "./types";
@@ -46,14 +47,14 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       const result = chatReducer(initialState, applyChatEvent(event));
-      const runtime = result.threads[chatId];
+      const runtime = result.threads[chatId]!;
 
       expect(runtime).toBeDefined();
-      expect(runtime?.thread.title).toBe("Test Chat");
-      expect(runtime?.thread.model).toBe("gpt-4");
-      expect(runtime?.thread.messages).toHaveLength(2);
-      expect(runtime?.streaming).toBe(false);
-      expect(runtime?.waiting_for_response).toBe(false);
+      expect(runtime.thread.title).toBe("Test Chat");
+      expect(runtime.thread.model).toBe("gpt-4");
+      expect(runtime.thread.messages).toHaveLength(2);
+      expect(runtime.streaming).toBe(false);
+      expect(runtime.waiting_for_response).toBe(false);
     });
 
     test("should handle snapshot with generating state", () => {
@@ -84,10 +85,10 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       const result = chatReducer(initialState, applyChatEvent(event));
-      const runtime = result.threads[chatId];
+      const runtime = result.threads[chatId]!;
 
-      expect(runtime?.streaming).toBe(true);
-      expect(runtime?.waiting_for_response).toBe(true);
+      expect(runtime.streaming).toBe(true);
+      expect(runtime.waiting_for_response).toBe(true);
     });
 
     test("should handle snapshot with paused state", () => {
@@ -118,9 +119,9 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       const result = chatReducer(initialState, applyChatEvent(event));
-      const runtime = result.threads[chatId];
+      const runtime = result.threads[chatId]!;
 
-      expect(runtime?.confirmation.pause).toBe(true);
+      expect(runtime.confirmation.pause).toBe(true);
     });
 
     test("should handle snapshot with error state", () => {
@@ -151,11 +152,11 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       const result = chatReducer(initialState, applyChatEvent(event));
-      const runtime = result.threads[chatId];
+      const runtime = result.threads[chatId]!;
 
-      expect(runtime?.error).toBe("Something went wrong");
+      expect(runtime.error).toBe("Something went wrong");
       // Allow sending even on error for recovery
-      expect(runtime?.prevent_send).toBe(false);
+      expect(runtime.prevent_send).toBe(false);
     });
   });
 
@@ -214,10 +215,10 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(deltaEvent));
-      const runtime = state.threads[chatId];
-      const lastMessage = runtime?.thread.messages[runtime.thread.messages.length - 1];
+      const runtime = state.threads[chatId]!;
+      const lastMessage = runtime.thread.messages[runtime.thread.messages.length - 1];
 
-      expect(lastMessage?.content).toBe("Hi there!");
+      expect(lastMessage.content).toBe("Hi there!");
     });
 
     test("should handle reasoning content delta", () => {
@@ -272,8 +273,8 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(deltaEvent));
-      const runtime = state.threads[chatId];
-      const lastMessage = runtime?.thread.messages[runtime.thread.messages.length - 1];
+      const runtime = state.threads[chatId]!;
+      const lastMessage = runtime.thread.messages[runtime.thread.messages.length - 1];
 
       expect(lastMessage).toHaveProperty("reasoning_content", "Let me think about this...");
     });
@@ -320,10 +321,10 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(runtimeEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.streaming).toBe(true);
-      expect(runtime?.waiting_for_response).toBe(true);
+      expect(runtime.streaming).toBe(true);
+      expect(runtime.waiting_for_response).toBe(true);
     });
 
     test("should update streaming state when generation completes", () => {
@@ -366,10 +367,10 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(runtimeEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.streaming).toBe(false);
-      expect(runtime?.waiting_for_response).toBe(false);
+      expect(runtime.streaming).toBe(false);
+      expect(runtime.waiting_for_response).toBe(false);
     });
   });
 
@@ -412,10 +413,10 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(addEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.thread.messages).toHaveLength(2);
-      expect(runtime?.thread.messages[1].content).toBe("Hi!");
+      expect(runtime.thread.messages).toHaveLength(2);
+      expect(runtime.thread.messages[1].content).toBe("Hi!");
     });
 
     test("should replace existing message with same message_id (deduplication)", () => {
@@ -480,12 +481,12 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(addEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
       // Should still have only 2 messages (user + assistant), not 3
-      expect(runtime?.thread.messages).toHaveLength(2);
+      expect(runtime.thread.messages).toHaveLength(2);
       // Content should be the final version, not streaming version
-      expect(runtime?.thread.messages[1].content).toBe("Final complete content");
+      expect(runtime.thread.messages[1].content).toBe("Final complete content");
     });
   });
 
@@ -535,11 +536,11 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(pauseEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.confirmation.pause).toBe(true);
-      expect(runtime?.confirmation.pause_reasons).toHaveLength(1);
-      expect(runtime?.confirmation.pause_reasons[0].tool_call_id).toBe("call_123");
+      expect(runtime.confirmation.pause).toBe(true);
+      expect(runtime.confirmation.pause_reasons).toHaveLength(1);
+      expect(runtime.confirmation.pause_reasons[0].tool_call_id).toBe("call_123");
       // Note: streaming state is controlled by runtime_updated, not pause_required
     });
   });
@@ -585,12 +586,12 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(errorEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.error).toBe("API rate limit exceeded");
+      expect(runtime.error).toBe("API rate limit exceeded");
       // Allow sending even on error for recovery
-      expect(runtime?.prevent_send).toBe(false);
-      expect(runtime?.streaming).toBe(false);
+      expect(runtime.prevent_send).toBe(false);
+      expect(runtime.streaming).toBe(false);
     });
   });
 
@@ -633,9 +634,9 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(titleEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.thread.title).toBe("Help with React hooks");
+      expect(runtime.thread.title).toBe("Help with React hooks");
     });
   });
 
@@ -680,10 +681,10 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(updateEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.thread.messages).toHaveLength(1);
-      expect(runtime?.thread.messages[0].content).toBe("Updated content");
+      expect(runtime.thread.messages).toHaveLength(1);
+      expect(runtime.thread.messages[0].content).toBe("Updated content");
     });
 
     test("should not affect other messages when updating", () => {
@@ -728,12 +729,12 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(updateEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.thread.messages).toHaveLength(3);
-      expect(runtime?.thread.messages[0].content).toBe("First");
-      expect(runtime?.thread.messages[1].content).toBe("Updated response");
-      expect(runtime?.thread.messages[2].content).toBe("Second");
+      expect(runtime.thread.messages).toHaveLength(3);
+      expect(runtime.thread.messages[0].content).toBe("First");
+      expect(runtime.thread.messages[1].content).toBe("Updated response");
+      expect(runtime.thread.messages[2].content).toBe("Second");
     });
   });
 
@@ -778,10 +779,10 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(removeEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.thread.messages).toHaveLength(1);
-      expect(runtime?.thread.messages[0].content).toBe("Hello");
+      expect(runtime.thread.messages).toHaveLength(1);
+      expect(runtime.thread.messages[0].content).toBe("Hello");
     });
 
     test("should handle removing non-existent message gracefully", () => {
@@ -823,9 +824,9 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(removeEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.thread.messages).toHaveLength(1);
+      expect(runtime.thread.messages).toHaveLength(1);
     });
   });
 
@@ -872,11 +873,11 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(truncateEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.thread.messages).toHaveLength(2);
-      expect(runtime?.thread.messages[0].content).toBe("First");
-      expect(runtime?.thread.messages[1].content).toBe("Response 1");
+      expect(runtime.thread.messages).toHaveLength(2);
+      expect(runtime.thread.messages[0].content).toBe("First");
+      expect(runtime.thread.messages[1].content).toBe("Response 1");
     });
 
     test("should handle truncate from index 0", () => {
@@ -919,9 +920,9 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(truncateEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.thread.messages).toHaveLength(0);
+      expect(runtime.thread.messages).toHaveLength(0);
     });
   });
 
@@ -965,11 +966,11 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       };
 
       state = chatReducer(state, applyChatEvent(updateEvent));
-      const runtime = state.threads[chatId];
+      const runtime = state.threads[chatId]!;
 
-      expect(runtime?.thread.model).toBe("gpt-4");
-      expect(runtime?.thread.mode).toBe("AGENT");
-      expect(runtime?.thread.boost_reasoning).toBe(true);
+      expect(runtime.thread.model).toBe("gpt-4");
+      expect(runtime.thread.mode).toBe("AGENT");
+      expect(runtime.thread.boost_reasoning).toBe(true);
     });
   });
 
@@ -1035,10 +1036,10 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
         state = chatReducer(state, applyChatEvent(event));
       }
 
-      const runtime = state.threads[chatId];
-      expect(runtime?.streaming).toBe(false);
-      expect(runtime?.thread.messages).toHaveLength(2);
-      expect(runtime?.thread.messages[1].content).toBe("Hello!");
+      const runtime = state.threads[chatId]!;
+      expect(runtime.streaming).toBe(false);
+      expect(runtime.thread.messages).toHaveLength(2);
+      expect(runtime.thread.messages[1].content).toBe("Hello!");
     });
   });
 });

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { ChatContent } from ".";
@@ -45,7 +46,7 @@ const MockedStore: React.FC<{
       wasSuggested: false,
     },
   };
-  const threadId = threadData.id ?? "test";
+  const threadId = threadData.id;
   const store = setUpStore({
     chat: {
       current_thread_id: threadId,
@@ -160,7 +161,7 @@ export const MultiModal: Story = {
 export const IntegrationChat: Story = {
   args: {
     thread:
-      CHAT_CONFIG_THREAD.threads[CHAT_CONFIG_THREAD.current_thread_id]?.thread,
+      CHAT_CONFIG_THREAD.threads[CHAT_CONFIG_THREAD.current_thread_id]!.thread,
   },
   parameters: {
     msw: {

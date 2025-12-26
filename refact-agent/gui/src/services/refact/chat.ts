@@ -19,7 +19,7 @@ export function isLspChatMessage(json: unknown): json is LspChatMessage {
   if (!("role" in json)) return false;
   if (typeof json.role !== "string") return false;
   
-  const role = json.role as string;
+  const role = json.role;
   
   if (role === "tool") {
     if (!("tool_call_id" in json)) return false;

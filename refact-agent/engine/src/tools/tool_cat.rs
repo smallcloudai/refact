@@ -217,17 +217,19 @@ async fn load_image(path: &String, f_type: &String) -> Result<MultimodalElement,
                     .and_then(|p| p.parent().map(|p| p.to_path_buf()));
                 opt.fontdb_mut().load_system_fonts();
 
-                let svg_data = std::fs::read(&path).unwrap();
-                usvg::Tree::from_data(&svg_data, &opt).unwrap()
+                let svg_data = std::fs::read(&path).map_err(|e| format!("{} svg read failed: {}", path, e))?;
+                usvg::Tree::from_data(&svg_data, &opt).map_err(|e| format!("{} svg parse failed: {}", path, e))?
             };
 
             let mut pixmap_size = tree.size().to_int_size();
             let scale_factor = max_dimension as f32 / std::cmp::max(pixmap_size.width(), pixmap_size.height()) as f32;
             if scale_factor < 1.0 {
                 let (nwidth, nheight) = (pixmap_size.width() as f32 * scale_factor, pixmap_size.height() as f32 * scale_factor);
-                pixmap_size = tiny_skia::IntSize::from_wh(nwidth as u32, nheight as u32).unwrap();
+                pixmap_size = tiny_skia::IntSize::from_wh(nwidth as u32, nheight as u32)
+                    .ok_or_else(|| format!("{} invalid svg dimensions", path))?;
             }
-            let mut pixmap = tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height()).unwrap();
+            let mut pixmap = tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height())
+                .ok_or_else(|| format!("{} pixmap creation failed", path))?;
 
             resvg::render(&tree, tiny_skia::Transform::default(), &mut pixmap.as_mut());
             pixmap.encode_png().map_err(|_| format!("{} encode_png failed", path))
@@ -315,12 +317,16 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
             let mut syms_def_in_this_file = vec![];
             for looking_for in arg_symbols.iter() {
                 let colon_colon_looking_for = format!("::{}", looking_for.trim());
+                let mut found_in_this_file = false;
                 for x in doc_syms.iter() {
                     if x.path().ends_with(colon_colon_looking_for.as_str()) {
                         syms_def_in_this_file.push(x.clone());
+                        found_in_this_file = true;
                     }
                 }
-                symbols_found.insert(looking_for.clone());
+                if found_in_this_file {
+                    symbols_found.insert(looking_for.clone());
+                }
             }
 
             for sym in syms_def_in_this_file {

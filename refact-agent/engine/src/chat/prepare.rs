@@ -10,9 +10,10 @@ use crate::caps::{resolve_chat_model, ChatModelRecord};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
+use crate::call_validation::ChatMode;
 use crate::tools::tools_description::ToolDesc;
-use crate::tools::tools_execute::run_tools_locally;
-use crate::tools::tools_list::get_available_tools;
+use super::tools::execute_tools;
+use super::types::ThreadParams;
 
 use super::history_limit::fix_and_limit_messages_history;
 use super::prompts::prepend_the_right_system_prompt_and_maybe_more_initial_messages;
@@ -106,20 +107,33 @@ pub async fn prepare_chat_passthrough(
 
     // 5. Tool prerun - restricted to allowed tools only
     if options.supports_tools && options.allow_tool_prerun {
-        let all_tools = get_available_tools(gcx.clone()).await;
-        let mut tools_map = all_tools.into_iter()
-            .filter(|tool| tool_names.contains(&tool.tool_description().name))
-            .map(|tool| (tool.tool_description().name.clone(), tool))
-            .collect();
-        (messages, _) = run_tools_locally(
-            ccx.clone(),
-            &mut tools_map,
-            t.tokenizer.clone(),
-            sampling_parameters.max_new_tokens,
-            &messages,
-            &mut has_rag_results,
-            style,
-        ).await?;
+        if let Some(last_msg) = messages.last() {
+            if last_msg.role == "assistant" {
+                if let Some(ref tool_calls) = last_msg.tool_calls {
+                    let filtered_calls: Vec<_> = tool_calls.iter()
+                        .filter(|tc| tool_names.contains(&tc.function.name))
+                        .cloned()
+                        .collect();
+                    if !filtered_calls.is_empty() {
+                        let thread = ThreadParams {
+                            id: meta.chat_id.clone(),
+                            model: model_id.to_string(),
+                            context_tokens_cap: Some(effective_n_ctx),
+                            ..Default::default()
+                        };
+                        let (tool_results, _) = execute_tools(
+                            gcx.clone(),
+                            &filtered_calls,
+                            &messages,
+                            &thread,
+                            ChatMode::AGENT,
+                            super::tools::ExecuteToolsOptions::default(),
+                        ).await;
+                        messages.extend(tool_results);
+                    }
+                }
+            }
+        }
     }
 
     // 6. Build tools JSON - only insert key if there are tools

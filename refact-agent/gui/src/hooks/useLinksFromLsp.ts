@@ -220,8 +220,6 @@ export function useLinksFromLsp() {
       // TBD: It should be safe to remove this now?
       if (link.link_action === "regenerate-with-increased-context-size") {
         dispatch(setIncreaseMaxTokens(true));
-        // TODO: Implement regenerate command in engine
-        console.warn("[Links] Regenerate not yet implemented in new system");
         return;
       }
 
@@ -261,9 +259,8 @@ export function useLinksFromLsp() {
           }),
         );
         debugRefact(`[DEBUG]: link messages: `, link.link_payload.messages);
-        // Set mode then send last user message content
         const lastMsg = link.link_payload.messages[link.link_payload.messages.length - 1];
-        if (lastMsg && lastMsg.role === "user") {
+        if (lastMsg.role === "user") {
           const content = typeof lastMsg.content === "string"
             ? lastMsg.content
             : "";

@@ -395,10 +395,6 @@ const MultiModalToolContent: React.FC<{
   );
 
   const toolNames = toolCalls.reduce<string[]>((acc, toolCall) => {
-    if (toolCall === null) {
-      console.error("toolCall is null");
-      return acc;
-    }
     if (!toolCall.function.name) return acc;
     if (acc.includes(toolCall.function.name)) return acc;
     return [...acc, toolCall.function.name];

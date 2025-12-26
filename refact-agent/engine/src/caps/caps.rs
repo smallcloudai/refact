@@ -68,8 +68,10 @@ pub struct ChatModelRecord {
     #[serde(flatten)]
     pub base: BaseModelRecord,
 
+    #[allow(dead_code)] // Deserialized from API but not used internally
     #[serde(default = "default_chat_scratchpad", skip_serializing)]
     pub scratchpad: String,
+    #[allow(dead_code)] // Deserialized from API but not used internally
     #[serde(default, skip_serializing)]
     pub scratchpad_patch: serde_json::Value,
 
