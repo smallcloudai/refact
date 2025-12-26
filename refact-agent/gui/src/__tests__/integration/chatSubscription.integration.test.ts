@@ -108,45 +108,39 @@ describe.skipIf(!(await isServerAvailable()))(
       it("should accept abort command", async () => {
         const chatId = generateChatId("test-abort");
 
-        const response = await sendChatCommand(
-          chatId,
-          { type: "abort" },
-          LSP_PORT,
-        );
-
-        // Abort returns "aborted" status now (handled immediately)
-        expect(["accepted", "aborted"]).toContain(response.status);
+        await expect(
+          sendChatCommand(chatId, LSP_PORT, undefined, { type: "abort" as const })
+        ).resolves.toBeUndefined();
       });
 
       it("should accept set_params command", async () => {
         const chatId = generateChatId("test-params");
 
-        const response = await updateChatParams(
-          chatId,
-          { model: "refact/gpt-4.1-nano", mode: "NO_TOOLS" },
-          LSP_PORT,
-        );
-
-        expect(response.status).toBe("accepted");
+        await expect(
+          updateChatParams(
+            chatId,
+            { model: "refact/gpt-4.1-nano", mode: "NO_TOOLS" },
+            LSP_PORT,
+          )
+        ).resolves.toBeUndefined();
       });
 
       it("should accept user_message command", async () => {
         const chatId = generateChatId("test-message");
 
-        // Set params first
         await updateChatParams(
           chatId,
           { model: "refact/gpt-4.1-nano", mode: "NO_TOOLS" },
           LSP_PORT,
         );
 
-        const response = await sendUserMessage(
-          chatId,
-          "Hello, test!",
-          LSP_PORT,
-        );
-
-        expect(response.status).toBe("accepted");
+        await expect(
+          sendUserMessage(
+            chatId,
+            "Hello, test!",
+            LSP_PORT,
+          )
+        ).resolves.toBeUndefined();
       });
 
       it("should detect duplicate commands", async () => {

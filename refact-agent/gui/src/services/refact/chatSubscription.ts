@@ -1,5 +1,13 @@
 import type { ChatMessage } from "./types";
 
+export type SessionState = 
+  | "idle" 
+  | "generating" 
+  | "executing_tools" 
+  | "paused" 
+  | "waiting_ide" 
+  | "error";
+
 export type ThreadParams = {
   id: string;
   title: string;
@@ -13,20 +21,20 @@ export type ThreadParams = {
   is_title_generated: boolean;
 };
 
-export type RuntimeState = {
-  state: "idle" | "generating" | "executing_tools" | "paused" | "waiting_ide" | "error";
-  paused: boolean;
-  error: string | null;
-  queue_size: number;
-  pause_reasons?: PauseReason[];
-};
-
 export type PauseReason = {
   type: string;
   command: string;
   rule: string;
   tool_call_id: string;
   integr_config_path: string | null;
+};
+
+export type RuntimeState = {
+  state: SessionState;
+  paused: boolean;
+  error: string | null;
+  queue_size: number;
+  pause_reasons: PauseReason[];
 };
 
 export type DeltaOp =
@@ -38,114 +46,256 @@ export type DeltaOp =
   | { op: "set_usage"; usage: unknown }
   | { op: "merge_extra"; extra: Record<string, unknown> };
 
-export type ChatEvent =
+export type EventEnvelope = 
   | {
+      chat_id: string;
+      seq: string;
       type: "snapshot";
       thread: ThreadParams;
       runtime: RuntimeState;
       messages: ChatMessage[];
     }
-  | { type: "thread_updated" } & Partial<ThreadParams>
   | {
+      chat_id: string;
+      seq: string;
+      type: "thread_updated";
+      [key: string]: unknown;
+    }
+  | {
+      chat_id: string;
+      seq: string;
       type: "runtime_updated";
-      state: RuntimeState["state"];
+      state: SessionState;
       paused: boolean;
       error: string | null;
       queue_size: number;
     }
-  | { type: "title_updated"; title: string; is_generated: boolean }
-  | { type: "message_added"; message: ChatMessage; index: number }
-  | { type: "message_updated"; message_id: string; message: ChatMessage }
-  | { type: "message_removed"; message_id: string }
-  | { type: "messages_truncated"; from_index: number }
-  | { type: "stream_started"; message_id: string }
-  | { type: "stream_delta"; message_id: string; ops: DeltaOp[] }
   | {
+      chat_id: string;
+      seq: string;
+      type: "title_updated";
+      title: string;
+      is_generated: boolean;
+    }
+  | {
+      chat_id: string;
+      seq: string;
+      type: "message_added";
+      message: ChatMessage;
+      index: number;
+    }
+  | {
+      chat_id: string;
+      seq: string;
+      type: "message_updated";
+      message_id: string;
+      message: ChatMessage;
+    }
+  | {
+      chat_id: string;
+      seq: string;
+      type: "message_removed";
+      message_id: string;
+    }
+  | {
+      chat_id: string;
+      seq: string;
+      type: "messages_truncated";
+      from_index: number;
+    }
+  | {
+      chat_id: string;
+      seq: string;
+      type: "stream_started";
+      message_id: string;
+    }
+  | {
+      chat_id: string;
+      seq: string;
+      type: "stream_delta";
+      message_id: string;
+      ops: DeltaOp[];
+    }
+  | {
+      chat_id: string;
+      seq: string;
       type: "stream_finished";
       message_id: string;
       finish_reason: string | null;
     }
-  | { type: "pause_required"; reasons: PauseReason[] }
-  | { type: "pause_cleared" }
   | {
+      chat_id: string;
+      seq: string;
+      type: "pause_required";
+      reasons: PauseReason[];
+    }
+  | {
+      chat_id: string;
+      seq: string;
+      type: "pause_cleared";
+    }
+  | {
+      chat_id: string;
+      seq: string;
       type: "ide_tool_required";
       tool_call_id: string;
       tool_name: string;
       args: unknown;
     }
   | {
+      chat_id: string;
+      seq: string;
       type: "ack";
       client_request_id: string;
       accepted: boolean;
-      result?: unknown;
+      result: unknown;
     };
 
-export type ChatEventEnvelope = {
-  chat_id: string;
-  seq: string;
-} & ChatEvent;
+export type ChatEventEnvelope = EventEnvelope;
+
+export type ChatEventType = EventEnvelope["type"];
 
 export type ChatSubscriptionCallbacks = {
-  onEvent: (event: ChatEventEnvelope) => void;
+  onEvent: (event: EventEnvelope) => void;
   onError: (error: Error) => void;
   onConnected?: () => void;
   onDisconnected?: () => void;
 };
 
-function isValidChatEvent(data: unknown): data is ChatEventEnvelope {
-  if (typeof data !== "object" || data === null) return false;
-  const obj = data as Record<string, unknown>;
-  if (typeof obj.chat_id !== "string") return false;
-  if (typeof obj.seq !== "string") return false;
-  if (typeof obj.type !== "string") return false;
-  return true;
-}
+export type SubscriptionOptions = Record<string, never>;
 
 export function subscribeToChatEvents(
   chatId: string,
   port: number,
   callbacks: ChatSubscriptionCallbacks,
+  apiKey?: string,
 ): () => void {
   const url = `http://127.0.0.1:${port}/v1/chats/subscribe?chat_id=${encodeURIComponent(chatId)}`;
 
-  const eventSource = new EventSource(url);
+  const abortController = new AbortController();
+  let isConnected = false;
 
-  eventSource.onopen = () => {
-    callbacks.onConnected?.();
-  };
+  const headers: Record<string, string> = {};
+  if (apiKey) {
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  }
 
-  eventSource.onmessage = (event) => {
-    try {
-      const parsed = JSON.parse(event.data) as unknown;
-      if (!isValidChatEvent(parsed)) {
-        console.error("Invalid chat event structure:", parsed);
-        return;
+  fetch(url, {
+    method: "GET",
+    headers,
+    signal: abortController.signal,
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`SSE connection failed: ${response.status}`);
       }
-      callbacks.onEvent(parsed);
-    } catch (e) {
-      console.error("Failed to parse chat event:", e, event.data);
-    }
-  };
 
-  eventSource.onerror = () => {
-    callbacks.onError(new Error("SSE connection error"));
-    if (eventSource.readyState === EventSource.CLOSED) {
-      callbacks.onDisconnected?.();
-    }
-  };
+      if (!response.body) {
+        throw new Error("Response body is null");
+      }
+
+      isConnected = true;
+      callbacks.onConnected?.();
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+        const blocks = buffer.split("\n\n");
+        buffer = blocks.pop() || "";
+
+        for (const block of blocks) {
+          if (!block.trim()) continue;
+
+          const dataLines: string[] = [];
+          for (const rawLine of block.split("\n")) {
+            if (!rawLine.startsWith("data:")) continue;
+            dataLines.push(rawLine.slice(5).replace(/^\s*/, ""));
+          }
+
+          if (dataLines.length === 0) continue;
+
+          const dataStr = dataLines.join("\n");
+          if (dataStr === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(dataStr) as unknown;
+            if (!isValidChatEventBasic(parsed)) {
+              console.error("[SSE] Event structure invalid:", parsed);
+              continue;
+            }
+            normalizeSeq(parsed);
+            callbacks.onEvent(parsed as EventEnvelope);
+          } catch (e) {
+            console.error("[SSE] Failed to parse event:", e, dataStr);
+          }
+        }
+      }
+
+      if (isConnected) {
+        callbacks.onDisconnected?.();
+        isConnected = false;
+      }
+    })
+    .catch((err) => {
+      if (err.name !== "AbortError") {
+        callbacks.onError(err);
+        if (isConnected) {
+          callbacks.onDisconnected?.();
+          isConnected = false;
+        }
+      }
+    });
 
   return () => {
-    eventSource.close();
-    callbacks.onDisconnected?.();
+    abortController.abort();
+    if (isConnected) {
+      callbacks.onDisconnected?.();
+      isConnected = false;
+    }
   };
+}
+
+function isValidChatEventBasic(data: unknown): data is EventEnvelope {
+  if (typeof data !== "object" || data === null) return false;
+  const obj = data as Record<string, unknown>;
+  if (typeof obj.chat_id !== "string") return false;
+  if (typeof obj.seq !== "string" && typeof obj.seq !== "number") return false;
+  if (typeof obj.type !== "string") return false;
+  return true;
+}
+
+function normalizeSeq(obj: any): void {
+  const s = obj.seq;
+  if (typeof s === "string") {
+    const trimmed = s.trim();
+    if (!/^\d+$/.test(trimmed)) {
+      throw new Error("Invalid seq string");
+    }
+    obj.seq = trimmed;
+    return;
+  }
+  if (typeof s === "number") {
+    if (!Number.isFinite(s) || !Number.isInteger(s) || s < 0) {
+      throw new Error("Invalid seq number");
+    }
+    obj.seq = String(s);
+    return;
+  }
+  throw new Error("Missing/invalid seq");
 }
 
 export function applyDeltaOps(
   message: ChatMessage,
   ops: DeltaOp[],
 ): ChatMessage {
-  // Create a shallow copy - we'll mutate this
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updated: any = { ...message };
 
   for (const op of ops) {
@@ -183,7 +333,11 @@ export function applyDeltaOps(
         break;
 
       case "merge_extra":
-        Object.assign(updated, op.extra);
+        updated.extra = { ...(updated.extra || {}), ...op.extra };
+        break;
+
+      default:
+        console.warn("[applyDeltaOps] Unknown delta op:", (op as any).op);
         break;
     }
   }

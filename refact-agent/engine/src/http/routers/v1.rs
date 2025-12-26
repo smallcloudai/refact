@@ -26,7 +26,6 @@ use crate::http::routers::v1::status::handle_v1_rag_status;
 use crate::http::routers::v1::customization::handle_v1_customization;
 use crate::http::routers::v1::customization::handle_v1_config_path;
 use crate::http::routers::v1::gui_help_handlers::handle_v1_fullpath;
-use crate::http::routers::v1::subchat::{handle_v1_subchat, handle_v1_subchat_single};
 use crate::http::routers::v1::sync_files::handle_v1_sync_files_extract_tar;
 use crate::http::routers::v1::system_prompt::handle_v1_prepend_system_prompt_and_maybe_more_initial_messages;
 use crate::http::routers::v1::providers::{handle_v1_providers, handle_v1_provider_templates,
@@ -63,7 +62,6 @@ pub mod links;
 pub mod lsp_like_handlers;
 pub mod snippet_accepted;
 pub mod status;
-mod subchat;
 pub mod sync_files;
 pub mod system_prompt;
 pub mod telemetry_chat;
@@ -164,10 +162,6 @@ pub fn make_v1_router() -> Router {
 
         .route("/code-completion-prompt", post(handle_v1_code_completion_prompt))
         .route("/commit-message-from-diff", post(handle_v1_commit_message_from_diff))
-
-        // to remove
-        .route("/subchat", post(handle_v1_subchat))
-        .route("/subchat-single", post(handle_v1_subchat_single))
         ;
     let builder = builder
         .route("/vdb-search", post(handle_v1_vecdb_search))

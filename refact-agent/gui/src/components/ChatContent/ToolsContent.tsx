@@ -376,11 +376,11 @@ const MultiModalToolContent: React.FC<{
   const handleHide = useHideScroll(ref);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
+
   const ids = useMemo(() => {
-    return toolCalls.reduce<string[]>((acc, cur) => {
-      if (typeof cur === "string") return [...acc, cur];
-      return acc;
-    }, []);
+    return toolCalls
+      .map((tc) => tc.id)
+      .filter((id): id is string => typeof id === "string");
   }, [toolCalls]);
 
   const diffs = useAppSelector(selectManyDiffMessageByIds(ids));
@@ -389,17 +389,13 @@ const MultiModalToolContent: React.FC<{
     handleHide();
     setOpen(false);
   }, [handleHide]);
-  // const content = toolResults.map((toolResult) => toolResult.content);
 
   const hasImages = toolResults.some((toolResult) =>
     toolResult.content.some((content) => content.m_type.startsWith("image/")),
   );
 
-  // TOOD: duplicated
   const toolNames = toolCalls.reduce<string[]>((acc, toolCall) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (toolCall === null) {
-      // eslint-disable-next-line no-console
       console.error("toolCall is null");
       return acc;
     }
@@ -408,7 +404,6 @@ const MultiModalToolContent: React.FC<{
     return [...acc, toolCall.function.name];
   }, []);
 
-  // TODO: duplicated
   const toolUsageAmount = toolNames.map<ToolUsage>((toolName) => {
     return {
       functionName: toolName,
@@ -603,6 +598,8 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
     setOpen(false);
     scrollOnHide();
   }, [scrollOnHide]);
+
+  const name = toolCall.function.name ?? "";
 
   const maybeResult = useAppSelector((state) =>
     selectToolResultById(state, toolCall.id),

@@ -60,6 +60,7 @@ const Template: React.FC<{
             pause_reasons: [],
             status: { wasInteracted: false, confirmationStatus: true },
           },
+          queue_size: 0,
         },
       },
       max_new_tokens: 4096,

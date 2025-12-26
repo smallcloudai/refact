@@ -3,6 +3,7 @@ import { chatReducer } from "./reducer";
 import type { Chat } from "./types";
 import { newChatAction, applyChatEvent } from "./actions";
 import type { ChatEventEnvelope } from "../../../services/refact/chatSubscription";
+import type { ChatMessage } from "../../../services/refact/types";
 
 describe("Chat Thread Reducer - Edge Cases", () => {
   let initialState: Chat;
@@ -14,7 +15,7 @@ describe("Chat Thread Reducer - Edge Cases", () => {
     chatId = initialState.current_thread_id;
   });
 
-  const createSnapshot = (messages: unknown[] = []): ChatEventEnvelope => ({
+  const createSnapshot = (messages: ChatMessage[] = []): ChatEventEnvelope => ({
     chat_id: chatId,
     seq: "1",
     type: "snapshot",
@@ -35,6 +36,7 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       paused: false,
       error: null,
       queue_size: 0,
+          pause_reasons: [],
     },
     messages,
   });
@@ -81,8 +83,11 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       const runtime = state.threads[chatId];
       const assistantMsg = runtime?.thread.messages[1];
 
+      expect(assistantMsg?.role).toBe("assistant");
       expect(assistantMsg?.content).toBe("Here is my answer");
-      expect(assistantMsg?.reasoning_content).toBe("Let me think about this...");
+      if (assistantMsg?.role === "assistant") {
+        expect(assistantMsg.reasoning_content).toBe("Let me think about this...");
+      }
     });
 
     test("should keep thinking_blocks from streaming when message_added arrives", () => {
@@ -126,8 +131,11 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       const runtime = state.threads[chatId];
       const assistantMsg = runtime?.thread.messages[1];
 
-      expect(assistantMsg?.thinking_blocks).toBeDefined();
-      expect(assistantMsg?.thinking_blocks?.length).toBe(1);
+      expect(assistantMsg?.role).toBe("assistant");
+      if (assistantMsg?.role === "assistant") {
+        expect(assistantMsg.thinking_blocks).toBeDefined();
+        expect(assistantMsg.thinking_blocks?.length).toBe(1);
+      }
     });
 
     test("should keep usage from streaming when message_added arrives", () => {
@@ -171,13 +179,16 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       const runtime = state.threads[chatId];
       const assistantMsg = runtime?.thread.messages[1];
 
-      expect(assistantMsg?.usage).toBeDefined();
-      expect(assistantMsg?.usage?.prompt_tokens).toBe(100);
+      expect(assistantMsg?.role).toBe("assistant");
+      if (assistantMsg?.role === "assistant") {
+        expect(assistantMsg.usage).toBeDefined();
+        expect(assistantMsg.usage?.prompt_tokens).toBe(100);
+      }
     });
   });
 
-  describe("empty snapshot does not wipe messages", () => {
-    test("should preserve messages when snapshot has empty messages array", () => {
+  describe("empty snapshot handling", () => {
+    test("should accept empty snapshot as source of truth (backend may clear/truncate)", () => {
       let state = chatReducer(initialState, applyChatEvent(createSnapshot([
         { role: "user", content: "Hello" },
         { role: "assistant", content: "Hi there!" },
@@ -207,6 +218,7 @@ describe("Chat Thread Reducer - Edge Cases", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [],
       };
@@ -214,11 +226,11 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       state = chatReducer(state, applyChatEvent(emptySnapshot));
       const runtime2 = state.threads[chatId];
 
-      expect(runtime2?.thread.messages).toHaveLength(2);
-      expect(runtime2?.thread.messages[0].content).toBe("Hello");
+      // Empty snapshots are accepted as truth to prevent permanent desync
+      expect(runtime2?.thread.messages).toHaveLength(0);
     });
 
-    test("should preserve thread state when empty snapshot arrives (lag recovery)", () => {
+    test("should update thread params even with empty snapshot", () => {
       let state = chatReducer(initialState, applyChatEvent(createSnapshot([
         { role: "user", content: "Hello" },
       ])));
@@ -244,6 +256,7 @@ describe("Chat Thread Reducer - Edge Cases", () => {
           paused: false,
           error: null,
           queue_size: 1,
+        pause_reasons: [],
         },
         messages: [],
       };
@@ -251,8 +264,12 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       state = chatReducer(state, applyChatEvent(emptySnapshot));
       const runtime = state.threads[chatId];
 
-      expect(runtime?.thread.messages).toHaveLength(1);
-      expect(runtime?.thread.messages[0].content).toBe("Hello");
+      // Empty snapshots clear messages (backend is source of truth)
+      expect(runtime?.thread.messages).toHaveLength(0);
+      // But thread params are updated
+      expect(runtime?.thread.title).toBe("Updated Title");
+      expect(runtime?.thread.model).toBe("gpt-4o");
+      expect(runtime?.thread.mode).toBe("EXPLORE");
     });
   });
 
@@ -306,8 +323,8 @@ describe("Chat Thread Reducer - Edge Cases", () => {
       const runtime = state.threads[chatId];
       const msg = runtime?.thread.messages.find(m => m.message_id === "msg-extra") as Record<string, unknown> | undefined;
 
-      expect(msg?.metering_a).toBe(150);
-      expect(msg?.metering_b).toBe(200);
+      expect((msg?.extra as any)?.metering_a).toBe(150);
+      expect((msg?.extra as any)?.metering_b).toBe(200);
     });
   });
 

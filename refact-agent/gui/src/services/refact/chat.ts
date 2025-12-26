@@ -1,12 +1,10 @@
-import { ChatRole, ThinkingBlock, ToolCall, ToolResult, UserMessage } from "./types";
-
-export const DEFAULT_MAX_NEW_TOKENS = null;
+import { ChatRole, ThinkingBlock, ToolCall, ToolResult, UserMessage, isToolContent } from "./types";
 
 export type LspChatMessage =
   | {
       role: ChatRole;
       content: string | null;
-      finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
+      finish_reason?: "stop" | "length" | "abort" | "tool_calls" | "error" | null;
       thinking_blocks?: ThinkingBlock[];
       tool_calls?: ToolCall[];
       tool_call_id?: string;
@@ -20,9 +18,26 @@ export function isLspChatMessage(json: unknown): json is LspChatMessage {
   if (typeof json !== "object") return false;
   if (!("role" in json)) return false;
   if (typeof json.role !== "string") return false;
+  
+  const role = json.role as string;
+  
+  if (role === "tool") {
+    if (!("tool_call_id" in json)) return false;
+    if (!("content" in json)) return false;
+    return isToolContent(json.content);
+  }
+  
+  if (role === "diff") {
+    if (!("content" in json)) return false;
+    return Array.isArray(json.content);
+  }
+  
   if (!("content" in json)) return false;
-  if (json.content !== null && typeof json.content !== "string") return false;
-  return true;
+  if (json.content === null) return true;
+  if (typeof json.content === "string") return true;
+  if (Array.isArray(json.content)) return true;
+  
+  return false;
 }
 
 export function isLspUserMessage(
@@ -30,24 +45,6 @@ export function isLspUserMessage(
 ): message is UserMessage {
   return message.role === "user";
 }
-
-export type Choice = {
-  finish_reason: string;
-  index: number;
-  message: Message;
-};
-
-export type Message = {
-  content: string;
-  role: string;
-};
-
-export type DeterministicMessage = {
-  content: string;
-  role: string;
-  tool_call_id: string;
-  usage: unknown;
-};
 
 export type CompletionTokenDetails = {
   accepted_prediction_tokens: number | null;

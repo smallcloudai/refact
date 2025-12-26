@@ -10,13 +10,12 @@ import {
   ToolResult,
 } from "../../../services/refact/types";
 import { takeFromLast } from "../../../utils/takeFromLast";
-import { ChatThreadRuntime, QueuedUserMessage, ThreadConfirmation } from "./types";
+import { ChatThreadRuntime, QueuedUserMessage, ThreadConfirmation, ImageFile } from "./types";
 
-// Constant default values to avoid creating new references on each selector call
 const EMPTY_MESSAGES: ChatMessages = [];
 const EMPTY_QUEUED: QueuedUserMessage[] = [];
 const EMPTY_PAUSE_REASONS: string[] = [];
-const EMPTY_IMAGES: string[] = [];
+const EMPTY_IMAGES: ImageFile[] = [];
 const DEFAULT_NEW_CHAT_SUGGESTED = { wasSuggested: false } as const;
 const DEFAULT_CONFIRMATION: ThreadConfirmation = {
   pause: false,
@@ -142,9 +141,9 @@ export const toolMessagesSelector = createSelector(
 export const selectToolResultById = createSelector(
   [toolMessagesSelector, (_, id?: string) => id],
   (messages, id) => {
-    const msg = messages.find((message) => message.tool_call_id === id);
+    if (!id) return undefined;
+    const msg = [...messages].reverse().find((m) => m.tool_call_id === id);
     if (!msg) return undefined;
-    // Return in ToolResult format for compatibility with existing components
     return {
       tool_call_id: msg.tool_call_id,
       content: msg.content,
@@ -152,7 +151,6 @@ export const selectToolResultById = createSelector(
     } as ToolResult;
   },
 );
-
 export const selectManyToolResultsByIds = (ids: string[]) =>
   createSelector(toolMessagesSelector, (messages) =>
     messages

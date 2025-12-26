@@ -167,12 +167,12 @@ export type WebSearchCitation = {
 export interface AssistantMessage extends BaseMessage, CostInfo {
   role: "assistant";
   content: string | null;
-  reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
+  reasoning_content?: string | null;
   tool_calls?: ToolCall[] | null;
-  server_executed_tools?: ToolCall[] | null; // Tools executed by the provider (srvtoolu_*), for display only
+  server_executed_tools?: ToolCall[] | null;
   thinking_blocks?: ThinkingBlock[] | null;
-  citations?: WebSearchCitation[] | null; // Citations from server-executed tools like web_search
-  finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
+  citations?: WebSearchCitation[] | null;
+  finish_reason?: "stop" | "length" | "abort" | "tool_calls" | "error" | null;
   usage?: Usage | null;
 }
 
@@ -425,10 +425,8 @@ type Delta =
 
 export type ChatChoice = {
   delta: Delta;
-  finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
+  finish_reason?: "stop" | "length" | "abort" | "tool_calls" | "error" | null;
   index: number;
-  // TODO: what's this for?
-  // logprobs?: null;
 };
 
 export type ChatUserMessageResponse =

@@ -14,9 +14,10 @@ import {
   updateChatParams,
   abortGeneration,
   respondToToolConfirmation,
-  sendIdeToolResult,
+  respondToToolConfirmations,
+  updateMessage,
+  removeMessage,
   type ChatCommand,
-  type CommandResponse,
 } from "../services/refact/chatCommands";
 
 // Mock fetch for unit tests
@@ -36,14 +37,13 @@ describe("chatCommands", () => {
     it("should send POST request to correct URL", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: "accepted" }),
       });
 
       const chatId = "test-chat-123";
       const port = 8001;
-      const command: ChatCommand = { type: "abort" };
+      const command = { type: "abort" as const };
 
-      await sendChatCommand(chatId, command, port);
+      await sendChatCommand(chatId, port, undefined, command);
 
       expect(mockFetch).toHaveBeenCalledWith(
         `http://127.0.0.1:${port}/v1/chats/${chatId}/commands`,
@@ -57,12 +57,11 @@ describe("chatCommands", () => {
     it("should include client_request_id in request body", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: "accepted" }),
       });
 
-      const command: ChatCommand = { type: "abort" };
+      const command = { type: "abort" as const };
 
-      await sendChatCommand("test", command, 8001);
+      await sendChatCommand("test", 8001, undefined, command);
 
       const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(calledBody).toHaveProperty("client_request_id");
@@ -70,40 +69,34 @@ describe("chatCommands", () => {
       expect(calledBody.type).toBe("abort");
     });
 
-    it("should return accepted response", async () => {
-      const response: CommandResponse = { status: "accepted" };
+    it("should include authorization header when apiKey provided", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(response),
       });
 
-      const result = await sendChatCommand("test", { type: "abort" }, 8001);
+      await sendChatCommand("test", 8001, "test-key", { type: "abort" as const });
 
-      expect(result).toEqual(response);
-    });
-
-    it("should return duplicate response", async () => {
-      const response: CommandResponse = { status: "duplicate" };
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(response),
-      });
-
-      const result = await sendChatCommand("test", { type: "abort" }, 8001);
-
-      expect(result).toEqual(response);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "Authorization": "Bearer test-key",
+          }),
+        }),
+      );
     });
 
     it("should throw on HTTP error", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
-        text: () => Promise.resolve("Internal Server Error"),
+        statusText: "Internal Server Error",
+        text: () => Promise.resolve("Error details"),
       });
 
       await expect(
-        sendChatCommand("test", { type: "abort" }, 8001),
-      ).rejects.toThrow("Command failed: 500 Internal Server Error");
+        sendChatCommand("test", 8001, undefined, { type: "abort" as const }),
+      ).rejects.toThrow("Failed to send command");
     });
   });
 
@@ -111,7 +104,6 @@ describe("chatCommands", () => {
     it("should send user_message command with string content", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: "accepted" }),
       });
 
       await sendUserMessage("test-chat", "Hello world", 8001);
@@ -124,7 +116,6 @@ describe("chatCommands", () => {
     it("should send user_message command with multi-modal content", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: "accepted" }),
       });
 
       const content = [
@@ -136,20 +127,8 @@ describe("chatCommands", () => {
 
       const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(calledBody.type).toBe("user_message");
+      expect(Array.isArray(calledBody.content)).toBe(true);
       expect(calledBody.content).toEqual(content);
-    });
-
-    it("should include attachments if provided", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ status: "accepted" }),
-      });
-
-      const attachments = [{ file: "test.txt" }];
-      await sendUserMessage("test-chat", "Hello", 8001, attachments);
-
-      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(calledBody.attachments).toEqual(attachments);
     });
   });
 
@@ -157,7 +136,6 @@ describe("chatCommands", () => {
     it("should send set_params command", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: "accepted" }),
       });
 
       await updateChatParams(
@@ -174,7 +152,6 @@ describe("chatCommands", () => {
     it("should send partial params update", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: "accepted" }),
       });
 
       await updateChatParams("test-chat", { boost_reasoning: true }, 8001);
@@ -189,7 +166,6 @@ describe("chatCommands", () => {
     it("should send abort command", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: "accepted" }),
       });
 
       await abortGeneration("test-chat", 8001);
@@ -203,7 +179,6 @@ describe("chatCommands", () => {
     it("should send tool_decision command with accepted=true", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: "accepted" }),
       });
 
       await respondToToolConfirmation("test-chat", "call_123", true, 8001);
@@ -217,7 +192,6 @@ describe("chatCommands", () => {
     it("should send tool_decision command with accepted=false", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: "accepted" }),
       });
 
       await respondToToolConfirmation("test-chat", "call_456", false, 8001);
@@ -229,48 +203,104 @@ describe("chatCommands", () => {
     });
   });
 
-  describe("sendIdeToolResult", () => {
-    it("should send ide_tool_result command", async () => {
+  describe("respondToToolConfirmations", () => {
+    it("should send tool_decisions command with object array", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: "accepted" }),
       });
 
-      await sendIdeToolResult("test-chat", "call_123", "Tool output", 8001);
+      const decisions = [
+        { tool_call_id: "call_1", accepted: true },
+        { tool_call_id: "call_2", accepted: false },
+        { tool_call_id: "call_3", accepted: true },
+      ];
+
+      await respondToToolConfirmations("test-chat", decisions, 8001);
 
       const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(calledBody.type).toBe("ide_tool_result");
-      expect(calledBody.tool_call_id).toBe("call_123");
-      expect(calledBody.content).toBe("Tool output");
-      expect(calledBody.tool_failed).toBe(false);
+      expect(calledBody.type).toBe("tool_decisions");
+      expect(calledBody.decisions).toEqual(decisions);
+      expect(Array.isArray(calledBody.decisions)).toBe(true);
+      expect(calledBody.decisions[0]).toHaveProperty("tool_call_id");
+      expect(calledBody.decisions[0]).toHaveProperty("accepted");
+    });
+  });
+
+  describe("updateMessage", () => {
+    it("should send update_message command", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+      });
+
+      await updateMessage("test-chat", "msg_5", "Updated text", 8001);
+
+      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(calledBody.type).toBe("update_message");
+      expect(calledBody.message_id).toBe("msg_5");
+      expect(calledBody.content).toBe("Updated text");
     });
 
-    it("should send ide_tool_result with tool_failed=true", async () => {
+    it("should send update_message with regenerate flag", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: "accepted" }),
       });
 
-      await sendIdeToolResult(
-        "test-chat",
-        "call_123",
-        "Error occurred",
-        8001,
-        true,
-      );
+      await updateMessage("test-chat", "msg_5", "Updated text", 8001, undefined, true);
 
       const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(calledBody.tool_failed).toBe(true);
+      expect(calledBody.type).toBe("update_message");
+      expect(calledBody.regenerate).toBe(true);
+    });
+  });
+
+  describe("removeMessage", () => {
+    it("should send remove_message command", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+      });
+
+      await removeMessage("test-chat", "msg_5", 8001);
+
+      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(calledBody.type).toBe("remove_message");
+      expect(calledBody.message_id).toBe("msg_5");
+    });
+
+    it("should send remove_message with regenerate flag", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+      });
+
+      await removeMessage("test-chat", "msg_5", 8001, undefined, true);
+
+      const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(calledBody.type).toBe("remove_message");
+      expect(calledBody.regenerate).toBe(true);
     });
   });
 });
 
 describe("Command Types", () => {
-  it("should correctly type user_message command", () => {
+  it("should correctly type user_message command with string", () => {
     const command: ChatCommand = {
       type: "user_message",
       content: "Hello",
       attachments: [],
+      client_request_id: "test-id",
+    };
+
+    expect(command.type).toBe("user_message");
+  });
+
+  it("should correctly type user_message command with multimodal array", () => {
+    const command: ChatCommand = {
+      type: "user_message",
+      content: [
+        { type: "text", text: "Hello" },
+        { type: "image_url", image_url: { url: "data:..." } },
+      ],
+      attachments: [],
+      client_request_id: "test-id",
     };
 
     expect(command.type).toBe("user_message");
@@ -284,13 +314,17 @@ describe("Command Types", () => {
         mode: "AGENT",
         boost_reasoning: true,
       },
+      client_request_id: "test-id",
     };
 
     expect(command.type).toBe("set_params");
   });
 
   it("should correctly type abort command", () => {
-    const command: ChatCommand = { type: "abort" };
+    const command: ChatCommand = { 
+      type: "abort",
+      client_request_id: "test-id",
+    };
     expect(command.type).toBe("abort");
   });
 
@@ -299,6 +333,7 @@ describe("Command Types", () => {
       type: "tool_decision",
       tool_call_id: "call_123",
       accepted: true,
+      client_request_id: "test-id",
     };
 
     expect(command.type).toBe("tool_decision");
@@ -310,8 +345,45 @@ describe("Command Types", () => {
       tool_call_id: "call_123",
       content: "result",
       tool_failed: false,
+      client_request_id: "test-id",
     };
 
     expect(command.type).toBe("ide_tool_result");
+  });
+
+  it("should correctly type tool_decisions command", () => {
+    const command: ChatCommand = {
+      type: "tool_decisions",
+      decisions: [
+        { tool_call_id: "call_1", accepted: true },
+        { tool_call_id: "call_2", accepted: false },
+      ],
+      client_request_id: "test-id",
+    };
+
+    expect(command.type).toBe("tool_decisions");
+  });
+
+  it("should correctly type update_message command", () => {
+    const command: ChatCommand = {
+      type: "update_message",
+      message_id: "msg_5",
+      content: "Updated",
+      regenerate: true,
+      client_request_id: "test-id",
+    };
+
+    expect(command.type).toBe("update_message");
+  });
+
+  it("should correctly type remove_message command", () => {
+    const command: ChatCommand = {
+      type: "remove_message",
+      message_id: "msg_5",
+      regenerate: false,
+      client_request_id: "test-id",
+    };
+
+    expect(command.type).toBe("remove_message");
   });
 });

@@ -7,8 +7,10 @@
 
 import { useCallback } from "react";
 import { useAppSelector } from "./useAppSelector";
-import { selectLspPort } from "../features/Config/configSlice";
+import { useAppDispatch } from "./useAppDispatch";
+import { selectLspPort, selectApiKey } from "../features/Config/configSlice";
 import { selectChatId, selectThreadImages } from "../features/Chat/Thread/selectors";
+import { resetThreadImages } from "../features/Chat/Thread";
 import {
   sendUserMessage,
   retryFromIndex as retryFromIndexApi,
@@ -16,12 +18,16 @@ import {
   abortGeneration,
   respondToToolConfirmation,
   respondToToolConfirmations,
+  updateMessage as updateMessageApi,
+  removeMessage as removeMessageApi,
   type MessageContent,
 } from "../services/refact/chatCommands";
 import type { UserMessage } from "../services/refact/types";
 
 export function useChatActions() {
+  const dispatch = useAppDispatch();
   const port = useAppSelector(selectLspPort);
+  const apiKey = useAppSelector(selectApiKey);
   const chatId = useAppSelector(selectChatId);
   const attachedImages = useAppSelector(selectThreadImages);
 
@@ -48,7 +54,11 @@ export function useChatActions() {
         return text;
       }
 
-      return [...imageContents, { type: "text" as const, text }];
+      if (text.trim().length === 0) {
+        return imageContents;
+      }
+
+      return [{ type: "text" as const, text }, ...imageContents];
     },
     [attachedImages],
   );
@@ -61,9 +71,10 @@ export function useChatActions() {
       if (!chatId || !port) return;
 
       const content = buildMessageContent(question);
-      await sendUserMessage(chatId, content, port);
+      await sendUserMessage(chatId, content, port, apiKey || undefined);
+      dispatch(resetThreadImages({ id: chatId }));
     },
-    [chatId, port, buildMessageContent],
+    [chatId, port, apiKey, buildMessageContent, dispatch],
   );
 
   /**
@@ -71,8 +82,8 @@ export function useChatActions() {
    */
   const abort = useCallback(async () => {
     if (!chatId || !port) return;
-    await abortGeneration(chatId, port);
-  }, [chatId, port]);
+    await abortGeneration(chatId, port, apiKey || undefined);
+  }, [chatId, port, apiKey]);
 
   /**
    * Update chat parameters (model, mode, etc.).
@@ -84,9 +95,9 @@ export function useChatActions() {
       boost_reasoning?: boolean;
     }) => {
       if (!chatId || !port) return;
-      await updateChatParams(chatId, params, port);
+      await updateChatParams(chatId, params, port, apiKey || undefined);
     },
-    [chatId, port],
+    [chatId, port, apiKey],
   );
 
   /**
@@ -95,9 +106,9 @@ export function useChatActions() {
   const respondToTool = useCallback(
     async (toolCallId: string, accepted: boolean) => {
       if (!chatId || !port) return;
-      await respondToToolConfirmation(chatId, toolCallId, accepted, port);
+      await respondToToolConfirmation(chatId, toolCallId, accepted, port, apiKey || undefined);
     },
-    [chatId, port],
+    [chatId, port, apiKey],
   );
 
   /**
@@ -106,9 +117,9 @@ export function useChatActions() {
   const respondToTools = useCallback(
     async (decisions: Array<{ tool_call_id: string; accepted: boolean }>) => {
       if (!chatId || !port || decisions.length === 0) return;
-      await respondToToolConfirmations(chatId, decisions, port);
+      await respondToToolConfirmations(chatId, decisions, port, apiKey || undefined);
     },
-    [chatId, port],
+    [chatId, port, apiKey],
   );
 
   /**
@@ -119,24 +130,58 @@ export function useChatActions() {
     async (index: number, newContent: UserMessage["content"]) => {
       if (!chatId || !port) return;
 
-      // Convert content to string if it's an array
-      let textContent: string;
+      let content: MessageContent;
       if (typeof newContent === "string") {
-        textContent = newContent;
+        content = newContent;
       } else if (Array.isArray(newContent)) {
-        textContent = newContent
-          .filter((c): c is { type: "text"; text: string } =>
-            typeof c === "object" && c !== null && "type" in c && c.type === "text"
-          )
-          .map((c) => c.text)
-          .join("\n");
+        type ContentItem = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
+        const mapped: ContentItem[] = newContent.flatMap((item): ContentItem[] => {
+          if (typeof item !== "object" || item === null) return [];
+          if ("type" in item && item.type === "text" && "text" in item) {
+            return [item as { type: "text"; text: string }];
+          }
+          if ("type" in item && item.type === "image_url" && "image_url" in item) {
+            return [item as { type: "image_url"; image_url: { url: string } }];
+          }
+          if ("m_type" in item && "m_content" in item) {
+            const m_type = (item as { m_type: unknown }).m_type;
+            const m_content = (item as { m_content: unknown }).m_content;
+            if (m_type === "text") {
+              return [{ type: "text" as const, text: String(m_content ?? "") }];
+            }
+            if (typeof m_type === "string" && m_type.startsWith("image/")) {
+              return [{
+                type: "image_url" as const,
+                image_url: { url: `data:${m_type};base64,${String(m_content ?? "")}` }
+              }];
+            }
+          }
+          return [];
+        });
+        content = mapped.length > 0 ? mapped : "";
       } else {
-        textContent = "";
+        content = "";
       }
 
-      await retryFromIndexApi(chatId, index, textContent, port);
+      await retryFromIndexApi(chatId, index, content, port, apiKey || undefined);
     },
-    [chatId, port],
+    [chatId, port, apiKey],
+  );
+
+  const updateMessage = useCallback(
+    async (messageId: string, newContent: MessageContent, regenerate?: boolean) => {
+      if (!chatId || !port) return;
+      await updateMessageApi(chatId, messageId, newContent, port, apiKey || undefined, regenerate);
+    },
+    [chatId, port, apiKey],
+  );
+
+  const removeMessage = useCallback(
+    async (messageId: string, regenerate?: boolean) => {
+      if (!chatId || !port) return;
+      await removeMessageApi(chatId, messageId, port, apiKey || undefined, regenerate);
+    },
+    [chatId, port, apiKey],
   );
 
   return {
@@ -146,6 +191,8 @@ export function useChatActions() {
     respondToTool,
     respondToTools,
     retryFromIndex,
+    updateMessage,
+    removeMessage,
   };
 }
 

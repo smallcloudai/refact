@@ -1,8 +1,7 @@
 /**
  * Chat Subscription Service Tests
  *
- * Tests for the SSE-based chat subscription system.
- * These tests require the refact-lsp server to be running on port 8001.
+ * Tests for the fetch-based SSE chat subscription system.
  *
  * Run with: npm run test:no-watch -- chatSubscription
  */
@@ -11,13 +10,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   subscribeToChatEvents,
   applyDeltaOps,
-  type ChatEventEnvelope,
   type DeltaOp,
-  type ChatEvent,
 } from "../services/refact/chatSubscription";
 import type { AssistantMessage } from "../services/refact/types";
 
-// Helper type for tests - we're testing assistant messages
 type TestMessage = AssistantMessage & {
   reasoning_content?: string;
   thinking_blocks?: unknown[];
@@ -25,39 +21,7 @@ type TestMessage = AssistantMessage & {
   usage?: unknown;
 };
 
-// Mock EventSource for unit tests
-class MockEventSource {
-  url: string;
-  onopen: (() => void) | null = null;
-  onmessage: ((event: MessageEvent) => void) | null = null;
-  onerror: (() => void) | null = null;
-  readyState = 0;
-
-  constructor(url: string) {
-    this.url = url;
-    // Simulate connection
-    setTimeout(() => {
-      this.readyState = 1;
-      this.onopen?.();
-    }, 10);
-  }
-
-  close() {
-    this.readyState = 2;
-  }
-
-  // Helper to simulate events
-  simulateMessage(data: unknown) {
-    this.onmessage?.({ data: JSON.stringify(data) } as MessageEvent);
-  }
-
-  simulateError() {
-    this.onerror?.();
-  }
-}
-
-// Store original EventSource
-const OriginalEventSource = global.EventSource;
+const mockFetch = vi.fn();
 
 describe("chatSubscription", () => {
   describe("applyDeltaOps", () => {
@@ -194,206 +158,99 @@ describe("chatSubscription", () => {
 
   describe("subscribeToChatEvents", () => {
     beforeEach(() => {
-      // Replace EventSource with mock
-      global.EventSource = MockEventSource as unknown as typeof EventSource;
+      global.fetch = mockFetch;
+      mockFetch.mockReset();
     });
 
     afterEach(() => {
-      // Restore original EventSource
-      global.EventSource = OriginalEventSource;
+      vi.restoreAllMocks();
     });
 
-    it("should create EventSource with correct URL", () => {
+    it("should make fetch request with correct URL and headers", () => {
       const chatId = "test-chat-123";
       const port = 8001;
+      const apiKey = "test-key";
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        body: {
+          getReader: () => ({
+            read: vi.fn().mockResolvedValue({ done: true }),
+          }),
+        },
+      });
 
       subscribeToChatEvents(chatId, port, {
         onEvent: vi.fn(),
         onError: vi.fn(),
-      });
+      }, apiKey);
 
-      // Check that EventSource was created with correct URL
-      // (In mock, we store the URL)
+      expect(mockFetch).toHaveBeenCalledWith(
+        `http://127.0.0.1:${port}/v1/chats/subscribe?chat_id=${chatId}`,
+        expect.objectContaining({
+          method: "GET",
+          headers: { "Authorization": "Bearer test-key" },
+        })
+      );
     });
 
-    it("should call onConnected when EventSource opens", async () => {
-      const onConnected = vi.fn();
-
-      subscribeToChatEvents("test", 8001, {
-        onEvent: vi.fn(),
-        onError: vi.fn(),
-        onConnected,
-      });
-
-      // Wait for mock connection
-      await new Promise((resolve) => setTimeout(resolve, 20));
-
-      expect(onConnected).toHaveBeenCalled();
-    });
-
-    it("should call onError when EventSource errors", async () => {
-      const onError = vi.fn();
-
-      let mockInstance: MockEventSource | undefined;
-      const OriginalMock = MockEventSource;
-      global.EventSource = class extends OriginalMock {
-        constructor(url: string) {
-          super(url);
-          mockInstance = this;
-        }
-      } as unknown as typeof EventSource;
-
-      subscribeToChatEvents("test", 8001, {
-        onEvent: vi.fn(),
-        onError,
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      mockInstance?.simulateError();
-
-      expect(onError).toHaveBeenCalled();
-    });
-
-    it("should parse and forward events", async () => {
+    it("should normalize CRLF line endings", async () => {
       const onEvent = vi.fn();
-
-      let mockInstance: MockEventSource | undefined;
-      const OriginalMock = MockEventSource;
-      global.EventSource = class extends OriginalMock {
-        constructor(url: string) {
-          super(url);
-          mockInstance = this;
-        }
-      } as unknown as typeof EventSource;
+      const encoder = new TextEncoder();
+      
+      const events = 'data: {"type":"snapshot","seq":"1","chat_id":"test"}\r\n\r\n';
+      
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        body: {
+          getReader: () => {
+            let called = false;
+            return {
+              read: async () => {
+                if (called) return { done: true, value: undefined };
+                called = true;
+                return { done: false, value: encoder.encode(events) };
+              },
+            };
+          },
+        },
+      });
 
       subscribeToChatEvents("test", 8001, {
         onEvent,
         onError: vi.fn(),
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise(resolve => setTimeout(resolve, 10));
 
-      const testEvent: ChatEventEnvelope = {
-        chat_id: "test",
-        seq: "1",
-        type: "snapshot",
-        thread: {
-          id: "test",
-          title: "Test",
-          model: "gpt-4",
-          mode: "AGENT",
-          tool_use: "agent",
-          boost_reasoning: false,
-          context_tokens_cap: null,
-          include_project_info: true,
-          checkpoints_enabled: true,
-          is_title_generated: false,
-        },
-        runtime: {
-          state: "idle",
-          paused: false,
-          error: null,
-          queue_size: 0,
-        },
-        messages: [],
-      };
-
-      mockInstance?.simulateMessage(testEvent);
-
-      expect(onEvent).toHaveBeenCalledWith(testEvent);
+      expect(onEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "snapshot" })
+      );
     });
 
-    it("should return unsubscribe function that closes EventSource", async () => {
-      let mockInstance: MockEventSource | undefined;
-      const OriginalMock = MockEventSource;
-      global.EventSource = class extends OriginalMock {
-        constructor(url: string) {
-          super(url);
-          mockInstance = this;
-        }
-      } as unknown as typeof EventSource;
+    it("should call onDisconnected on normal stream close", async () => {
+      const onDisconnected = vi.fn();
 
-      const unsubscribe = subscribeToChatEvents("test", 8001, {
-        onEvent: vi.fn(),
-        onError: vi.fn(),
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        body: {
+          getReader: () => ({
+            read: vi.fn().mockResolvedValue({ done: true }),
+          }),
+        },
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      subscribeToChatEvents("test", 8001, {
+        onEvent: vi.fn(),
+        onError: vi.fn(),
+        onDisconnected,
+      });
 
-      unsubscribe();
+      await new Promise(resolve => setTimeout(resolve, 10));
 
-      expect(mockInstance?.readyState).toBe(2); // CLOSED
+      expect(onDisconnected).toHaveBeenCalled();
     });
   });
 });
 
-describe("Event Type Parsing", () => {
-  it("should correctly type snapshot events", () => {
-    const event: ChatEvent = {
-      type: "snapshot",
-      thread: {
-        id: "123",
-        title: "Test",
-        model: "gpt-4",
-        mode: "AGENT",
-        tool_use: "agent",
-        boost_reasoning: false,
-        context_tokens_cap: null,
-        include_project_info: true,
-        checkpoints_enabled: true,
-        is_title_generated: false,
-      },
-      runtime: {
-        state: "idle",
-        paused: false,
-        error: null,
-        queue_size: 0,
-      },
-      messages: [],
-    };
 
-    expect(event.type).toBe("snapshot");
-    if (event.type === "snapshot") {
-      expect(event.thread.id).toBe("123");
-      expect(event.runtime.state).toBe("idle");
-    }
-  });
-
-  it("should correctly type stream_delta events", () => {
-    const event: ChatEvent = {
-      type: "stream_delta",
-      message_id: "msg-123",
-      ops: [
-        { op: "append_content", text: "Hello" },
-        { op: "append_reasoning", text: "thinking" },
-      ],
-    };
-
-    expect(event.type).toBe("stream_delta");
-    if (event.type === "stream_delta") {
-      expect(event.ops).toHaveLength(2);
-      expect(event.ops[0].op).toBe("append_content");
-    }
-  });
-
-  it("should correctly type pause_required events", () => {
-    const event: ChatEvent = {
-      type: "pause_required",
-      reasons: [
-        {
-          type: "confirmation",
-          command: "shell rm -rf",
-          rule: "dangerous command",
-          tool_call_id: "call_123",
-          integr_config_path: null,
-        },
-      ],
-    };
-
-    expect(event.type).toBe("pause_required");
-    if (event.type === "pause_required") {
-      expect(event.reasons).toHaveLength(1);
-      expect(event.reasons[0].type).toBe("confirmation");
-    }
-  });
-});

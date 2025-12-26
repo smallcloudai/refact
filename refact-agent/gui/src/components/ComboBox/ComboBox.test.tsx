@@ -245,7 +245,9 @@ describe("ComboBox", () => {
   test("type part of the command, then press enter", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@fi{Enter}");
+    await user.type(textarea, "@fi");
+    await pause(50);
+    await user.keyboard("{Enter}");
     await waitFor(() => {
       expect(app.getByRole("combobox").textContent).toEqual("@file ");
     });
@@ -323,7 +325,9 @@ describe("ComboBox", () => {
   test("select command, type space and then delete the command", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@fi{Enter}");
+    await user.type(textarea, "@fi");
+    await pause(50);
+    await user.keyboard("{Enter}");
     await waitFor(() => {
       expect(app.getByRole("combobox").textContent).toEqual("@file ");
     });

@@ -16,6 +16,8 @@ import {
   resetThreadImages,
   switchToThread,
   selectCurrentThreadId,
+  ideToolRequired,
+  saveTitle,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -419,25 +421,27 @@ startListening({
 
 startListening({
   actionCreator: ideToolCallResponse,
-  effect: (action, listenerApi) => {
+  effect: async (action, listenerApi) => {
     const state = listenerApi.getState();
     const chatId = action.payload.chatId;
-    const runtime = state.chat.threads[chatId];
+    const { toolCallId, accepted } = action.payload;
 
     listenerApi.dispatch(upsertToolCallIntoHistory(action.payload));
     listenerApi.dispatch(upsertToolCall(action.payload));
 
-    if (!runtime) return;
+    const port = state.config.lspPort;
+    const apiKey = state.config.apiKey;
 
-    const pauseReasons = runtime.confirmation.pause_reasons.filter(
-      (reason) => reason.tool_call_id !== action.payload.toolCallId,
-    );
-
-    if (pauseReasons.length === 0) {
-      listenerApi.dispatch(clearThreadPauseReasons({ id: chatId }));
-      listenerApi.dispatch(setThreadConfirmationStatus({ id: chatId, wasInteracted: true, confirmationStatus: true }));
-    } else {
-      listenerApi.dispatch(setThreadPauseReasons({ id: chatId, pauseReasons }));
+    try {
+      const { sendChatCommand } = await import("../services/refact/chatCommands");
+      await sendChatCommand(chatId, port, apiKey || undefined, {
+        type: "ide_tool_result",
+        tool_call_id: toolCallId,
+        content: accepted === true ? "Tool executed successfully" : "Tool execution rejected",
+        tool_failed: accepted !== true,
+      } as any);
+    } catch (error) {
+      console.error("[middleware] Failed to send ide_tool_result:", error);
     }
   },
 });
@@ -472,7 +476,30 @@ startListening({
   },
 });
 
-// JB file refresh on tool results via SSE events
+startListening({
+  actionCreator: saveTitle,
+  effect: async (action, listenerApi) => {
+    const state = listenerApi.getState();
+    const port = state.config.lspPort;
+    const apiKey = state.config.apiKey;
+    const chatId = action.payload.id;
+    const title = action.payload.title;
+    const isTitleGenerated = action.payload.isTitleGenerated;
+
+    if (!port || !chatId) return;
+
+    try {
+      const { sendChatCommand } = await import("../services/refact/chatCommands");
+      await sendChatCommand(chatId, port, apiKey || undefined, {
+        type: "set_params",
+        patch: { title, is_title_generated: isTitleGenerated },
+      } as any);
+    } catch (error) {
+      console.error("[middleware] Failed to save title:", error);
+    }
+  },
+});
+
 startListening({
   actionCreator: applyChatEvent,
   effect: (action, listenerApi) => {
@@ -481,12 +508,26 @@ startListening({
     if (!window.postIntellijMessage) return;
 
     const event = action.payload;
-    // Trigger file refresh when a tool message is added
     if (event.type === "message_added") {
       const msg = event.message;
       if (isToolMessage(msg) || isDiffMessage(msg)) {
         window.postIntellijMessage(ideForceReloadProjectTreeFiles());
       }
+    }
+  },
+});
+
+startListening({
+  actionCreator: applyChatEvent,
+  effect: (action, listenerApi) => {
+    const event = action.payload;
+    if (event.type === "ide_tool_required") {
+      listenerApi.dispatch(ideToolRequired({
+        chatId: event.chat_id,
+        toolCallId: event.tool_call_id,
+        toolName: event.tool_name,
+        args: event.args,
+      }));
     }
   },
 });

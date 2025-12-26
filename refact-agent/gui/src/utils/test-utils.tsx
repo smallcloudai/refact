@@ -43,6 +43,7 @@ const createTestThreadRuntime = (): ChatThreadRuntime => {
         confirmationStatus: true,
       },
     },
+    queue_size: 0,
   };
 };
 

@@ -76,6 +76,7 @@ export type ChatThreadRuntime = {
   send_immediately: boolean;
   attached_images: ImageFile[];
   confirmation: ThreadConfirmation;
+  queue_size: number;
 };
 
 export type Chat = {

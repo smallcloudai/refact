@@ -37,6 +37,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+          pause_reasons: [],
         },
         messages: [
           { role: "user", content: "Hello" },
@@ -77,6 +78,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [],
       };
@@ -110,6 +112,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: true,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [],
       };
@@ -142,6 +145,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: "Something went wrong",
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [],
       };
@@ -150,7 +154,8 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       const runtime = result.threads[chatId];
 
       expect(runtime?.error).toBe("Something went wrong");
-      expect(runtime?.prevent_send).toBe(true);
+      // Allow sending even on error for recovery
+      expect(runtime?.prevent_send).toBe(false);
     });
   });
 
@@ -178,6 +183,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [
           { role: "user", content: "Hello" },
@@ -236,6 +242,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [
           { role: "user", content: "Explain" },
@@ -295,6 +302,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [],
       };
@@ -340,6 +348,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [],
       };
@@ -387,6 +396,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [{ role: "user", content: "Hello" }],
       };
@@ -430,6 +440,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [{ role: "user", content: "Hello" }],
       };
@@ -501,6 +512,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [],
       };
@@ -555,6 +567,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [],
       };
@@ -575,7 +588,8 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
       const runtime = state.threads[chatId];
 
       expect(runtime?.error).toBe("API rate limit exceeded");
-      expect(runtime?.prevent_send).toBe(true);
+      // Allow sending even on error for recovery
+      expect(runtime?.prevent_send).toBe(false);
       expect(runtime?.streaming).toBe(false);
     });
   });
@@ -603,6 +617,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [],
       };
@@ -647,6 +662,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [
           { role: "user", content: "Original", message_id: "msg-user-1" },
@@ -692,6 +708,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [
           { role: "user", content: "First", message_id: "msg-1" },
@@ -743,6 +760,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [
           { role: "user", content: "Hello", message_id: "msg-1" },
@@ -788,6 +806,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [
           { role: "user", content: "Hello", message_id: "msg-1" },
@@ -833,6 +852,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [
           { role: "user", content: "First", message_id: "msg-1" },
@@ -881,6 +901,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [
           { role: "user", content: "Hello", message_id: "msg-1" },
@@ -927,6 +948,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [],
       };
@@ -991,6 +1013,7 @@ describe("Chat Thread Reducer - Event-based (Stateless Trajectory UI)", () => {
           paused: false,
           error: null,
           queue_size: 0,
+        pause_reasons: [],
         },
         messages: [{ role: "user", content: "Hi" }],
       };

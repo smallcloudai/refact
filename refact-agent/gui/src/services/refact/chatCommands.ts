@@ -1,14 +1,5 @@
-/**
- * Chat Commands Service
- *
- * REST API for sending commands to the engine.
- * Commands are queued and processed by the engine,
- * results come back via the SSE subscription.
- */
+import { v4 as uuidv4 } from "uuid";
 
-import type { ThreadParams } from "./chatSubscription";
-
-// Content can be simple text or multi-modal
 export type MessageContent =
   | string
   | Array<
@@ -16,40 +7,46 @@ export type MessageContent =
       | { type: "image_url"; image_url: { url: string } }
     >;
 
-// All command types
 export type ChatCommand =
   | {
       type: "user_message";
       content: MessageContent;
       attachments?: unknown[];
+      client_request_id: string;
     }
   | {
       type: "retry_from_index";
       index: number;
-      content: MessageContent;
+      content?: MessageContent;
       attachments?: unknown[];
+      client_request_id: string;
     }
   | {
       type: "set_params";
-      patch: Partial<ThreadParams>;
+      patch: Record<string, unknown>;
+      client_request_id: string;
     }
   | {
       type: "abort";
+      client_request_id: string;
     }
   | {
       type: "tool_decision";
       tool_call_id: string;
       accepted: boolean;
+      client_request_id: string;
     }
   | {
       type: "tool_decisions";
       decisions: Array<{ tool_call_id: string; accepted: boolean }>;
+      client_request_id: string;
     }
   | {
       type: "ide_tool_result";
       tool_call_id: string;
       content: string;
-      tool_failed?: boolean;
+      tool_failed: boolean;
+      client_request_id: string;
     }
   | {
       type: "update_message";
@@ -57,245 +54,150 @@ export type ChatCommand =
       content: MessageContent;
       attachments?: unknown[];
       regenerate?: boolean;
+      client_request_id: string;
     }
   | {
       type: "remove_message";
       message_id: string;
       regenerate?: boolean;
+      client_request_id: string;
     };
 
-// Command request with client-generated ID for deduplication
-export type CommandRequest = {
-  client_request_id: string;
-} & ChatCommand;
-
-// Response from command endpoint
-export type CommandResponse = {
-  status: "accepted" | "duplicate";
-};
-
-/**
- * Generate a unique client request ID.
- */
-function generateRequestId(): string {
-  return crypto.randomUUID();
-}
-
-/**
- * Send a command to the chat engine.
- *
- * @param chatId - Target chat ID
- * @param command - Command to send
- * @param port - LSP server port (default 8001)
- * @returns Command response
- */
 export async function sendChatCommand(
   chatId: string,
-  command: ChatCommand,
   port: number,
-): Promise<CommandResponse> {
+  apiKey: string | undefined,
+  command: Omit<ChatCommand, "client_request_id">,
+): Promise<void> {
+  const commandWithId: ChatCommand = {
+    ...command,
+    client_request_id: uuidv4(),
+  } as ChatCommand;
+
   const url = `http://127.0.0.1:${port}/v1/chats/${encodeURIComponent(chatId)}/commands`;
 
-  const request: CommandRequest = {
-    client_request_id: generateRequestId(),
-    ...command,
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
   };
+
+  if (apiKey) {
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  }
 
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(request),
+    headers,
+    body: JSON.stringify(commandWithId),
   });
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Command failed: ${response.status} ${text}`);
+    throw new Error(
+      `Failed to send command: ${response.status} ${response.statusText} - ${text}`,
+    );
   }
-
-  return response.json() as Promise<CommandResponse>;
 }
 
-// Convenience functions for common commands
-
-/**
- * Send a user message to the chat.
- */
-export function sendUserMessage(
+export async function sendUserMessage(
   chatId: string,
   content: MessageContent,
   port: number,
-  attachments?: unknown[],
-): Promise<CommandResponse> {
-  return sendChatCommand(
-    chatId,
-    {
-      type: "user_message",
-      content,
-      attachments,
-    },
-    port,
-  );
+  apiKey?: string,
+): Promise<void> {
+  await sendChatCommand(chatId, port, apiKey, {
+    type: "user_message",
+    content,
+  } as Omit<ChatCommand, "client_request_id">);
 }
 
-/**
- * Retry from a specific message index.
- * Truncates all messages from the given index and sends a new user message.
- */
-export function retryFromIndex(
+export async function retryFromIndex(
   chatId: string,
   index: number,
   content: MessageContent,
   port: number,
-  attachments?: unknown[],
-): Promise<CommandResponse> {
-  return sendChatCommand(
-    chatId,
-    {
-      type: "retry_from_index",
-      index,
-      content,
-      attachments,
-    },
-    port,
-  );
+  apiKey?: string,
+): Promise<void> {
+  await sendChatCommand(chatId, port, apiKey, {
+    type: "retry_from_index",
+    index,
+    content,
+  } as Omit<ChatCommand, "client_request_id">);
 }
 
-/**
- * Update chat parameters (model, mode, etc.).
- */
-export function updateChatParams(
+export async function updateChatParams(
   chatId: string,
-  patch: Partial<ThreadParams>,
+  params: Record<string, unknown>,
   port: number,
-): Promise<CommandResponse> {
-  return sendChatCommand(
-    chatId,
-    {
-      type: "set_params",
-      patch,
-    },
-    port,
-  );
+  apiKey?: string,
+): Promise<void> {
+  await sendChatCommand(chatId, port, apiKey, {
+    type: "set_params",
+    patch: params,
+  } as Omit<ChatCommand, "client_request_id">);
 }
 
-/**
- * Abort the current generation.
- */
-export function abortGeneration(
+export async function abortGeneration(
   chatId: string,
   port: number,
-): Promise<CommandResponse> {
-  return sendChatCommand(
-    chatId,
-    {
-      type: "abort",
-    },
-    port,
-  );
+  apiKey?: string,
+): Promise<void> {
+  await sendChatCommand(chatId, port, apiKey, {
+    type: "abort",
+  } as Omit<ChatCommand, "client_request_id">);
 }
 
-/**
- * Accept or reject a tool call that needs confirmation.
- */
-export function respondToToolConfirmation(
+export async function respondToToolConfirmation(
   chatId: string,
   toolCallId: string,
   accepted: boolean,
   port: number,
-): Promise<CommandResponse> {
-  return sendChatCommand(
-    chatId,
-    {
-      type: "tool_decision",
-      tool_call_id: toolCallId,
-      accepted,
-    },
-    port,
-  );
+  apiKey?: string,
+): Promise<void> {
+  await sendChatCommand(chatId, port, apiKey, {
+    type: "tool_decision",
+    tool_call_id: toolCallId,
+    accepted,
+  } as Omit<ChatCommand, "client_request_id">);
 }
 
-/**
- * Accept or reject multiple tool calls at once (batch).
- */
-export function respondToToolConfirmations(
+export async function respondToToolConfirmations(
   chatId: string,
   decisions: Array<{ tool_call_id: string; accepted: boolean }>,
   port: number,
-): Promise<CommandResponse> {
-  return sendChatCommand(
-    chatId,
-    {
-      type: "tool_decisions",
-      decisions,
-    },
-    port,
-  );
+  apiKey?: string,
+): Promise<void> {
+  await sendChatCommand(chatId, port, apiKey, {
+    type: "tool_decisions",
+    decisions,
+  } as Omit<ChatCommand, "client_request_id">);
 }
 
-/**
- * Send IDE tool result back to the engine.
- */
-export function sendIdeToolResult(
-  chatId: string,
-  toolCallId: string,
-  content: string,
-  port: number,
-  toolFailed = false,
-): Promise<CommandResponse> {
-  return sendChatCommand(
-    chatId,
-    {
-      type: "ide_tool_result",
-      tool_call_id: toolCallId,
-      content,
-      tool_failed: toolFailed,
-    },
-    port,
-  );
-}
-
-/**
- * Update an existing message content.
- */
-export function updateMessage(
+export async function updateMessage(
   chatId: string,
   messageId: string,
   content: MessageContent,
   port: number,
-  regenerate = false,
-  attachments?: unknown[],
-): Promise<CommandResponse> {
-  return sendChatCommand(
-    chatId,
-    {
-      type: "update_message",
-      message_id: messageId,
-      content,
-      attachments,
-      regenerate,
-    },
-    port,
-  );
+  apiKey?: string,
+  regenerate?: boolean,
+): Promise<void> {
+  await sendChatCommand(chatId, port, apiKey, {
+    type: "update_message",
+    message_id: messageId,
+    content,
+    regenerate,
+  } as Omit<ChatCommand, "client_request_id">);
 }
 
-/**
- * Remove a message from the thread.
- */
-export function removeMessage(
+export async function removeMessage(
   chatId: string,
   messageId: string,
   port: number,
-  regenerate = false,
-): Promise<CommandResponse> {
-  return sendChatCommand(
-    chatId,
-    {
-      type: "remove_message",
-      message_id: messageId,
-      regenerate,
-    },
-    port,
-  );
+  apiKey?: string,
+  regenerate?: boolean,
+): Promise<void> {
+  await sendChatCommand(chatId, port, apiKey, {
+    type: "remove_message",
+    message_id: messageId,
+    regenerate,
+  } as Omit<ChatCommand, "client_request_id">);
 }

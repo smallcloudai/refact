@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
-import { selectLspPort } from "../features/Config/configSlice";
+import { selectLspPort, selectApiKey } from "../features/Config/configSlice";
 import {
   subscribeToChatEvents,
   type ChatEventEnvelope,
@@ -50,6 +50,7 @@ export function useChatSubscription(
 
   const dispatch = useAppDispatch();
   const port = useAppSelector(selectLspPort);
+  const apiKey = useAppSelector(selectApiKey);
 
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [error, setError] = useState<Error | null>(null);
@@ -62,6 +63,7 @@ export function useChatSubscription(
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const connectingRef = useRef(false);
 
   const cleanup = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -72,67 +74,85 @@ export function useChatSubscription(
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
+    connectingRef.current = false;
   }, []);
+
+  const scheduleReconnect = useCallback((delayMs: number) => {
+    if (!autoReconnect || !enabled || !chatId || !port) return;
+
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      connect();
+    }, delayMs);
+  }, [autoReconnect, enabled, chatId, port]);
 
   const connect = useCallback(() => {
     if (!chatId || !port || !enabled) return;
+    if (connectingRef.current) return;
 
     cleanup();
+    connectingRef.current = true;
     lastSeqRef.current = 0n;
     setStatus("connecting");
     setError(null);
 
     unsubscribeRef.current = subscribeToChatEvents(chatId, port, {
       onEvent: (envelope) => {
-        const seq = BigInt(envelope.seq);
-        if (envelope.type === "snapshot") {
-          lastSeqRef.current = seq;
-        } else {
-          if (seq <= lastSeqRef.current) {
-            return;
+        try {
+          const seq = BigInt(envelope.seq);
+          if (envelope.type === "snapshot") {
+            lastSeqRef.current = seq;
+          } else {
+            if (seq <= lastSeqRef.current) {
+              return;
+            }
+            if (seq > lastSeqRef.current + 1n) {
+              console.warn("[useChatSubscription] Sequence gap detected, reconnecting");
+              cleanup();
+              setStatus("disconnected");
+              scheduleReconnect(0);
+              return;
+            }
+            lastSeqRef.current = seq;
           }
-          if (seq > lastSeqRef.current + 1n) {
-            cleanup();
-            setTimeout(connect, 0);
-            return;
-          }
-          lastSeqRef.current = seq;
+          dispatch(applyChatEvent(envelope));
+          callbacksRef.current.onEvent?.(envelope);
+        } catch (err) {
+          console.error("[useChatSubscription] Error processing event:", err, envelope);
         }
-        dispatch(applyChatEvent(envelope));
-        callbacksRef.current.onEvent?.(envelope);
       },
       onConnected: () => {
+        connectingRef.current = false;
         setStatus("connected");
         setError(null);
         callbacksRef.current.onConnected?.();
       },
       onDisconnected: () => {
+        connectingRef.current = false;
         setStatus("disconnected");
         callbacksRef.current.onDisconnected?.();
       },
       onError: (err) => {
+        connectingRef.current = false;
         setStatus("disconnected");
         setError(err);
         callbacksRef.current.onError?.(err);
-
-        if (autoReconnect) {
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-          }
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, reconnectDelay);
-        }
+        cleanup();
+        scheduleReconnect(reconnectDelay);
       },
-    });
+    }, apiKey || undefined);
   }, [
     chatId,
     port,
+    apiKey,
     enabled,
-    autoReconnect,
-    reconnectDelay,
     cleanup,
     dispatch,
+    scheduleReconnect,
+    reconnectDelay,
   ]);
 
   const disconnect = useCallback(() => {

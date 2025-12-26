@@ -59,13 +59,19 @@ pub async fn run_at_commands_locally(
     let messages_after_user_msg = original_messages.split_off(user_msg_starts);
     let mut new_messages = original_messages;
     for (idx, mut msg) in messages_after_user_msg.into_iter().enumerate() {
-        // todo: make multimodal messages support @commands
-        if let ChatContent::Multimodal(_) = &msg.content {
-            stream_back_to_user.push_in_json(json!(msg));
-            new_messages.push(msg);
-            continue;
-        }
-        let mut content = msg.content.content_text_only();
+        let (mut content, original_images) = if let ChatContent::Multimodal(parts) = &msg.content {
+            let text = parts.iter()
+                .filter_map(|p| if p.m_type == "text" { Some(p.m_content.as_str()) } else { None })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let images = parts.iter()
+                .filter(|p| p.m_type.starts_with("image/"))
+                .cloned()
+                .collect::<Vec<_>>();
+            (text, Some(images))
+        } else {
+            (msg.content.content_text_only(), None)
+        };
         let content_n_tokens = msg.content.count_tokens(tokenizer.clone(), &None).unwrap_or(0) as usize;
 
         let mut context_limit = reserve_for_context / messages_with_at.max(1);
@@ -157,9 +163,20 @@ pub async fn run_at_commands_locally(
             info!("postprocess_plain_text_messages + postprocess_context_files {:.3}s", t0.elapsed().as_secs_f32());
         }
 
-        if content.trim().len() > 0 {
-            // stream back to the user, with at-commands replaced
-            msg.content = ChatContent::SimpleText(content);
+        if content.trim().len() > 0 || original_images.is_some() {
+            msg.content = if let Some(mut images) = original_images {
+                let mut parts = vec![];
+                if !content.trim().is_empty() {
+                    parts.push(crate::scratchpads::multimodality::MultimodalElement {
+                        m_type: "text".to_string(),
+                        m_content: content,
+                    });
+                }
+                parts.append(&mut images);
+                ChatContent::Multimodal(parts)
+            } else {
+                ChatContent::SimpleText(content)
+            };
             stream_back_to_user.push_in_json(json!(msg));
             new_messages.push(msg);
         }

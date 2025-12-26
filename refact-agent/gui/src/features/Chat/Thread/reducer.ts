@@ -8,6 +8,7 @@ import {
   LspChatMode,
   chatModeToLspMode,
   isLspChatMode,
+  isToolUse,
 } from "./types";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -72,24 +73,8 @@ import {
   validateToolCall,
 } from "../../../services/refact";
 import { capsApi } from "../../../services/refact";
-import type { PauseReason } from "../../../services/refact/chatSubscription";
 
-/**
- * Convert engine's PauseReason to GUI's ToolConfirmationPauseReason.
- * The engine uses string type, GUI uses "confirmation" | "denial".
- */
-function convertPauseReasons(
-  reasons: PauseReason[] | undefined
-): ToolConfirmationPauseReason[] {
-  if (!reasons) return [];
-  return reasons.map((r) => ({
-    type: r.type === "denial" ? "denial" : "confirmation",
-    command: r.command,
-    rule: r.rule,
-    tool_call_id: r.tool_call_id,
-    integr_config_path: r.integr_config_path,
-  }));
-}
+
 
 const createChatThread = (
   tool_use: ToolUse,
@@ -136,6 +121,7 @@ const createThreadRuntime = (
         confirmationStatus: true,
       },
     },
+    queue_size: 0,
   };
 };
 
@@ -342,6 +328,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
           confirmationStatus: true,
         },
       },
+      queue_size: 0,
     };
     newRuntime.thread.messages = postProcessMessagesAfterStreaming(
       newRuntime.thread.messages,
@@ -592,25 +579,17 @@ export const chatReducer = createReducer(initialState, (builder) => {
           || event.runtime.state === "executing_tools"
           || event.runtime.state === "waiting_ide";
 
-        if (existingRuntime && existingRuntime.thread.messages.length > 0 && snapshotMessages.length === 0) {
-          existingRuntime.streaming = event.runtime.state === "generating";
-          existingRuntime.waiting_for_response = isBusy;
-          existingRuntime.prevent_send = event.runtime.state === "error";
-          existingRuntime.error = event.runtime.error;
-          existingRuntime.confirmation.pause = event.runtime.paused;
-          existingRuntime.confirmation.pause_reasons = convertPauseReasons(event.runtime.pause_reasons);
-          existingRuntime.thread.checkpoints_enabled = event.thread.checkpoints_enabled;
-          existingRuntime.thread.isTitleGenerated = event.thread.is_title_generated;
-          break;
-        }
+        // REMOVED: Empty snapshot special case - accept empty snapshots as truth
+        // Backend may legitimately send empty snapshots (chat cleared, truncated, etc.)
+        // Keeping stale messages leads to permanent desync
 
         const thread: ChatThread = {
           id: event.thread.id,
           messages: snapshotMessages,
           model: event.thread.model,
           title: event.thread.title,
-          tool_use: event.thread.tool_use as ToolUse,
-          mode: event.thread.mode as LspChatMode,
+          tool_use: isToolUse(event.thread.tool_use) ? event.thread.tool_use : "agent",
+          mode: isLspChatMode(event.thread.mode) ? event.thread.mode : "AGENT",
           boost_reasoning: event.thread.boost_reasoning,
           context_tokens_cap: event.thread.context_tokens_cap == null ? undefined : event.thread.context_tokens_cap,
           include_project_info: event.thread.include_project_info,
@@ -619,20 +598,26 @@ export const chatReducer = createReducer(initialState, (builder) => {
           new_chat_suggested: { wasSuggested: false },
         };
 
+
+        const defaultConfirmationStatus = event.runtime.paused
+          ? { wasInteracted: false, confirmationStatus: false }
+          : { wasInteracted: false, confirmationStatus: true };
+
         const newRt: ChatThreadRuntime = {
           thread,
           streaming: event.runtime.state === "generating",
           waiting_for_response: isBusy,
-          prevent_send: event.runtime.state === "error",
-          error: event.runtime.error,
+          prevent_send: false,
+          error: event.runtime.error ?? null,
           queued_messages: existingRuntime?.queued_messages ?? [],
           send_immediately: existingRuntime?.send_immediately ?? false,
           attached_images: existingRuntime?.attached_images ?? [],
           confirmation: {
             pause: event.runtime.paused,
-            pause_reasons: convertPauseReasons(event.runtime.pause_reasons),
-            status: existingRuntime?.confirmation.status ?? { wasInteracted: false, confirmationStatus: true },
+            pause_reasons: event.runtime.pause_reasons as ToolConfirmationPauseReason[],
+            status: existingRuntime?.confirmation.status ?? defaultConfirmationStatus,
           },
+          queue_size: event.runtime.queue_size,
         };
 
         state.threads[chat_id] = newRt;
@@ -649,19 +634,23 @@ export const chatReducer = createReducer(initialState, (builder) => {
       case "thread_updated": {
         if (!rt) break;
         const { type: _, ...params } = event;
-        if ("model" in params && params.model) rt.thread.model = params.model as string;
-        if ("mode" in params && params.mode) rt.thread.mode = params.mode as LspChatMode;
-        if ("title" in params && params.title) rt.thread.title = params.title as string;
-        if ("boost_reasoning" in params) rt.thread.boost_reasoning = params.boost_reasoning as boolean;
-        if ("tool_use" in params && params.tool_use) rt.thread.tool_use = params.tool_use as ToolUse;
+        if ("model" in params && typeof params.model === "string") rt.thread.model = params.model;
+        if ("mode" in params && typeof params.mode === "string") {
+          rt.thread.mode = isLspChatMode(params.mode) ? params.mode : rt.thread.mode;
+        }
+        if ("title" in params && typeof params.title === "string") rt.thread.title = params.title;
+        if ("boost_reasoning" in params && typeof params.boost_reasoning === "boolean") rt.thread.boost_reasoning = params.boost_reasoning;
+        if ("tool_use" in params && typeof params.tool_use === "string") {
+          rt.thread.tool_use = isToolUse(params.tool_use) ? params.tool_use : rt.thread.tool_use;
+        }
         if ("context_tokens_cap" in params) {
           rt.thread.context_tokens_cap = params.context_tokens_cap == null
             ? undefined
             : (params.context_tokens_cap as number);
         }
-        if ("include_project_info" in params) rt.thread.include_project_info = params.include_project_info as boolean;
-        if ("checkpoints_enabled" in params) rt.thread.checkpoints_enabled = params.checkpoints_enabled as boolean;
-        if ("is_title_generated" in params) rt.thread.isTitleGenerated = params.is_title_generated as boolean;
+        if ("include_project_info" in params && typeof params.include_project_info === "boolean") rt.thread.include_project_info = params.include_project_info;
+        if ("checkpoints_enabled" in params && typeof params.checkpoints_enabled === "boolean") rt.thread.checkpoints_enabled = params.checkpoints_enabled;
+        if ("is_title_generated" in params && typeof params.is_title_generated === "boolean") rt.thread.isTitleGenerated = params.is_title_generated;
         break;
       }
 
@@ -671,9 +660,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
         rt.waiting_for_response = event.state === "generating"
           || event.state === "executing_tools"
           || event.state === "waiting_ide";
-        rt.prevent_send = event.state === "error";
-        rt.error = event.error;
+        rt.prevent_send = false;
+        rt.error = event.error ?? null;
         rt.confirmation.pause = event.paused;
+        rt.queue_size = event.queue_size;
         if (!event.paused) {
           rt.confirmation.pause_reasons = [];
         }
@@ -713,7 +703,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
             break;
           }
         }
-        rt.thread.messages.splice(event.index, 0, msg);
+        const clampedIndex = Math.min(event.index, rt.thread.messages.length);
+        rt.thread.messages.splice(clampedIndex, 0, msg);
         break;
       }
 
@@ -738,7 +729,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
       case "messages_truncated": {
         if (!rt) break;
-        rt.thread.messages = rt.thread.messages.slice(0, event.from_index);
+        const clampedIndex = Math.min(event.from_index, rt.thread.messages.length);
+        rt.thread.messages = rt.thread.messages.slice(0, clampedIndex);
         break;
       }
 
@@ -772,13 +764,22 @@ export const chatReducer = createReducer(initialState, (builder) => {
         if (!rt) break;
         rt.streaming = false;
         rt.waiting_for_response = false;
+        const msgIdx = rt.thread.messages.findIndex(
+          (m) => "message_id" in m && m.message_id === event.message_id
+        );
+        if (msgIdx >= 0 && isAssistantMessage(rt.thread.messages[msgIdx])) {
+          const msg = rt.thread.messages[msgIdx] as AssistantMessage;
+          if (event.finish_reason && !msg.finish_reason) {
+            msg.finish_reason = event.finish_reason as AssistantMessage["finish_reason"];
+          }
+        }
         break;
       }
 
       case "pause_required": {
         if (!rt) break;
         rt.confirmation.pause = true;
-        rt.confirmation.pause_reasons = convertPauseReasons(event.reasons);
+        rt.confirmation.pause_reasons = event.reasons as ToolConfirmationPauseReason[];
         rt.streaming = false;
         rt.waiting_for_response = false;
         break;

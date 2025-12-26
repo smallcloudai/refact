@@ -59,6 +59,7 @@ import {
   selectQueuedMessages,
   selectThreadToolUse,
   selectToolUse,
+  selectThreadImages,
 } from "../../features/Chat";
 import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
@@ -105,6 +106,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const autoFocus = useAutoFocusOnce();
   const attachedFiles = useAttachedFiles();
   const shouldShowBalanceLow = useAppSelector(showBalanceLowCallout);
+  const attachedImages = useAppSelector(selectThreadImages);
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";
@@ -187,8 +189,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const handleSubmit = useCallback(
     (sendPolicy: SendPolicy = "after_flow") => {
       const trimmedValue = value.trim();
-      // Both options queue during streaming, so both should be allowed
-      const canSubmit = trimmedValue.length > 0 && isOnline && !allDisabled;
+      const hasImages = attachedImages && attachedImages.length > 0;
+      const canSubmit = (trimmedValue.length > 0 || hasImages) && isOnline && !allDisabled;
 
       if (canSubmit) {
         const valueWithFiles = attachedFiles.addFilesToInput(trimmedValue);
@@ -208,6 +210,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       value,
       allDisabled,
       isOnline,
+      attachedImages,
       attachedFiles,
       checkboxes,
       setLineSelectionInteracted,
@@ -449,7 +452,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 <ResendButton />
                 <SendButtonWithDropdown
                   disabled={
-                    !isOnline || allDisabled || value.trim().length === 0
+                    !isOnline || allDisabled || (value.trim().length === 0 && (!attachedImages || attachedImages.length === 0))
                   }
                   isStreaming={isStreaming || isWaiting}
                   queuedCount={queuedMessages.length}

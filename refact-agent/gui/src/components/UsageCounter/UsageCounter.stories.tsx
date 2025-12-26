@@ -75,6 +75,7 @@ const MockedStore: React.FC<{
             pause_reasons: [],
             status: { wasInteracted: false, confirmationStatus: true },
           },
+          queue_size: 0,
         },
       },
       tool_use: "agent",
