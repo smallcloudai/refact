@@ -29,7 +29,7 @@ class ScyllaModel:
         self.is_ready = True
 
     async def count(self, session: Scylla) -> int:
-        query = f"SELECT COUNT(*) FROM {self.name}"
+        query = "SELECT COUNT(*) FROM %s"
         result = await session.execute(query)
         return result.first()["count"]
 
@@ -235,7 +235,7 @@ class RefactDatabase:
         while True:
             try:
                 self._session = Scylla(
-                    contact_points=[f"{self._database_host}:{self._database_port}"],
+                    contact_points=["%s:{self._database_port}"],
                     username="cassandra",
                     password="cassandra",
                     default_execution_profile=self._query_profile,
@@ -243,7 +243,7 @@ class RefactDatabase:
                 await self._session.startup()
                 break
             except Exception as e:
-                logging.warning(f"No database available on {self._database_host}:{self._database_port}; error: {e} "
+                logging.warning("No database available on %s:{self._database_port}; error: {e} "
                                 f"sleep for 10 seconds...")
                 await asyncio.sleep(10)
 
@@ -306,7 +306,7 @@ class StatisticsService:
         elif to == "comp":
             await self._comp.insert(self.session, data)
         else:
-            raise NotImplementedError(f"cannot insert to {to}; type {to} does not exist")
+            raise NotImplementedError("cannot insert to %s; type {to} does not exist")
 
     async def get_robot_human_for_account(
             self, tenant_name: str, workspace: Optional[str] = None) -> AsyncIterator[Dict]:
