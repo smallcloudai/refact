@@ -16,6 +16,7 @@ mod lmstudio;
 mod vllm;
 mod groq;
 mod deepseek;
+mod minimax;
 mod xai;
 mod xai_responses;
 mod google_gemini;

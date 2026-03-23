@@ -389,3 +389,28 @@ pub fn groq_pricing(model_id: &str) -> Option<ModelPricing> {
         _ => None,
     }
 }
+
+pub fn minimax_pricing(model_id: &str) -> Option<ModelPricing> {
+    let id = model_id.to_lowercase();
+    match id.as_str() {
+        s if s.contains("m2.7") || s.contains("m2-7") => Some(ModelPricing {
+            prompt: 1.00,
+            generated: 4.00,
+            cache_read: None,
+            cache_creation: None,
+        }),
+        s if s.contains("m2.5") && s.contains("highspeed") || s.contains("m2-5") && s.contains("highspeed") => Some(ModelPricing {
+            prompt: 0.80,
+            generated: 3.00,
+            cache_read: None,
+            cache_creation: None,
+        }),
+        s if s.contains("m2.5") || s.contains("m2-5") => Some(ModelPricing {
+            prompt: 0.80,
+            generated: 3.00,
+            cache_read: None,
+            cache_creation: None,
+        }),
+        _ => None,
+    }
+}
