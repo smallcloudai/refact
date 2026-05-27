@@ -702,7 +702,7 @@ mod tests {
             )
         } else {
             format!(
-                "python3 -c 'import sys; sys.stdout.write((\"f\" * 1024 + \"\\n\") * 1024); sys.stdout.write(\"{marker}\\n\"); sys.stdout.write((\"t\" * 1024 + \"\\n\") * 3072)'"
+                "chunk=$(printf '%01024d\\n' 0 | tr '0' f); i=0; while [ $i -lt 1024 ]; do printf '%s\\n' \"$chunk\"; i=$((i + 1)); done; printf '%s\\n' '{marker}'; chunk=$(printf '%01024d\\n' 0 | tr '0' t); i=0; while [ $i -lt 3072 ]; do printf '%s\\n' \"$chunk\"; i=$((i + 1)); done"
             )
         }
     }

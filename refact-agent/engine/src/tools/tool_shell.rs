@@ -669,7 +669,7 @@ mod tests {
             )
         } else {
             format!(
-                "python3 -c 'import sys; sys.stdout.write((\"f\" * 1024 + \"\\n\") * 1024); sys.stdout.write(\"{marker}\\n\"); sys.stdout.write((\"t\" * 1024 + \"\\n\") * 3072)'"
+                "chunk=$(printf '%01024d\\n' 0 | tr '0' f); i=0; while [ $i -lt 1024 ]; do printf '%s\\n' \"$chunk\"; i=$((i + 1)); done; printf '%s\\n' '{marker}'; chunk=$(printf '%01024d\\n' 0 | tr '0' t); i=0; while [ $i -lt 3072 ]; do printf '%s\\n' \"$chunk\"; i=$((i + 1)); done"
             )
         }
     }
@@ -678,7 +678,7 @@ mod tests {
         if cfg!(target_os = "windows") {
             "$max = 16 * 1024 * 1024; $tail = \"`nsmall1`nsmall2`nsmall3`nsmall4`n\"; $line = ('x' * 1024) + \"`n\"; $count = [math]::Floor(($max - $tail.Length - 64) / $line.Length); for ($i = 0; $i -lt $count; $i++) { [Console]::Out.Write($line) }; [Console]::Out.Write('x' * ($max - $tail.Length - 64 - ($count * $line.Length))); [Console]::Out.Write($tail); [Console]::Out.Write(('y' * 1024) * 1024)".to_string()
         } else {
-            "python3 -c 'import sys; max_bytes = 16 * 1024 * 1024; tail = \"\\nsmall1\\nsmall2\\nsmall3\\nsmall4\\n\"; line = \"x\" * 1024 + \"\\n\"; count = (max_bytes - len(tail) - 64) // len(line); sys.stdout.write(line * count); sys.stdout.write(\"x\" * (max_bytes - len(tail) - 64 - count * len(line))); sys.stdout.write(tail); sys.stdout.write((\"y\" * 1024 + \"\\n\") * 1024)'".to_string()
+            "max_bytes=$((16 * 1024 * 1024)); tail='\nsmall1\nsmall2\nsmall3\nsmall4\n'; tail_len=29; line=$(printf '%01024d\\n' 0 | tr '0' x); line_len=1025; count=$(((max_bytes - tail_len - 64) / line_len)); i=0; while [ $i -lt $count ]; do printf '%s\\n' \"$line\"; i=$((i + 1)); done; rem=$((max_bytes - tail_len - 64 - count * line_len)); if [ $rem -gt 0 ]; then printf '%*s' \"$rem\" '' | tr ' ' x; fi; printf '%b' \"$tail\"; chunk=$(printf '%01024d\\n' 0 | tr '0' y); i=0; while [ $i -lt 1024 ]; do printf '%s\\n' \"$chunk\"; i=$((i + 1)); done".to_string()
         }
     }
 

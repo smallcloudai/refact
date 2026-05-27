@@ -617,7 +617,7 @@ mod tests {
         let command = if cfg!(windows) {
             "[Console]::Out.Write(('x' * 4096))"
         } else {
-            "python3 -c 'print(\"x\" * 4096, end=\"\")'"
+            "chunk=x; i=0; while [ $i -lt 12 ]; do chunk=\"$chunk$chunk\"; i=$((i + 1)); done; printf '%s' \"$chunk\""
         };
         let result = registry
             .spawn(ExecSpawnRequest::foreground(shell_script(command)).with_transcript_limit(1024))
